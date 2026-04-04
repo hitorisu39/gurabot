@@ -1,0 +1,13 @@
+node_modules
+dist
+.env
+.git
+.gitignore
+npm-debug.log
+yarn-error.log
+README.md
+LICENSE.md
+generated/prisma
+generated/adapter
+cache
+calculator/bin

@@ -1,0 +1,94 @@
+syntax = "proto3";
+option csharp_namespace = "Calculator.Protos";
+package calculator;
+
+// Service responsible for requesting difficulty and performance calculations.
+service Calculator {
+    // Request to calculate difficulty
+    rpc CalculateDifficulty (DifficultyRequest) returns (DifficultyResponse);
+
+    // Request to calculate performance
+    rpc CalculatePerformance (PerformanceRequest) returns (PerformanceResponse);
+
+    // Request to calculate performance via stream
+    rpc CalculatePerformanceStream (stream PerformanceRequest) returns (stream PerformanceResponse);
+}
+
+message ModMessage {
+    string acronym = 1;
+    map<string, string> settings = 2;
+}
+
+message ScoreState {
+    optional uint32 max_combo = 1;
+    optional double accuracy = 2;
+    optional uint32 count_300 = 3;
+    optional uint32 count_100 = 4;
+    optional uint32 count_50 = 5;
+    optional uint32 count_miss = 6;
+    optional uint32 count_geki = 7;
+    optional uint32 count_katu = 8;
+    optional uint32 count_large_tick_misses = 9;
+    optional uint32 count_slider_tail_misses = 10;
+}
+
+message HitResultResponse {
+    uint32 max_combo = 1;
+    double accuracy = 2;
+    uint32 count_300 = 3;
+    uint32 count_100 = 4;
+    uint32 count_50 = 5;
+    uint32 count_miss = 6;
+    uint32 count_geki = 7;
+    uint32 count_katu = 8;
+    uint32 count_large_tick_hits = 9;
+    uint32 count_slider_tail_hits = 10;
+}
+
+message BeatmapAttributes {
+    double ar = 1;
+    double od = 2;
+    double cs = 3;
+    double hp = 4;
+    double clock_rate = 5;
+}
+
+message SkillStrain {
+    string skill_name = 1;
+    repeated double peaks = 2;
+}
+
+message DifficultyRequest {
+    string beatmap_path = 1;
+    uint32 ruleset_id = 2;
+    repeated ModMessage mods = 3;
+    optional uint32 passed_objects = 4;
+    optional double clock_rate = 5;
+    optional bool calculate_strains = 6;
+}
+
+message DifficultyResponse {
+    map<string, double> attributes = 1;
+    BeatmapAttributes beatmap = 2;
+    repeated SkillStrain strains = 3;
+}
+
+message PerformanceRequest {
+    string beatmap_path = 1;
+    uint32 ruleset_id = 2;
+    repeated ModMessage mods = 3;
+    ScoreState score = 4;
+    optional uint32 passed_objects = 5; 
+    map<string, double> precalculated_difficulty = 6;
+    optional double clock_rate = 7;
+    optional uint32 total_score = 8;
+    optional uint32 legacy_total_score = 9;
+    optional uint32 reference_id = 99;
+}
+
+message PerformanceResponse {
+    map<string, double> attributes = 1;
+    DifficultyResponse difficulty = 2;
+    HitResultResponse hit_results = 3;
+    optional uint32 reference_id = 99;
+}

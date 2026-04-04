@@ -1,0 +1,11 @@
+model Guild {
+    id              String      @id
+    prefix          String?
+
+    server          String?     // AdapterProvider
+    mode            String?     // GameMode
+
+    scoreListSize   String?     @map("score_list_size") // EScoreListSize
+
+    @@map("guilds")
+}

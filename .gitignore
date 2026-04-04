@@ -1,0 +1,8 @@
+.env
+dist
+node_modules
+/generated/
+/adapter/cache
+/calculator/bin
+/calculator/obj
+cache

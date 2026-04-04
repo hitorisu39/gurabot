@@ -1,0 +1,38 @@
+networks:
+    gurabot_network:
+        name: gurabot_network
+
+services:
+    postgres:
+        image: postgres:17.6
+        container_name: ${APP_NAME:-gurabot}-postgres
+        restart: unless-stopped
+        profiles: ["dev"]
+        environment:
+            POSTGRES_USER: ${DATABASE_USERNAME:-postgres}
+            POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-postgres}
+            POSTGRES_DB: ${DATABASE_NAME:-gurabot}
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USERNAME:-postgres}"]
+            interval: 5s
+            timeout: 5s
+            retries: 5
+        ports:
+            - "${DATABASE_PORT:-5432}:5432"
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+
+    redis:
+        image: redis:7.2-alpine
+        container_name: ${APP_NAME:-gurabot}-redis
+        restart: unless-stopped
+        profiles: ["dev"]
+        ports:
+            - "6379:6379"
+        volumes:
+            - redis_data:/data
+        command: redis-server --appendonly yes
+
+volumes:
+    postgres_data:
+    redis_data:

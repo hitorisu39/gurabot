@@ -1,0 +1,86 @@
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap");
+
+body {
+    background-color: #1c1c22;
+}
+
+.auth {
+    width: 635px;
+    height: auto;
+    background-color: black;
+    border-radius: 16px;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    -webkit-transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%);
+    text-align: center;
+    box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
+}
+
+.auth .header {
+    margin-top: 30px;
+    padding-bottom: 20px;
+}
+
+.auth hr {
+    width: 90%;
+    height: 1px;
+    border: 0;
+    background-color: #4b4a46;
+    opacity: 0.85;
+    margin: auto;
+}
+
+.auth .body {
+    margin: auto;
+    width: 80%;
+    margin-top: 30px;
+}
+
+.auth .title {
+    color: #d7d7d7;
+    font-family: "Nunito", sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.auth .description {
+    color: #d7d7d7;
+    font-family: "Nunito", sans-serif;
+    font-size: 20px;
+}
+
+.auth .footer {
+    width: 90%;
+    margin: auto;
+}
+
+.footer .app {
+    color: #d7d7d7;
+    font-family: "Nunito", sans-serif;
+    font-size: 14px;
+}
+
+a {
+    text-decoration: none;
+    color: #3690ff;
+}
+
+a:hover {
+    color: #ff9036;
+    transition: 0.2s all;
+}
+
+@media screen and (max-width: 660px) {
+    .auth {
+        width: 90%;
+    }
+}
+
+@media screen and (max-width: 482px) {
+    .auth_image {
+        width: 90%;
+        height: auto;
+    }
+}

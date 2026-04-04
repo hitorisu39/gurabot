@@ -1,0 +1,27 @@
+model User {
+    id              String      @id
+    linked          UserToOsu[]
+
+    server          String?     // AdapterProvider
+    mode            String?     // GameMode
+    scoreListSize   String?     @map("score_list_size") // EScoreListSize
+
+    createdAt       DateTime    @map("created_at") @default(now())
+    updatedAt       DateTime    @map("updated_at") @updatedAt @default(now())
+
+    @@map("users")
+}
+
+model UserToOsu {
+    userID      String      @map("user_id")
+    user        User        @relation(fields: [userID], references: [id], onDelete: Cascade)
+
+    server      String      // AdapterProvider
+    osuID       Int         @map("osu_id")
+
+    createdAt   DateTime    @map("created_at") @default(now())
+    updatedAt   DateTime    @map("updated_at") @updatedAt @default(now())
+
+    @@unique([userID, server])
+    @@map("user_to_osu")
+}

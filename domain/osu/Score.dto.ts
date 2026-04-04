@@ -1,0 +1,178 @@
+import { IsDateRange, IsRange, IsString, Option } from "@/core/decorators";
+import type { IPerformanceCalculationResponse } from "@domain/core/Calculator";
+import { CommandOption, ICommandDateRange, ICommandRange } from "@domain/core/Command";
+import { Beatmap, Beatmapset, GameMode, Score } from "@generated/adapter/types";
+import { Exclude, Expose, Type } from "class-transformer";
+
+@Exclude()
+export class ScoreWithMaps extends Score {
+    @Expose()
+    @Type(() => Beatmap)
+    declare beatmap: Beatmap;
+
+    @Expose()
+    @Type(() => Beatmapset)
+    declare beatmapset: Beatmapset;
+}
+
+@Exclude()
+export class PopulatedScore<M extends GameMode = GameMode> extends ScoreWithMaps {
+    @Expose()
+    declare calculated: IPerformanceCalculationResponse<M>;
+
+    @Expose()
+    declare calculatedFC?: IPerformanceCalculationResponse<M>;
+}
+
+@Exclude()
+export class PopulatedScoreAverageFieldDto {
+    @Expose()
+    declare min: number;
+
+    @Expose()
+    declare avg: number;
+
+    @Expose()
+    declare max: number;
+}
+
+@Exclude()
+export class PopulatedScoreAverageDto {
+    @Expose()
+    @Type(() => PopulatedScoreAverageFieldDto)
+    declare pp: PopulatedScoreAverageFieldDto;
+
+    @Expose()
+    @Type(() => PopulatedScoreAverageFieldDto)
+    declare combo: PopulatedScoreAverageFieldDto;
+
+    @Expose()
+    @Type(() => PopulatedScoreAverageFieldDto)
+    declare length: PopulatedScoreAverageFieldDto;
+
+    @Expose()
+    @Type(() => PopulatedScoreAverageFieldDto)
+    declare accuracy: PopulatedScoreAverageFieldDto;
+
+    @Expose()
+    @Type(() => PopulatedScoreAverageFieldDto)
+    declare bpm: PopulatedScoreAverageFieldDto;
+
+    @Expose()
+    @Type(() => PopulatedScoreAverageFieldDto)
+    declare ar: PopulatedScoreAverageFieldDto;
+
+    @Expose()
+    @Type(() => PopulatedScoreAverageFieldDto)
+    declare od: PopulatedScoreAverageFieldDto;
+
+    @Expose()
+    @Type(() => PopulatedScoreAverageFieldDto)
+    declare cs: PopulatedScoreAverageFieldDto;
+
+    @Expose()
+    @Type(() => PopulatedScoreAverageFieldDto)
+    declare hp: PopulatedScoreAverageFieldDto;
+
+    @Expose()
+    @Type(() => PopulatedScoreAverageFieldDto)
+    declare miss: PopulatedScoreAverageFieldDto;
+
+    @Expose()
+    @Type(() => PopulatedScoreAverageFieldDto)
+    declare stars: PopulatedScoreAverageFieldDto;
+}
+
+@Exclude()
+export class ScoreModStatistics {
+    @Expose()
+    declare individualMods: Array<{ acronym: string; count: number; percentage: number }>;
+
+    @Expose()
+    declare modCombos: Array<{ combo: string; count: number; percentage: number }>;
+
+    @Expose()
+    declare ppByCombo: Array<{ combo: string; totalWeightedPP: number }>;
+}
+
+export class BaseScoreQueryDto {
+    @Option("accuracy", "Specify accuracy")
+    @IsRange(0, 100)
+    declare accuracy: CommandOption<ICommandRange>;
+
+    @Option("combo", "Specify accuracy")
+    @IsRange(0, 99999)
+    declare combo: CommandOption<ICommandRange>;
+
+    @Option("misses", "Specify accuracy")
+    @IsRange(0, 99999)
+    declare misses: CommandOption<ICommandRange>;
+
+    @Option("score", "Specify accuracy")
+    @IsRange()
+    declare score: CommandOption<ICommandRange>;
+
+    @Option("date", "Specify accuracy")
+    @IsDateRange()
+    declare date: CommandOption<ICommandDateRange>;
+}
+
+export class ScoresWithMapsQueryDto extends BaseScoreQueryDto {
+    @Option("artist", "Specify accuracy")
+    @IsString(1, 99)
+    declare artist: CommandOption<string>;
+
+    @Option("creator", "Specify accuracy")
+    @IsString(1, 99)
+    declare creator: CommandOption<string>;
+
+    @Option("title", "Specify accuracy")
+    @IsString(1, 99)
+    declare title: CommandOption<string>;
+
+    @Option("version", "Specify accuracy")
+    @IsString(1, 99)
+    declare version: CommandOption<string>;
+
+    @Option("rankedDate", "Specify accuracy")
+    @IsDateRange()
+    declare rankedDate: CommandOption<ICommandDateRange>;
+
+    @Option("length", "Specify accuracy")
+    @IsRange(0, 999999)
+    declare length: CommandOption<ICommandRange>;
+
+    @Option("cs", "Specify accuracy")
+    @IsRange(0, 13)
+    declare cs: CommandOption<ICommandRange>;
+
+    @Option("ar", "Specify accuracy")
+    @IsRange(0, 13)
+    declare ar: CommandOption<ICommandRange>;
+
+    @Option("hp", "Specify accuracy")
+    @IsRange(0, 13)
+    declare hp: CommandOption<ICommandRange>;
+
+    @Option("od", "Specify accuracy")
+    @IsRange(0, 13)
+    declare od: CommandOption<ICommandRange>;
+
+    @Option("bpm", "Specify bpm")
+    @IsRange(0, 99999)
+    declare bpm: CommandOption<ICommandRange>;
+}
+
+export class PopulatedScoresQueryDto extends ScoresWithMapsQueryDto {
+    @Option("stars", "Specify accuracy")
+    @IsRange(0, 9999)
+    declare stars: CommandOption<ICommandRange>;
+
+    @Option("pp", "Specify accuracy")
+    @IsRange(0, 99999)
+    declare pp: CommandOption<ICommandRange>;
+
+    @Option("ppfc", "Specify accuracy")
+    @IsRange(0, 99999)
+    declare ppfc: CommandOption<ICommandRange>;
+}

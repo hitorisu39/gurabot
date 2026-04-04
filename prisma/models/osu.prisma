@@ -1,0 +1,97 @@
+model UserCache {
+    id          Int
+    username    String      @id
+    updatedAt   DateTime    @map("updated_at") @updatedAt @default(now())
+
+    @@map("user_cache")
+}
+
+model BeatmapOwner {
+    id          Int         @id
+    username    String
+    beatmaps    Beatmap[]   @relation("beatmap_to_owners")
+
+    @@map("beatmap_owners")
+}
+
+model MapsetCovers {
+    id               Int        @id @default(autoincrement())
+    cover            String
+    coverDouble      String     @map("cover_2x")
+    card             String
+    cardDouble       String     @map("card_2x")
+    list             String
+    listDouble       String     @map("list_2x")
+    slimcover        String
+    slimcoverDouble  String     @map("slimcover_2x")
+    
+    beatmapset       Beatmapset @relation(fields: [beatmapsetID], references: [id], onDelete: Cascade)
+    beatmapsetID     Int        @unique @map("beatmapset_id")
+
+    @@map("mapset_covers")
+}
+
+model Beatmapset {
+    id            Int           @id
+    animeCover    Boolean?      @map("anime_cover")
+    artist        String
+    artistUnicode String        @map("artist_unicode")
+    creator       String
+    favoriteCount Int           @map("favorite_count")
+    genre         String        // Genre
+    language      String        // Language
+    nsfw          Boolean
+    offset        Int
+    playcount     Int
+    previewUrl    String        @map("preview_url")
+    source        String?
+    spotlight     Boolean
+    status        String        // Status
+    title         String
+    titleUnicode  String        @map("title_unicode")
+    userID        Int           @map("user_id")
+    video         Boolean
+    rankedDate    DateTime?     @map("ranked_date")
+    submittedDate DateTime      @map("submitted_date")
+    tags          String        @db.Text
+
+    covers        MapsetCovers?
+    beatmaps      Beatmap[]
+
+    @@index([userID])
+    @@map("beatmapsets")
+}
+
+model Beatmap {
+    id            Int            @id
+    difficulty    Float
+    mode          String        // GameMode
+    status        String        // Status
+    totalLength   Int           @map("total_length")
+    hitLength     Int           @map("hit_length")
+    userID        Int           @map("user_id")
+    version       String
+    od            Float
+    ar            Float
+    cs            Float
+    hp            Float
+    bpm           Float
+    convert       Boolean
+    countCircles  Int           @map("count_circles")
+    countSliders  Int           @map("count_sliders")
+    countSpinners Int           @map("count_spinners")
+    lastUpdated   DateTime      @map("last_updated")
+    url           String
+    passcount     Int
+    playcount     Int
+    checksum      String
+    ranked        Int
+
+    beatmapsetID  Int           @map("beatmapset_id")
+    beatmapset    Beatmapset     @relation(fields: [beatmapsetID], references: [id], onDelete: Cascade)
+    owners        BeatmapOwner[] @relation("beatmap_to_owners")
+
+    @@index([beatmapsetID])
+    @@index([userID])
+    @@map("beatmaps")
+}
