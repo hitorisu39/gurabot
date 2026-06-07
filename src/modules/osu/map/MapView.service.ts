@@ -77,6 +77,7 @@ export class MapViewService extends AbstractService {
         const liveHitLength = BeatmapAttributesCalculator.length(map.hitLength, beatmapAttributes.clockRate);
 
         const tableGenerator = new AsciiTable({
+            compact: true,
             padding: 1,
             borders: {
                 left: false,

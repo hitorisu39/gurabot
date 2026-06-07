@@ -21,11 +21,11 @@ export abstract class AbstractProfileCommand extends AbstractOsuCommand {
 
         if (cachedID) {
             [{ user, scores }, ameobea] = await Promise.all([
-                this.osuService.userWithScores(cachedID, target.mode, "best", 100),
+                this.osuService.userWithScores({ nameOrID: cachedID, mode: target.mode, type: "best", limit: 100 }),
                 this.ameobeaService.peak(cachedID, target.mode, target.server).catch(() => null),
             ]);
         } else {
-            ({ user, scores } = await this.osuService.userWithScores(target.query, target.mode, "best", 100));
+            ({ user, scores } = await this.osuService.userWithScores({ nameOrID: target.query, mode: target.mode, type: "best", limit: 100 }));
             ameobea = await this.ameobeaService.peak(user.id, user.mode, target.server).catch(() => null);
         }
 

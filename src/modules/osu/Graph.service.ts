@@ -120,6 +120,8 @@ export class GraphService extends AbstractService {
                     },
                     x: {
                         type: "linear",
+                        min: 0,
+                        max: totalDuration,
                         ticks: {
                             color: "rgb(223,223,223)",
                             font: { weight: "bold", size: 18 },

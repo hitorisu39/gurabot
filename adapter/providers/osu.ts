@@ -478,6 +478,22 @@ export const OsuProvider = SchemaProvider.define("osu", {
             returns: { model: Score, isArray: true },
             mapping: ScoreMapping,
         },
+        recent: {
+            args: {
+                id: Field.Int(),
+                mode: Field.Enum(GameMode),
+                limit: Field.Int(),
+                includeFails: Field.Boolean().Optional()
+            },
+            path: (args) => {
+                let options = `mode=${args.mode}&limit=${args.limit}`;
+                if (args.includeFails) options += `&include_fails=1`;
+                return `/users/${args.id}/scores/recent?${options}`;
+            },
+            method: "GET",
+            returns: { model: Score, isArray: true },
+            mapping: ScoreMapping
+        },
         beatmap: {
             args: {
                 id: Field.Int(),

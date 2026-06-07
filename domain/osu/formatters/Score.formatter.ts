@@ -1,11 +1,34 @@
 import { discordEmoteGrades, discordEmoteMiss } from "@domain/discord/configs/Emotes.config";
 import { ParsedMod } from "@generated/adapter/mods";
-import { GameMode, Grade, ScoreStatistics } from "@generated/adapter/types";
+import { Beatmap, GameMode, Grade, ScoreStatistics } from "@generated/adapter/types";
+import { osuBaseDomain } from "../configs/Osu.config";
 
 export class ScoreFormatter {
-    public static grade(grade: Grade, scoreID?: number): string {
+    public static completion(statistics: ScoreStatistics, beatmap: Beatmap, mode: GameMode): number | null {
+        if (mode === GameMode.Catch)
+            return null;
+
+        const hits = (statistics.perfect ?? 0) +
+            (statistics.great ?? 0) +
+            (statistics.good ?? 0) +
+            (statistics.ok ?? 0) +
+            (statistics.meh ?? 0) +
+            (statistics.miss ?? 0);
+
+        const totalObjects = beatmap.countCircles + beatmap.countSliders + beatmap.countSpinners;
+        if (totalObjects === 0) return null;
+
+        return (hits / totalObjects) * 100;
+    }
+
+    public static grade(grade: Grade, passed: boolean, scoreID?: number | null, completion?: number | null): string {
+        if (!passed) {
+            const emote = discordEmoteGrades[Grade.F] ?? "F";
+            return completion ? `${emote} @${Math.round(completion)}%` : emote;
+        }
+
         const emote = discordEmoteGrades[grade] ?? grade;
-        if (scoreID) return `[${emote}](https://osu.ppy.sh/scores/${scoreID})`;
+        if (scoreID) return `[${emote}](https://${osuBaseDomain}/scores/${scoreID})`;
 
         return emote;
     }

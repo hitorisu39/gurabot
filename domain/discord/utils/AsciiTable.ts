@@ -30,6 +30,7 @@ export interface TableConfig<T> {
     padding?: number;
     borders?: Partial<TableBorders>;
     hideHeader?: boolean;
+    compact?: boolean;
 }
 
 export class AsciiTable<T> {
@@ -37,6 +38,7 @@ export class AsciiTable<T> {
     private readonly padding: number;
     private readonly borders: TableBorders;
     private readonly hideHeader: boolean;
+    private readonly compact: boolean;
 
     constructor(config: TableConfig<T>) {
         if (!config.columns || config.columns.length === 0) {
@@ -46,6 +48,7 @@ export class AsciiTable<T> {
         this.columns = config.columns;
         this.padding = config.padding ?? 1;
         this.hideHeader = config.hideHeader ?? false;
+        this.compact = config.compact ?? false;
 
         // Default border configuration
         this.borders = {
@@ -157,11 +160,16 @@ export class AsciiTable<T> {
      * Renders a single row of text data.
      */
     private renderRow(cells: string[], widths: number[], aligns: TableAlignment[]): string {
-        const padStr = " ".repeat(this.padding);
-
         const renderedCells = cells.map((cell, i) => {
             const alignedText = this.alignText(cell, widths[i] ?? 0, aligns[i] ?? "center");
-            return `${padStr}${alignedText}${padStr}`;
+            
+            const leftPadLen = (this.compact && i === 0) ? 0 : this.padding;
+            const rightPadLen = (this.compact && i === cells.length - 1) ? 0 : this.padding;
+            
+            const leftPad = " ".repeat(leftPadLen);
+            const rightPad = " ".repeat(rightPadLen);
+
+            return `${leftPad}${alignedText}${rightPad}`;
         });
 
         const inner = renderedCells.join(this.borders.vertical);
@@ -175,7 +183,12 @@ export class AsciiTable<T> {
      * Renders a horizontal separator line (e.g., between headers and data).
      */
     private renderSeparator(widths: number[]): string {
-        const renderedSegments = widths.map((w) => this.borders.horizontal.repeat(w + this.padding * 2));
+        const renderedSegments = widths.map((w, i) => {
+            const leftPadLen = (this.compact && i === 0) ? 0 : this.padding;
+            const rightPadLen = (this.compact && i === widths.length - 1) ? 0 : this.padding;
+
+            return this.borders.horizontal.repeat(w + leftPadLen + rightPadLen);
+        });
 
         const inner = renderedSegments.join(this.borders.intersection);
         const left = this.borders.left ? this.borders.intersection : "";

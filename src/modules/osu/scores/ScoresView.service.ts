@@ -67,7 +67,9 @@ export class ScoresViewService extends AbstractService {
         const scoreNum = DiscordFormatter.number(score.legacyTotalScore || score.totalScore);
         const scoreDisplay = isMania ? `**${scoreNum}**` : scoreNum;
 
-        const grade = ScoreFormatter.grade(score.grade);
+        const completion = !score.passed ? ScoreFormatter.completion(score.statistics, score.beatmap, data.profile.mode) : null;
+        const grade = ScoreFormatter.grade(score.grade, score.passed, null, completion);
+
         const accOrMods = mods
             ? `${mods} ${DiscordFormatter.space(2)} ${ScoreFormatter.accuracy(score.accuracy)}`
             : ScoreFormatter.accuracy(score.accuracy);
@@ -76,7 +78,7 @@ export class ScoresViewService extends AbstractService {
             .filter(Boolean)
             .join(DiscordFormatter.space(4));
 
-        const pp = ScoreFormatter.pp(score.pp, score.calculatedFC?.attributes.total);
+        const pp = ScoreFormatter.pp(score.pp ?? score.calculated.attributes.total, score.calculatedFC?.attributes.total);
         let comboRatioString;
 
         if (isMania) {
@@ -159,8 +161,8 @@ export class ScoresViewService extends AbstractService {
                 const statistics = ScoreFormatter.statistics(score.statistics, data.profile.mode, " • ");
 
                 const statsFirstRow = [
-                    `${ScoreFormatter.grade(score.grade, score.id)} ${ScoreFormatter.accuracy(score.accuracy)}`,
-                    ScoreFormatter.pp(score.pp, score.calculatedFC?.attributes.total),
+                    `${ScoreFormatter.grade(score.grade, score.passed, score.id)} ${ScoreFormatter.accuracy(score.accuracy)}`,
+                    ScoreFormatter.pp(score.pp ?? score.calculated.attributes.total, score.calculatedFC?.attributes.total),
                     scoreDisplay,
                 ]
                     .filter(Boolean)
@@ -179,8 +181,8 @@ export class ScoresViewService extends AbstractService {
                 description.add(statsFirstRow).add(statsSecondRow);
             } else {
                 const stats = [
-                    `${ScoreFormatter.grade(score.grade, score.id)} ${ScoreFormatter.accuracy(score.accuracy)}`,
-                    ScoreFormatter.pp(score.pp, score.calculatedFC?.attributes.total),
+                    `${ScoreFormatter.grade(score.grade, score.passed, score.id)} ${ScoreFormatter.accuracy(score.accuracy)}`,
+                    ScoreFormatter.pp(score.pp ?? score.calculated.attributes.total, score.calculatedFC?.attributes.total),
                     isMania
                         ? scoreDisplay
                         : ScoreFormatter.combo(score.maxCombo, score.calculated.difficulty.attributes.maxCombo),

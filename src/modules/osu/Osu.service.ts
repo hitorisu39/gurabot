@@ -9,6 +9,15 @@ import { ProviderMeta } from "@generated/adapter";
 import { CalculatorMapService } from "./calculator/CalculatorMap.service";
 import type { TRepository } from "@/core";
 
+interface IUserWithScoresInput {
+    nameOrID: string | number;
+    mode: GameMode;
+    type: "best" | "recent" | "firsts" | "pinned";
+    limit: number;
+    includeFails?: boolean;
+    provider?: AdapterProvider;
+}
+
 export class OsuService extends AbstractService {
     @Import() declare private readonly calculatorService: CalculatorService;
     @Import() declare private readonly calculatorMapService: CalculatorMapService;
@@ -67,19 +76,22 @@ export class OsuService extends AbstractService {
     }
 
     @Trace("osu_user_with_scores")
-    public async userWithScores(
-        nameOrID: string | number,
-        mode: GameMode,
-        type: "best" | "recent" | "firsts" | "pinned",
-        limit: number,
-        provider: AdapterProvider = AdapterProvider.Bancho,
-    ): Promise<{ user: PopulatedUser; scores: Array<Score> }> {
+    public async userWithScores(data: IUserWithScoresInput): Promise<{ user: PopulatedUser; scores: Array<Score> }> {
+        const provider = data.provider ?? AdapterProvider.Bancho;
         const isCacheable = ProviderMeta[provider].cache;
+
+        const {
+            nameOrID,
+            mode,
+            type,
+            limit,
+            includeFails
+        } = data;
 
         if (typeof nameOrID === "number") {
             const [user, scores] = await Promise.all([
                 this.user(nameOrID, mode, provider),
-                this.fetchScoresByType(nameOrID, mode, type, limit, provider),
+                this.fetchScoresByType(nameOrID, mode, type, limit, includeFails, provider),
             ]);
             return { user, scores };
         }
@@ -97,12 +109,12 @@ export class OsuService extends AbstractService {
         if (cachedID) {
             const [user, initialScores] = await Promise.all([
                 this.user(username, mode, provider),
-                this.fetchScoresByType(cachedID, mode, type, limit, provider).catch(() => null),
+                this.fetchScoresByType(cachedID, mode, type, limit, includeFails, provider).catch(() => null),
             ]);
 
             if (user.id !== cachedID || !initialScores) {
                 this.logger.warn(`Namechange detected or cache stale for ${username}. Re-fetching scores...`);
-                const correctedScores = await this.fetchScoresByType(user.id, mode, type, limit, provider);
+                const correctedScores = await this.fetchScoresByType(user.id, mode, type, limit, includeFails, provider);
                 return { user, scores: correctedScores };
             }
 
@@ -110,7 +122,7 @@ export class OsuService extends AbstractService {
         }
 
         const user = await this.user(username, mode, provider);
-        const scores = await this.fetchScoresByType(user.id, mode, type, limit, provider);
+        const scores = await this.fetchScoresByType(user.id, mode, type, limit, includeFails, provider);
         return { user, scores };
     }
 
@@ -122,6 +134,17 @@ export class OsuService extends AbstractService {
         provider: AdapterProvider = AdapterProvider.Bancho,
     ): Promise<Array<Score>> {
         return await this.adapter[provider].best({ id, mode, limit });
+    }
+
+    @Trace("osu_recent")
+    public async recent(
+        id: number,
+        mode: GameMode,
+        limit: number,
+        includeFails: boolean = false,
+        provider: AdapterProvider = AdapterProvider.Bancho,
+    ): Promise<Array<Score>> {
+        return await this.adapter[provider].recent({ id, mode, limit, includeFails });
     }
 
     @Trace("osu_beatmap")
@@ -416,9 +439,12 @@ export class OsuService extends AbstractService {
         mode: GameMode,
         type: "best" | "recent" | "firsts" | "pinned",
         limit: number,
+        includeFails: boolean = false,
         provider: AdapterProvider,
     ): Promise<Array<Score>> {
         switch (type) {
+            case "recent":
+                return await this.adapter[provider].recent({ id, mode, limit, includeFails });
             default:
                 return await this.adapter[provider].best({ id, mode, limit });
         }

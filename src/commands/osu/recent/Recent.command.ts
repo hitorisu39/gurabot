@@ -1,0 +1,124 @@
+import { Command, Import, IsBoolean, IsEnum, IsMods, IsRange, Option } from "@/core/decorators";
+import { CommandContext } from "@/core/discord/context/CommandContext";
+import { OsuService } from "@/modules/osu/Osu.service";
+import { AbstractOsuCommand } from "../AbstractOsuCommand";
+import { CommandOption, ICommandMods, ICommandRange } from "@domain/core/Command";
+import { Grade } from "@generated/adapter/types";
+import { Embed } from "@/core/discord/ui/Embed";
+import { ProviderMeta } from "@generated/adapter";
+import { BaseScoreEvaluator } from "@domain/osu/utils/BaseScoreEvaluator";
+import { EScoreListSize, EScoreQuerySort, ESortOrder } from "@domain/osu/enums/Score.enum";
+import { ScoresViewService } from "@/modules/osu/scores/ScoresView.service";
+import { ScoresViewDto } from "@domain/osu/views/Scores.view";
+import { SessionService } from "@/modules/cache/Session.service";
+
+@Command({
+    name: "recent",
+    description: "Shows most recent plays of an osu! player.",
+    aliases: ["r", "rs"],
+})
+export class RecentCommand extends AbstractOsuCommand {
+    @Import() declare private readonly osuService: OsuService;
+    @Import() declare private readonly sessionService: SessionService;
+    @Import() declare private readonly scoresViewService: ScoresViewService;
+
+    @Option("passed", "Shows only passed recent scores")
+    @IsBoolean()
+    declare private readonly passed: CommandOption<boolean>;
+
+    @Option("index", "Jump to a specific score index (1-100)")
+    @IsRange()
+    declare private readonly index: CommandOption<ICommandRange>;
+
+    @Option("grade", "Filter scores out by grade")
+    @IsEnum(Grade)
+    declare private readonly grade: CommandOption<Grade>;
+
+    @Option("mods", "Filter by mods: +HD = include, -HD! = exclude, +HD! = exact match")
+    @IsMods()
+    declare private readonly mods: CommandOption<ICommandMods>;
+
+    public async execute(ctx: CommandContext): Promise<void> {
+        const target = await this.resolveTarget(ctx);
+        const passed = this.passed.unwrapOr(false);
+
+        const { user, scores } = await this.osuService.userWithScores({
+            nameOrID: target.query,
+            mode: target.mode,
+            type: "recent",
+            limit: 100,
+            includeFails: !passed,
+            provider: target.server
+        });
+
+        if (!scores || scores.length === 0) {
+            await ctx.respond(Embed.error(`No scores found for **${user.username}** in the past 24 hours on ${ProviderMeta[target.server].name} (${target.mode}).`));
+            return;
+        }
+
+        const evaluator = new BaseScoreEvaluator(
+            CommandOption.none<any>(),
+            this.mods,
+            this.index,
+            this.grade,
+            EScoreQuerySort.Date,
+            ESortOrder.Descending
+        );
+
+        let finalScores = evaluator.filter(scores);
+        finalScores = evaluator.sort(finalScores);
+        finalScores = evaluator.index(finalScores);
+
+        if (finalScores.length === 0) {
+            await ctx.respond(Embed.error("No recent plays found matching the specified filters."));
+            return;
+        }
+
+        const targetScore = finalScores[0]!;
+        finalScores = [targetScore];
+
+        let displayQuery: string | null = null;
+
+        if (!passed) {
+            const targetMapID = targetScore.beatmapID;
+            const targetMods = targetScore.mods.map((m) => m.acronym).sort().join("");
+
+            let tries = 0;
+
+            // Iterate from oldest to newest to calculate tries
+            for (let i = scores.length - 1; i >= 0; i--) {
+                const s = scores[i];
+                const sMapID = s?.beatmapID;
+                const sMods = s?.mods.map((m) => m.acronym).sort().join("");
+
+                if (sMapID === targetMapID && sMods === targetMods)
+                    tries++;
+
+                if (s === targetScore)
+                    break;
+            }
+
+            displayQuery = `Try #${tries}`;
+        }
+
+        await this.scoresViewService.populatePage(finalScores, 1, 1, target.mode, target.server);
+
+        const data: ScoresViewDto = {
+            timestamp: Date.now(),
+            authorID: ctx.author.id,
+            profile: user,
+            scores: finalScores,
+            displayQuery: displayQuery,
+            activeAttributes: evaluator.getActiveAttributes(),
+            pageSize: EScoreListSize.Detailed,
+            page: 1,
+        };
+
+        const sessionID = await this.sessionService.create("osu_scores_view", data, this.scoresViewService.getTtl());
+
+        const view = this.scoresViewService.build(sessionID, data);
+        const message = await ctx.respond(view);
+
+        this.sessionService.after(sessionID, () => message?.edit({ components: [] }));
+    }
+}

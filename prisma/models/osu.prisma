@@ -38,7 +38,7 @@ model Beatmapset {
     artistUnicode String        @map("artist_unicode")
     creator       String
     favoriteCount Int           @map("favorite_count")
-    genre         String        // Genre
+    genre         String?       // Genre
     language      String        // Language
     nsfw          Boolean
     offset        Int

@@ -90,7 +90,7 @@ export class CalculatorService extends AbstractService {
                 settings: m.settings ? Object.fromEntries(Object.entries(m.settings).map(([k, v]) => [k, String(v)])) : {}
             }));
 
-            if (score.pp !== undefined && precalculatedDifficulty) {
+            if (score.pp !== undefined && score.pp !== null && precalculatedDifficulty) {
                 localResults.set(index * 2, {
                     attributes: { total: score.pp } as TPerformanceAttributes<M>,
                     difficulty: {
@@ -121,7 +121,7 @@ export class CalculatorService extends AbstractService {
             }
 
             if (includeFC && precalculatedDifficulty) {
-                if (isFC && score.pp !== undefined) {
+                if (isFC && score.pp !== undefined && score.pp !== null) {
                     localResults.set((index * 2) + 1, localResults.get(index * 2)!);
                 } else {
                     streamRequests.push({

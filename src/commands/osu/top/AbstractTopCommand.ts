@@ -72,13 +72,13 @@ export abstract class AbstractTopCommand extends AbstractOsuCommand {
         );
         const activeAttributes = evaluator.getActiveAttributes();
 
-        const { user, scores } = await this.osuService.userWithScores(
-            target.query,
-            target.mode,
-            "best",
-            100,
-            target.server,
-        );
+        const { user, scores } = await this.osuService.userWithScores({
+            nameOrID: target.query,
+            mode: target.mode,
+            type: "best",
+            limit: 100,
+            provider: target.server
+        });
 
         let workingScores: Array<Score> = scores;
 
