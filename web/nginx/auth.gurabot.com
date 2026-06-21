@@ -2,7 +2,7 @@ server {
     listen 80;
     server_name auth.gurabot.com;
 
-    root /var/www/your-discord-bot/public; 
+    root /var/www/auth.gurabot.com/public; 
 
     location / {
         try_files $uri $uri/ =404;

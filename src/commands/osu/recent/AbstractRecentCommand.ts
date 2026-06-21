@@ -1,4 +1,4 @@
-import { Aliases, Import, IsBoolean, IsEnum, IsInlineIndex, IsMods, IsRange, Option } from "@/core/decorators";
+import { Aliases, Import, IsEnum, IsInlineIndex, IsMods, IsRange, Option } from "@/core/decorators";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { OsuService } from "@/modules/osu/Osu.service";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
