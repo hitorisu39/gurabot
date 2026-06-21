@@ -77,7 +77,7 @@ export abstract class AbstractTopCommand extends AbstractOsuCommand {
             mode: target.mode,
             type: "best",
             limit: 100,
-            provider: target.server
+            provider: target.server,
         });
 
         let workingScores: Array<Score> = scores;

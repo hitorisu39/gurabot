@@ -29,7 +29,7 @@ export class MessageCreateEvent extends AbstractDiscordEvent<"messageCreate"> {
         const defaultPrefix = this.config.app.prefix;
         const content = message.content;
 
-        if (!content.startsWith(defaultPrefix)) {
+        if (!content.startsWith(defaultPrefix) && message.guildId) {
             const potentialPrefix = content.slice(0, 3);
             if (!discordRegexSpecialCharacters.test(potentialPrefix)) return;
         }

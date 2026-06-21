@@ -9,7 +9,7 @@ import {
     METAKEY_SUBCOMMAND_OPTIONS,
     METAKEY_USER_PERMISSIONS,
 } from "../metakeys";
-import { IApplicationContext, TLogger } from "../types";
+import { TDispatcher, TLogger, TMetrics } from "../types";
 import { AbstractCommand } from "./AbstractCommand";
 import { CommandContext } from "./context/CommandContext";
 import { ICommandOptions, IMiddlewareOptions, IOptionMetadata, ISubcommandOptions } from "../decorators";
@@ -38,14 +38,13 @@ export class CommandRouter {
     private readonly middlewares: Array<{ instance: AbstractMiddleware; priority: number }> = [];
     private readonly middlewareDefaultPriority = 50;
 
-    /**
-     * Router application logger child instance.
-     */
-    private readonly logger: TLogger;
-
-    constructor(private readonly ctx: IApplicationContext) {
-        this.logger = this.ctx.logger.child({ name: "CommandRouter" });
-        this.ctx.dispatcher.on("discord", "command", this.handleCommand.bind(this));
+    constructor(
+        private readonly logger: TLogger,
+        private readonly dispatcher: TDispatcher,
+        private readonly metrics: TMetrics,
+    ) {
+        this.logger = this.logger.child({ name: "CommandRouter" });
+        this.dispatcher.on("discord", "command", this.handleCommand.bind(this));
     }
 
     public register(command: AbstractCommand): void {
@@ -248,7 +247,7 @@ export class CommandRouter {
         const commandType = ctx.isSlash ? "slash" : "prefix";
 
         await ProfilerStorage.run(profiler, async () => {
-            const startTimer = this.ctx.metrics.commandHistogram
+            const startTimer = this.metrics.commandHistogram
                 .labels(targetCommandName, "success", commandType)
                 .startTimer();
 
@@ -265,7 +264,7 @@ export class CommandRouter {
                 );
             } catch (error) {
                 const stats = profiler.end();
-                this.ctx.metrics.commandHistogram
+                this.metrics.commandHistogram
                     .labels(targetCommandName, "error", commandType)
                     .observe(stats.total / 1000);
 

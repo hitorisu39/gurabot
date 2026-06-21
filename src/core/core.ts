@@ -3,24 +3,17 @@ import path from "path";
 import { pathToFileURL } from "url";
 
 import { AbstractCommand } from "./discord/AbstractCommand";
-import { CommandRouter } from "./discord/CommandRouter";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { METAKEY_EVENT_HANDLERS, METAKEY_IMPORTS } from "./metakeys";
 import { IApplicationContext } from "./types";
 import { AbstractMiddleware } from "./discord/middleware/AbstractMiddleware";
 import { AbstractDiscordEvent } from "./discord/AbstractDiscordEvent";
 import { AbstractComponent } from "./discord/AbstractComponent";
-import { ComponentRouter } from "./discord/ComponentRouter";
 
 export class Core {
     public readonly instances = new Map<Function, any>();
-    public readonly commandRouter: CommandRouter;
-    public readonly componentRouter: ComponentRouter;
 
-    constructor(private readonly ctx: IApplicationContext) {
-        this.commandRouter = new CommandRouter(this.ctx);
-        this.componentRouter = new ComponentRouter(this.ctx);
-    }
+    constructor(private readonly ctx: IApplicationContext) {}
 
     public async start(): Promise<void> {
         const base = path.resolve(__dirname, "../");
@@ -48,11 +41,12 @@ export class Core {
                     const instance = new exportedClass(this.ctx);
                     this.instances.set(exportedClass, instance);
 
-                    if (exportedClass.prototype instanceof AbstractCommand) this.commandRouter.register(instance);
+                    if (exportedClass.prototype instanceof AbstractCommand)
+                        this.ctx.discord.commandRouter.register(instance);
                     else if (exportedClass.prototype instanceof AbstractComponent) {
-                        this.componentRouter.register(instance);
+                        this.ctx.discord.componentRouter.register(instance);
                     } else if (exportedClass.prototype instanceof AbstractMiddleware)
-                        this.commandRouter.registerMiddleware(instance);
+                        this.ctx.discord.commandRouter.registerMiddleware(instance);
                     else if (exportedClass.prototype instanceof AbstractDiscordEvent) {
                         if (instance.once) this.ctx.discord.once(instance.event, instance.execute.bind(instance));
                         else this.ctx.discord.on(instance.event, instance.execute.bind(instance));

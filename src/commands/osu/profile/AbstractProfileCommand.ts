@@ -25,7 +25,12 @@ export abstract class AbstractProfileCommand extends AbstractOsuCommand {
                 this.ameobeaService.peak(cachedID, target.mode, target.server).catch(() => null),
             ]);
         } else {
-            ({ user, scores } = await this.osuService.userWithScores({ nameOrID: target.query, mode: target.mode, type: "best", limit: 100 }));
+            ({ user, scores } = await this.osuService.userWithScores({
+                nameOrID: target.query,
+                mode: target.mode,
+                type: "best",
+                limit: 100,
+            }));
             ameobea = await this.ameobeaService.peak(user.id, user.mode, target.server).catch(() => null);
         }
 

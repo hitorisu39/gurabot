@@ -5,10 +5,10 @@ import { osuBaseDomain } from "../configs/Osu.config";
 
 export class ScoreFormatter {
     public static completion(statistics: ScoreStatistics, beatmap: Beatmap, mode: GameMode): number | null {
-        if (mode === GameMode.Catch)
-            return null;
+        if (mode === GameMode.Catch) return null;
 
-        const hits = (statistics.perfect ?? 0) +
+        const hits =
+            (statistics.perfect ?? 0) +
             (statistics.great ?? 0) +
             (statistics.good ?? 0) +
             (statistics.ok ?? 0) +
@@ -79,9 +79,9 @@ export class ScoreFormatter {
                       statistics.meh,
                       statistics.miss,
                   ]
-                : [statistics.great, statistics.ok, statistics.meh, statistics.miss].join(delimiter);
+                : [statistics.great, statistics.ok, statistics.meh, statistics.miss];
 
-        return `[${stats}]`;
+        return `[${stats.join(delimiter)}]`;
     }
 
     public static header(artist: string, title: string, version: string, limit: number = 65): string {

@@ -100,61 +100,61 @@ export class BaseScoreQueryDto {
     @IsRange(0, 100)
     declare accuracy: CommandOption<ICommandRange>;
 
-    @Option("combo", "Specify accuracy")
+    @Option("combo", "Specify combo")
     @IsRange(0, 99999)
     declare combo: CommandOption<ICommandRange>;
 
-    @Option("misses", "Specify accuracy")
+    @Option("misses", "Specify misses")
     @IsRange(0, 99999)
     declare misses: CommandOption<ICommandRange>;
 
-    @Option("score", "Specify accuracy")
+    @Option("score", "Specify score")
     @IsRange()
     declare score: CommandOption<ICommandRange>;
 
-    @Option("date", "Specify accuracy")
+    @Option("date", "Specify accdateuracy")
     @IsDateRange()
     declare date: CommandOption<ICommandDateRange>;
 }
 
 export class ScoresWithMapsQueryDto extends BaseScoreQueryDto {
-    @Option("artist", "Specify accuracy")
+    @Option("artist", "Specify artist")
     @IsString(1, 99)
     declare artist: CommandOption<string>;
 
-    @Option("creator", "Specify accuracy")
+    @Option("creator", "Specify mapset creator")
     @IsString(1, 99)
     declare creator: CommandOption<string>;
 
-    @Option("title", "Specify accuracy")
+    @Option("title", "Specify title")
     @IsString(1, 99)
     declare title: CommandOption<string>;
 
-    @Option("version", "Specify accuracy")
+    @Option("version", "Specify version")
     @IsString(1, 99)
     declare version: CommandOption<string>;
 
-    @Option("rankedDate", "Specify accuracy")
+    @Option("rankedDate", "Specify ranked date")
     @IsDateRange()
     declare rankedDate: CommandOption<ICommandDateRange>;
 
-    @Option("length", "Specify accuracy")
+    @Option("length", "Specify length")
     @IsRange(0, 999999)
     declare length: CommandOption<ICommandRange>;
 
-    @Option("cs", "Specify accuracy")
+    @Option("cs", "Specify cs/keys")
     @IsRange(0, 13)
     declare cs: CommandOption<ICommandRange>;
 
-    @Option("ar", "Specify accuracy")
+    @Option("ar", "Specify ar")
     @IsRange(0, 13)
     declare ar: CommandOption<ICommandRange>;
 
-    @Option("hp", "Specify accuracy")
+    @Option("hp", "Specify hp")
     @IsRange(0, 13)
     declare hp: CommandOption<ICommandRange>;
 
-    @Option("od", "Specify accuracy")
+    @Option("od", "Specify od")
     @IsRange(0, 13)
     declare od: CommandOption<ICommandRange>;
 
@@ -164,15 +164,15 @@ export class ScoresWithMapsQueryDto extends BaseScoreQueryDto {
 }
 
 export class PopulatedScoresQueryDto extends ScoresWithMapsQueryDto {
-    @Option("stars", "Specify accuracy")
+    @Option("stars", "Specify stars")
     @IsRange(0, 9999)
     declare stars: CommandOption<ICommandRange>;
 
-    @Option("pp", "Specify accuracy")
+    @Option("pp", "Specify pp")
     @IsRange(0, 99999)
     declare pp: CommandOption<ICommandRange>;
 
-    @Option("ppfc", "Specify accuracy")
+    @Option("ppfc", "Specify pp for full combo")
     @IsRange(0, 99999)
     declare ppfc: CommandOption<ICommandRange>;
 }

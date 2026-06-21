@@ -14,7 +14,9 @@ import {
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { TConfig } from "@/env";
 import { ClusterClient, getInfo } from "discord-hybrid-sharding";
-import { TMetrics } from "../types";
+import { TDispatcher, TLogger, TMetrics } from "../types";
+import { CommandRouter } from "./CommandRouter";
+import { ComponentRouter } from "./ComponentRouter";
 
 /**
  * Discord client lifecycle and connection.
@@ -33,14 +35,24 @@ export class Client {
     private pingInterval: NodeJS.Timeout | null = null;
 
     /**
+     * Routers for Discord interaction events.
+     */
+    public readonly commandRouter: CommandRouter;
+    public readonly componentRouter: ComponentRouter;
+
+    /**
      * Creates a new client instance
      *
      * @param config Application configuration
+     * @param logger Application logger
+     * @param dispatcher Application dispatcher
      * @param metrics Application metrics instance
      */
     constructor(
         private readonly config: TConfig,
-        private readonly metrics?: TMetrics,
+        private readonly logger: TLogger,
+        private readonly dispatcher: TDispatcher,
+        private readonly metrics: TMetrics,
     ) {
         const options: ClientOptions = {
             intents: [
@@ -78,6 +90,9 @@ export class Client {
 
         this.cluster = null;
         this.client = new DiscordClient(options);
+
+        this.commandRouter = new CommandRouter(logger, dispatcher, metrics);
+        this.componentRouter = new ComponentRouter(logger, dispatcher, metrics);
 
         if (config.app.is_cluster) this.cluster = new ClusterClient(this.client);
     }
@@ -149,7 +164,7 @@ export class Client {
     /**
      * Sends the command payload to Discord to register Slash Commands globally.
      */
-    public async registerApplicationCommands(commands: ReadonlyArray<ApplicationCommandDataResolvable>): Promise<void> {
+    public async registerApplicationCommands(): Promise<void> {
         if (!this.client.user)
             throw new Exception(
                 EApplicationError.INTERNAL_ERROR,
@@ -160,7 +175,7 @@ export class Client {
 
         try {
             await rest.put(Routes.applicationCommands(this.client.user.id), {
-                body: commands,
+                body: this.commandRouter.getApplicationCommandData(),
             });
         } catch (error) {
             throw new Exception(EApplicationError.INTERNAL_ERROR, `Failed to register application commands: ${error}`);

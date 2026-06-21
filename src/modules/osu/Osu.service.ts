@@ -80,13 +80,7 @@ export class OsuService extends AbstractService {
         const provider = data.provider ?? AdapterProvider.Bancho;
         const isCacheable = ProviderMeta[provider].cache;
 
-        const {
-            nameOrID,
-            mode,
-            type,
-            limit,
-            includeFails
-        } = data;
+        const { nameOrID, mode, type, limit, includeFails } = data;
 
         if (typeof nameOrID === "number") {
             const [user, scores] = await Promise.all([
@@ -114,7 +108,14 @@ export class OsuService extends AbstractService {
 
             if (user.id !== cachedID || !initialScores) {
                 this.logger.warn(`Namechange detected or cache stale for ${username}. Re-fetching scores...`);
-                const correctedScores = await this.fetchScoresByType(user.id, mode, type, limit, includeFails, provider);
+                const correctedScores = await this.fetchScoresByType(
+                    user.id,
+                    mode,
+                    type,
+                    limit,
+                    includeFails,
+                    provider,
+                );
                 return { user, scores: correctedScores };
             }
 

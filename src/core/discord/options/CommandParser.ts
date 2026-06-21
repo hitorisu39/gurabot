@@ -198,8 +198,8 @@ export class CommandParser {
 
             case EOptionType.Boolean:
                 const lowerVal = strVal.toLowerCase();
-                if (["true", "yes", "1", "y"].includes(lowerVal)) return true;
-                if (["false", "no", "0", "n"].includes(lowerVal)) return false;
+                if (["true", "yes", "1", "y", "t"].includes(lowerVal)) return true;
+                if (["false", "no", "0", "n", "f"].includes(lowerVal)) return false;
                 throw new Exception(
                     EApplicationError.INPUT_ERROR,
                     `Option \`${meta.name}\` must be a boolean (true/false).`,

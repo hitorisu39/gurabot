@@ -483,7 +483,7 @@ export const OsuProvider = SchemaProvider.define("osu", {
                 id: Field.Int(),
                 mode: Field.Enum(GameMode),
                 limit: Field.Int(),
-                includeFails: Field.Boolean().Optional()
+                includeFails: Field.Boolean().Optional(),
             },
             path: (args) => {
                 let options = `mode=${args.mode}&limit=${args.limit}`;
@@ -492,7 +492,7 @@ export const OsuProvider = SchemaProvider.define("osu", {
             },
             method: "GET",
             returns: { model: Score, isArray: true },
-            mapping: ScoreMapping
+            mapping: ScoreMapping,
         },
         beatmap: {
             args: {

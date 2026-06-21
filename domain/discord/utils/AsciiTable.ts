@@ -162,10 +162,10 @@ export class AsciiTable<T> {
     private renderRow(cells: string[], widths: number[], aligns: TableAlignment[]): string {
         const renderedCells = cells.map((cell, i) => {
             const alignedText = this.alignText(cell, widths[i] ?? 0, aligns[i] ?? "center");
-            
-            const leftPadLen = (this.compact && i === 0) ? 0 : this.padding;
-            const rightPadLen = (this.compact && i === cells.length - 1) ? 0 : this.padding;
-            
+
+            const leftPadLen = this.compact && i === 0 ? 0 : this.padding;
+            const rightPadLen = this.compact && i === cells.length - 1 ? 0 : this.padding;
+
             const leftPad = " ".repeat(leftPadLen);
             const rightPad = " ".repeat(rightPadLen);
 
@@ -184,8 +184,8 @@ export class AsciiTable<T> {
      */
     private renderSeparator(widths: number[]): string {
         const renderedSegments = widths.map((w, i) => {
-            const leftPadLen = (this.compact && i === 0) ? 0 : this.padding;
-            const rightPadLen = (this.compact && i === widths.length - 1) ? 0 : this.padding;
+            const leftPadLen = this.compact && i === 0 ? 0 : this.padding;
+            const rightPadLen = this.compact && i === widths.length - 1 ? 0 : this.padding;
 
             return this.borders.horizontal.repeat(w + leftPadLen + rightPadLen);
         });

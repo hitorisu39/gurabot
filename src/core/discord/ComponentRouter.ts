@@ -2,7 +2,7 @@ import { ICommandOptions, IComponentOptions } from "../decorators";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { METAKEY_COMPONENT_OPTIONS } from "../metakeys";
 import { InteractionProfiler, ProfilerStorage } from "../profiler";
-import { IApplicationContext, TLogger } from "../types";
+import { IApplicationContext, TDispatcher, TLogger, TMetrics } from "../types";
 import { AbstractComponent } from "./AbstractComponent";
 import { ComponentContext } from "./context/ComponentContext";
 import { Embed } from "./ui/Embed";
@@ -15,11 +15,14 @@ interface IRouteStore {
 
 export class ComponentRouter {
     private readonly routes = new Map<EComponentType, IRouteStore>();
-    private readonly logger: TLogger;
 
-    constructor(private readonly ctx: IApplicationContext) {
-        this.logger = this.ctx.logger.child({ name: "ComponentRouter" });
-        this.ctx.dispatcher.on("discord", "component", this.handleComponent.bind(this));
+    constructor(
+        private readonly logger: TLogger,
+        private readonly dispatcher: TDispatcher,
+        private readonly metrics: TMetrics,
+    ) {
+        this.logger = this.logger.child({ name: "ComponentRouter" });
+        this.dispatcher.on("discord", "component", this.handleComponent.bind(this));
     }
 
     private getStore(type: EComponentType): IRouteStore {
@@ -95,7 +98,7 @@ export class ComponentRouter {
         const profiler = new InteractionProfiler();
 
         await ProfilerStorage.run(profiler, async () => {
-            const startTimer = this.ctx.metrics.componentHistogram.labels(componentName, "success").startTimer();
+            const startTimer = this.metrics.componentHistogram.labels(componentName, "success").startTimer();
             this.logger.debug(
                 { user: ctx.author.id, customID: ctx.customID, type: incomingType },
                 `Executing component [${incomingType}] "${ctx.customID}"`,
@@ -114,7 +117,7 @@ export class ComponentRouter {
                 if (error instanceof Exception && error.code === EApplicationError.ACCESS_ERROR) return;
 
                 const stats = profiler.end();
-                this.ctx.metrics.componentHistogram.labels(componentName, "error").observe(stats.total / 1000);
+                this.metrics.componentHistogram.labels(componentName, "error").observe(stats.total / 1000);
 
                 this.logger.error(
                     { error, performance: stats, message: error?.message, stack: error?.stack },

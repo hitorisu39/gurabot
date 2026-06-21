@@ -31,7 +31,7 @@ export class Application {
         this.metrics = new Metrics(this.config, this.logger);
 
         this.dispatcher = new Dispatcher(this.logger);
-        this.discord = new Client(this.config, this.metrics);
+        this.discord = new Client(this.config, this.logger, this.dispatcher, this.metrics);
         this.database = new Database(this.config, this.logger, this.metrics);
         this.cache = new Cache(this.config, this.logger, this.metrics);
         this.calculator = new Calculator(this.config, this.logger);
@@ -60,8 +60,7 @@ export class Application {
         await this.core.start();
 
         if (this.discord.isMainCluster()) {
-            const commands = this.core.commandRouter.getApplicationCommandData();
-            await this.discord.registerApplicationCommands(commands);
+            await this.discord.registerApplicationCommands();
             await this.metrics.startServer(this.discord, this.config.prom.port);
         }
 
