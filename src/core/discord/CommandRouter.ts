@@ -153,6 +153,25 @@ export class CommandRouter {
         return Array.from(payload.values());
     }
 
+    public getCommand(name: string): AbstractCommand | undefined {
+        const lower = name.toLowerCase().trim();
+        const asSubcommandKey = lower.replace(/\s+/g, ":");
+
+        return this.prefixCommands.get(lower) || 
+            this.slashSubcommands.get(asSubcommandKey) || 
+            this.slashRootCommands.get(lower);
+    }
+
+    public getAllCommandNames(): Array<string> {
+        const names = new Set<string>();
+        for (const key of this.prefixCommands.keys()) names.add(key);
+        for (const key of this.slashRootCommands.keys()) names.add(key);
+        for (const key of this.slashSubcommands.keys()) {
+            names.add(key.replace(/:/g, " "));
+        }
+        return Array.from(names);
+    }
+
     public getCommandOptions(command: AbstractCommand): ICommandOptions | ISubcommandOptions | undefined {
         const options: ICommandOptions | ISubcommandOptions | undefined =
             Reflect.getMetadata(METAKEY_SUBCOMMAND_OPTIONS, command.constructor) ||

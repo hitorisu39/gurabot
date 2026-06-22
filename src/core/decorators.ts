@@ -3,6 +3,8 @@ import "reflect-metadata";
 
 import {
     METAKEY_BOT_PERMISSIONS,
+    METAKEY_COMMAND_EXAMPLES,
+    METAKEY_COMMAND_HELP,
     METAKEY_COMMAND_OPTIONS,
     METAKEY_COMMAND_PROPERTIES,
     METAKEY_COMPONENT_OPTIONS,
@@ -81,6 +83,18 @@ export function Command(options: ICommandOptions): ClassDecorator {
 export function Subcommand(options: ISubcommandOptions): ClassDecorator {
     return (target) => {
         Reflect.defineMetadata(METAKEY_SUBCOMMAND_OPTIONS, options, target);
+    };
+}
+
+export function Help(text: string): ClassDecorator {
+    return (target: Function) => {
+        Reflect.defineMetadata(METAKEY_COMMAND_HELP, text, target);
+    };
+}
+
+export function Examples(...examples: Array<string>): ClassDecorator {
+    return (target: Function) => {
+        Reflect.defineMetadata(METAKEY_COMMAND_EXAMPLES, examples, target);
     };
 }
 

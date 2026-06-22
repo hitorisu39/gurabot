@@ -18,5 +18,18 @@ export abstract class AbstractCommand {
         this.cache = ctx.cache;
     }
 
+    /**
+     * Method responsible for executing command logic.
+     * 
+     * @param ctx Command context
+     */
     public abstract execute(ctx: CommandContext): Promise<void> | void;
+
+    /**
+     * Provides variables for template strings in the command's @Help decorator.
+     * Can be overridden by subclasses to inject dynamic context.
+     */
+    public getHelpContext(): Record<string, string> {
+        return {};
+    }
 }

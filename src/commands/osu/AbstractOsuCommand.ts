@@ -10,6 +10,7 @@ import { GuildService } from "@/modules/guild/Guild.service";
 import { CommandOption } from "@domain/core/Command";
 import { BeatmapResolverService } from "@/modules/osu/BeatmapResolver.service";
 import { ChannelService } from "@/modules/channel/Channel.service";
+import { ProfileFormatter } from "@domain/osu/formatters/Profile.formatter";
 
 export interface IResolvedOsuTarget {
     query: string | number;
@@ -74,5 +75,11 @@ export abstract class AbstractOsuCommand extends AbstractCommand {
         }
 
         return { query, mode, server };
+    }
+
+    public getHelpContext(): Record<string, string> {
+        return {
+            mode: ProfileFormatter.mode(this.forcedMode ?? GameMode.Standard),
+        };
     }
 }

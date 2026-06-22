@@ -28,7 +28,7 @@ services:
         restart: unless-stopped
         profiles: ["dev"]
         ports:
-            - "6379:6379"
+            - "${REDIS_PORT:-6379}:6379"
         volumes:
             - redis_data:/data
         command: redis-server --appendonly yes

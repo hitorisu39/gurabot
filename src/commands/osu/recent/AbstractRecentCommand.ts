@@ -1,4 +1,4 @@
-import { Aliases, Import, IsEnum, IsInlineIndex, IsMods, IsRange, Option } from "@/core/decorators";
+import { Aliases, Examples, Help, Import, IsEnum, IsInlineIndex, IsMods, IsRange, Option } from "@/core/decorators";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { OsuService } from "@/modules/osu/Osu.service";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
@@ -12,6 +12,17 @@ import { ScoresViewService } from "@/modules/osu/scores/ScoresView.service";
 import { ScoresViewDto } from "@domain/osu/views/Scores.view";
 import { SessionService } from "@/modules/cache/Session.service";
 
+@Help(`
+    Shows most recent {passed}{mode} score of the specified player.
+    You can filter scores by their specific details such as \`accuracy, combo, index, misses, pp\`. All of them support range.
+    For mods use this format: \`+mods!\` - exact match, \`+mods\` - includes mods, \`-mods!\` - excludes mods. To show only passes use \`recentpass\` command. To filter scores out by grade use \`grade\` option.
+    Available grades are \`SSH\`, \`SS\`, \`SH\`, \`S\`, \`A\`, \`B\`, \`C\` and \`D\`.
+`)
+@Examples(
+    "recent hitorisu",
+    "recent hitorisu +HDHR!",
+    "recent hitorisu grade=S"
+)
 export abstract class AbstractRecentCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
     @Import() declare private readonly sessionService: SessionService;
@@ -123,5 +134,12 @@ export abstract class AbstractRecentCommand extends AbstractOsuCommand {
         const message = await ctx.respond(view);
 
         this.sessionService.after(sessionID, () => message?.edit({ components: [] }));
+    }
+
+    public getHelpContext(): Record<string, string> {
+        return {
+            ...super.getHelpContext(),
+            passed: this.forcedPassed ? "passed " : "",
+        };
     }
 }
