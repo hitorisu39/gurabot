@@ -21,85 +21,91 @@ export class RecentPassListSubcommand extends AbstractRecentListCommand {
 }
 
 @Command({
-    name: "rl",
+    name: "recentlist",
     description: "Shows a list of recent plays of an osu! player.",
-    aliases: ["recentlist"],
+    aliases: ["rl"],
 })
-export class RlCommand extends AbstractRecentListCommand {
+export class RecentListCommand extends AbstractRecentListCommand {
     protected forcedPassed = false;
 }
 
 @Command({
-    name: "rpl",
+    name: "recentpasslist",
     description: "Shows a list of recent passed plays of an osu! player.",
-    aliases: ["recentpasslist"],
+    aliases: ["rpl"],
 })
-export class RplCommand extends AbstractRecentListCommand {
+export class RecentPassListCommand extends AbstractRecentListCommand {
     protected forcedPassed = true;
 }
 
+// Taiko
+
 @Command({
-    name: "trl",
+    name: "recenttaikolist",
     description: "Shows a list of recent taiko plays of an osu! player.",
     prefixOnly: true,
-    aliases: ["rtl"],
+    aliases: ["trl", "rtl"],
 })
-export class TrlCommand extends AbstractRecentListCommand {
+export class RecentTaikoListCommand extends AbstractRecentListCommand {
     protected forcedMode = GameMode.Taiko;
     protected forcedPassed = false;
 }
 
 @Command({
-    name: "rptl",
+    name: "recentpasstaikolist",
     description: "Shows a list of recent passed taiko plays of an osu! player.",
     prefixOnly: true,
-    aliases: ["trpl"],
+    aliases: ["rptl", "trpl"],
 })
-export class RptlCommand extends AbstractRecentListCommand {
+export class RecentPassTaikoListCommand extends AbstractRecentListCommand {
     protected forcedMode = GameMode.Taiko;
     protected forcedPassed = true;
 }
 
+// Catch
+
 @Command({
-    name: "crl",
+    name: "recentcatchlist",
     description: "Shows a list of recent catch plays of an osu! player.",
     prefixOnly: true,
-    aliases: ["rcl"],
+    aliases: ["crl", "rcl"],
 })
-export class CrlCommand extends AbstractRecentListCommand {
+export class RecentCatchListCommand extends AbstractRecentListCommand {
     protected forcedMode = GameMode.Catch;
     protected forcedPassed = false;
 }
 
 @Command({
-    name: "rpcl",
+    name: "recentpasscatchlist",
     description: "Shows a list of recent passed catch plays of an osu! player.",
     prefixOnly: true,
-    aliases: ["crpl"],
+    aliases: ["rpcl", "crpl"],
 })
-export class RpclCommand extends AbstractRecentListCommand {
+export class RecentPassCatchListCommand extends AbstractRecentListCommand {
     protected forcedMode = GameMode.Catch;
     protected forcedPassed = true;
 }
 
+// Mania
+
 @Command({
-    name: "mrl",
+    name: "recentmanialist",
     description: "Shows a list of recent mania plays of an osu! player.",
     prefixOnly: true,
-    aliases: ["rml"],
+    aliases: ["mrl", "rml"],
 })
-export class MrlCommand extends AbstractRecentListCommand {
+export class RecentManiaListCommand extends AbstractRecentListCommand {
     protected forcedMode = GameMode.Mania;
     protected forcedPassed = false;
 }
 
 @Command({
-    name: "rpml",
+    name: "recentpassmanialist",
     description: "Shows a list of recent passed mania plays of an osu! player.",
     prefixOnly: true,
-    aliases: ["mrpl"],
+    aliases: ["rpml", "mrpl"],
 })
-export class RpmlCommand extends AbstractRecentListCommand {
+export class RecentPassManiaListCommand extends AbstractRecentListCommand {
     protected forcedMode = GameMode.Mania;
     protected forcedPassed = true;
 }

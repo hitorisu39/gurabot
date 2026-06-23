@@ -157,6 +157,12 @@ export const config = convict({
             default: 1,
             env: "DISCORD_SHARDS_PER_CLUSTER",
         },
+        dev_id: {
+            doc: "Discord bot developer ID.",
+            format: String,
+            default: "0",
+            env: "DISCORD_DEV_ID",
+        }
     },
     api: {
         host: {

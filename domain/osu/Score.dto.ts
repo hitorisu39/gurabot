@@ -134,7 +134,7 @@ export class ScoresWithMapsQueryDto extends BaseScoreQueryDto {
     @IsString(1, 99)
     declare version: CommandOption<string>;
 
-    @Option("rankedDate", "Specify ranked date")
+    @Option("rankdate", "Specify ranked date")
     @IsDateRange()
     declare rankedDate: CommandOption<ICommandDateRange>;
 

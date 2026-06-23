@@ -460,6 +460,7 @@ async function generateMods() {
             m.type === "DifficultyIncrease" || 
             m.type === "DifficultyReduction" ||
             m.type === "Conversion" ||
+            m.type === "Automation" ||
             m.acronym === "TD" ||
             m.acronym === "SO"
         );
@@ -468,7 +469,10 @@ async function generateMods() {
     static difficultyAffecting(mods: Array<ParsedMod>): Array<ParsedMod> {
         return mods.filter((m) => 
             m.type === "DifficultyIncrease" || 
-            m.type === "DifficultyReduction"
+            m.type === "DifficultyReduction" ||
+            m.type === "Conversion" ||
+            m.type === "Automation" ||
+            m.acronym === "TD"
         );
     }
 

@@ -1,4 +1,4 @@
-import { Aliases, Import, IsEnum, IsInlineIndex, IsMods, IsQuery, IsRange, Option } from "@/core/decorators";
+import { Aliases, Examples, Help, Import, IsEnum, IsInlineIndex, IsMods, IsQuery, IsRange, Option } from "@/core/decorators";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { OsuService } from "@/modules/osu/Osu.service";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
@@ -12,6 +12,29 @@ import { PopulatedScoreEvaluator } from "@domain/osu/utils/PopulatedScoreEvaluat
 import { ScoresViewDto } from "@domain/osu/views/Scores.view";
 import { ScoresViewService } from "@/modules/osu/scores/ScoresView.service";
 
+@Help(`
+    Shows the top {mode} plays of the specified player.
+
+    **Map Filters**
+    Ranges supported: \`ar\`, \`cs\`, \`od\`, \`hp\`, \`bpm\`, \`stars\`, \`length\` (in seconds).
+    Exact values: \`version\`.
+
+    **Mapset Filters**
+    Exact strings: \`artist\`, \`creator\`, \`title\`.
+
+    **Score Filters**
+    Ranges supported: \`accuracy\`, \`combo\`, \`index\`, \`misses\`, \`pp\`, \`ppfc\`.
+    Mods: \`mods=<mods>\`, or shorthand: \`+<mods>!\` (exact), \`+<mods>\` (includes), \`-<mods>!\` (excludes).
+
+    **Sorting & Size**
+    Sort: \`sort=<option>\` (\`cs\`, \`ar\`, \`od\`, \`hp\`, \`date\`, \`length\`, \`accuracy\`, \`misses\`, \`combo\`, \`pp\`, \`ppfc\`, \`stars\`, \`rankdate\`).
+    Size: \`size=detailed\` or \`size=compact\`.
+`)
+@Examples(
+    "top cs>=4 ar=10 od>=9.8 length>64 +hd",
+    "top creator=sotarks +dt bpm>215 sort=date order=asc",
+    "top spaced name query=\"hatsune miku cs>=4\""
+)
 export abstract class AbstractTopCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
     @Import() declare private readonly profileViewService: ProfileViewService;
