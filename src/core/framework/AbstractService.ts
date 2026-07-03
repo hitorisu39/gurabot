@@ -1,6 +1,5 @@
 import { IApplicationEvents } from "@/common/events";
-
-import { IApplicationContext, TLogger } from "../types";
+import { IApplicationContext } from "../types";
 
 export abstract class AbstractService {
     declare protected readonly logger: IApplicationContext["logger"];
