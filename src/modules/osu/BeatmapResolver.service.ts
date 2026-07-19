@@ -140,10 +140,16 @@ export class BeatmapResolverService extends AbstractService {
                 throw new Exception(EApplicationError.NOT_FOUND, "Beatmapset not found or has no beatmaps.");
             }
 
+            const substringMatches = mapset.beatmaps.filter(b => 
+                b.version.toLowerCase().includes(versionQuery)
+            );
+
             let matchedMap = mapset.beatmaps[0]!;
             let minDistance = Infinity;
 
-            for (const b of mapset.beatmaps) {
+            const pool = substringMatches.length > 0 ? substringMatches : mapset.beatmaps;
+
+            for (const b of pool) {
                 const mapVersion = b.version.toLowerCase();
                 let distance = levenshtein(mapVersion, versionQuery);
 
@@ -159,7 +165,7 @@ export class BeatmapResolverService extends AbstractService {
 
             beatmapID = matchedMap.id;
         } else if (!beatmapID) {
-            const mapset = await this.osuService.beatmapset(beatmapsetID, server);
+            const mapset = await this.osuService.beatmapset(beatmapsetID, server, true);
             if (!mapset || !mapset.beatmaps?.length) {
                 throw new Exception(EApplicationError.NOT_FOUND, "Beatmapset not found or has no beatmaps.");
             }

@@ -1,7 +1,6 @@
-import { Import, IsEnum, IsMods, IsQuery, Option } from "@/core/decorators";
+import { Aliases, Import, IsEnum, IsInlineIndex, IsMods, IsQuery, IsRange, Option } from "@/core/decorators";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { OsuService } from "@/modules/osu/Osu.service";
-import { SessionService } from "@/modules/cache/Session.service";
 import { Grade, Score } from "@generated/adapter/types";
 import { PopulatedScoresQueryDto } from "@domain/osu/Score.dto";
 import { CommandOption, ICommandMods, ICommandQueryData, ICommandRange } from "@domain/core/Command";
@@ -25,8 +24,15 @@ export abstract class AbstractRecentListCommand extends AbstractOsuCommand {
     @IsEnum(EScoreQuerySort)
     declare private readonly sort: CommandOption<EScoreQuerySort>;
 
+    @Option("index", "Jump to a specific score index (1-100)")
+    @IsInlineIndex()
+    @IsRange(1, 100)
+    @Aliases("i")
+    declare private readonly index: CommandOption<ICommandRange>;
+
     @Option("grade", "Filter scores by grade")
     @IsEnum(Grade)
+    @Aliases("g")
     declare private readonly grade: CommandOption<Grade>;
 
     @Option("order", "Sort order (Desc - highest first, Asc - lowest first)")
@@ -60,7 +66,7 @@ export abstract class AbstractRecentListCommand extends AbstractOsuCommand {
         const evaluator = new PopulatedScoreEvaluator(
             this.query,
             this.mods,
-            CommandOption.none<ICommandRange>(),
+            this.index,
             this.grade,
             sortOption,
             orderOption,

@@ -3,7 +3,6 @@ import { CommandContext } from "@/core/discord/context/CommandContext";
 import { OsuService } from "@/modules/osu/Osu.service";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
 import { ProfileViewService } from "@/modules/osu/profile/ProfileView.service";
-import { SessionService } from "@/modules/cache/Session.service";
 import { EProfileView, ProfileViewDto } from "@domain/osu/views/Profile.view";
 import { AmeobeaService } from "@/modules/ameobea/Ameobea.service";
 
@@ -51,7 +50,7 @@ export abstract class AbstractProfileCommand extends AbstractOsuCommand {
             EProfileView.Overview,
         );
 
-        // Intentionally populate afterwards so the user doesn't wait for the response.
+        // Intentionally populate afterwards so we don't make users wait for the response.
         const populated = await this.osuService.populateMaps(scores);
         await this.sessionService.update(
             "osu_profile_view",

@@ -10,7 +10,6 @@ import { BaseScoreEvaluator } from "@domain/osu/utils/BaseScoreEvaluator";
 import { EScoreListSize, EScoreQuerySort, ESortOrder } from "@domain/osu/enums/Score.enum";
 import { ScoreViewService } from "@/modules/osu/scores/ScoreView.service";
 import { ScoresViewDto } from "@domain/osu/views/Scores.view";
-import { SessionService } from "@/modules/cache/Session.service";
 
 @Help(`
     Shows most recent {passed}{mode} score of the specified player.
@@ -31,6 +30,7 @@ export abstract class AbstractRecentCommand extends AbstractOsuCommand {
 
     @Option("grade", "Filter scores out by grade")
     @IsEnum(Grade)
+    @Aliases("g")
     declare private readonly grade: CommandOption<Grade>;
 
     @Option("mods", "Filter by mods: +HD = include, -HD! = exclude, +HD! = exact match")

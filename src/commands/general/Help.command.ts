@@ -91,7 +91,7 @@ export class HelpCommand extends AbstractCommand {
             descriptionText = descriptionText.replace(new RegExp(`\\{${key}\\}`, "g"), String(value));
         }
 
-        descriptionText = descriptionText.replace(/^\s+/gm, "").trim();
+        descriptionText = descriptionText.replace(/^[ \t]+/gm, "").trim();
 
         const commandDisplayName = subcommandOptions
             ? [subcommandOptions.root, subcommandOptions.group, subcommandOptions.name].filter(Boolean).join(" ")

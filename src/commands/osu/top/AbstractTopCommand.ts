@@ -14,7 +14,6 @@ import { CommandContext } from "@/core/discord/context/CommandContext";
 import { OsuService } from "@/modules/osu/Osu.service";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
 import { ProfileViewService } from "@/modules/osu/profile/ProfileView.service";
-import { SessionService } from "@/modules/cache/Session.service";
 import { Grade, Score } from "@generated/adapter/types";
 import { PopulatedScoresQueryDto } from "@domain/osu/Score.dto";
 import { CommandOption, ICommandMods, ICommandQueryData, ICommandRange } from "@domain/core/Command";
@@ -62,6 +61,7 @@ export abstract class AbstractTopCommand extends AbstractOsuCommand {
 
     @Option("grade", "Filter scores by grade")
     @IsEnum(Grade)
+    @Aliases("g")
     declare private readonly grade: CommandOption<Grade>;
 
     @Option("order", "Sort order (Desc - highest first, Asc - lowest first)")

@@ -1,7 +1,7 @@
 {
     "name": "gurabot",
     "version": "0.0.1",
-    "description": "A simple osu! Discord bot with a lot of features",
+    "description": "A simple osu! Discord bot with a bunch of features",
     "main": "index.js",
     "scripts": {
         "build": "yarn build:adapter && yarn build:calculator && yarn build:bot",
