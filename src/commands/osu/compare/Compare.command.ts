@@ -27,7 +27,6 @@ export enum ECompareSort {
 export class CompareCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
     @Import() declare private readonly graphService: GraphService;
-    @Import() declare private readonly sessionService: SessionService;
     @Import() declare private readonly mapViewService: MapViewService;
     @Import() declare private readonly calculatorService: CalculatorService;
     @Import() declare private readonly scoreViewService: ScoreViewService;
@@ -113,11 +112,6 @@ export class CompareCommand extends AbstractOsuCommand {
 
         const pageSize = this.scoreViewService.getPageSize(data.pageSize, data.activeAttributes, data.layout);
         await this.scoreViewService.populatePage(scores, 1, pageSize, target.mode, target.server);
-
-        const sessionID = await this.sessionService.create("osu_scores_view", data, this.scoreViewService.getTtl());
-        const view = this.scoreViewService.build(sessionID, data);
-
-        const message = await ctx.respond(view);
-        this.sessionService.after(sessionID, () => message?.edit({ components: [] }));
+        await this.respondWithSession(ctx, "osu_scores_view", data, this.scoreViewService);
     }
 }

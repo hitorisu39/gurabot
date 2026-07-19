@@ -10,7 +10,6 @@ import { AmeobeaService } from "@/modules/ameobea/Ameobea.service";
 export abstract class AbstractProfileCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
     @Import() declare private readonly profileViewService: ProfileViewService;
-    @Import() declare private readonly sessionService: SessionService;
     @Import() declare private readonly ameobeaService: AmeobeaService;
 
     public async execute(ctx: CommandContext): Promise<void> {
@@ -44,14 +43,10 @@ export abstract class AbstractProfileCommand extends AbstractOsuCommand {
             populated: null,
         };
 
-        const ttl = this.profileViewService.getTtl();
-        const sessionID = await this.sessionService.create("osu_profile_view", data, ttl);
+        const { sessionID } = await this.respondWithSession(ctx, "osu_profile_view", data, this.profileViewService, EProfileView.Overview);
 
-        const view = this.profileViewService.build(sessionID, data, EProfileView.Overview);
-        const message = await ctx.respond(view);
-        this.sessionService.after(sessionID, () => message?.edit({ components: [] }));
-
+        // Intentionally populate afterwards so the user doesn't wait for the response.
         const populated = await this.osuService.populateMaps(scores);
-        await this.sessionService.update("osu_profile_view", sessionID, { scores: populated }, ttl);
+        await this.sessionService.update("osu_profile_view", sessionID, { scores: populated }, this.profileViewService.getTtl());
     }
 }

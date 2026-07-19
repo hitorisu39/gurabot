@@ -38,7 +38,6 @@ import { ScoreViewService } from "@/modules/osu/scores/ScoreView.service";
 export abstract class AbstractTopCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
     @Import() declare private readonly profileViewService: ProfileViewService;
-    @Import() declare private readonly sessionService: SessionService;
     @Import() declare private readonly scoreViewService: ScoreViewService;
 
     @Option("query", "Filter scores (e.g. pp range, cs, ar, artist, etc.)")
@@ -134,11 +133,6 @@ export abstract class AbstractTopCommand extends AbstractOsuCommand {
             page: 1,
         };
 
-        const sessionID = await this.sessionService.create("osu_scores_view", data, this.scoreViewService.getTtl());
-
-        const view = this.scoreViewService.build(sessionID, data);
-        const message = await ctx.respond(view);
-
-        this.sessionService.after(sessionID, () => message?.edit({ components: [] }));
+        await this.respondWithSession(ctx, "osu_scores_view", data, this.scoreViewService);
     }
 }

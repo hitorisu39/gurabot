@@ -16,12 +16,13 @@ import { osuMapsetDownloads } from "@domain/osu/configs/Osu.config";
 import { IDifficultyCalculationResponse } from "@domain/core/Calculator";
 import { GraphService } from "../Graph.service";
 import { AttachmentBuilder } from "discord.js";
+import { AbstractViewService } from "@/modules/AbstractViewService";
 
-export class MapViewService extends AbstractService {
+export class MapViewService extends AbstractViewService<MapViewDto, boolean> {
     @Import() declare private readonly graphService: GraphService;
     @Import() declare private readonly calculatorService: CalculatorService;
 
-    private readonly ttl: number = 300;
+    protected readonly ttl: number = 300;
 
     public async build(sessionID: string, data: MapViewDto, withGraph: boolean = false): Promise<TMessagePayload> {
         const beatmaps = [...(data.beatmapset.beatmaps || [])].sort((a, b) => a.difficulty - b.difficulty);
@@ -149,9 +150,5 @@ export class MapViewService extends AbstractService {
                 text: `${map.status}`,
             })
             .setTimestamp(mapset.rankedDate ?? map.lastUpdated);
-    }
-
-    public getTtl(): number {
-        return this.ttl;
     }
 }

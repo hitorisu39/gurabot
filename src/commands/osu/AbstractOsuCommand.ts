@@ -11,6 +11,7 @@ import { CommandOption } from "@domain/core/Command";
 import { BeatmapResolverService } from "@/modules/osu/BeatmapResolver.service";
 import { ChannelService } from "@/modules/channel/Channel.service";
 import { ProfileFormatter } from "@domain/osu/formatters/Profile.formatter";
+import { AbstractSessionCommand } from "../AbstractSessionCommand";
 
 export interface IResolvedOsuTarget {
     query: string | number;
@@ -18,7 +19,7 @@ export interface IResolvedOsuTarget {
     server: AdapterProvider;
 }
 
-export abstract class AbstractOsuCommand extends AbstractCommand {
+export abstract class AbstractOsuCommand extends AbstractSessionCommand {
     @Import() declare protected readonly userService: UserService;
     @Import() declare protected readonly guildService: GuildService;
     @Import() declare protected readonly channelService: ChannelService;

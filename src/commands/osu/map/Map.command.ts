@@ -12,16 +12,16 @@ import { MapViewDto } from "@domain/osu/views/Map.view";
 import { SessionService } from "@/modules/cache/Session.service";
 import { MapViewService } from "@/modules/osu/map/MapView.service";
 import { GraphService } from "@/modules/osu/Graph.service";
+import { AbstractSessionCommand } from "@/commands/AbstractSessionCommand";
 
 @Command({
     name: "map",
     description: "Shows beatmap(set) stats from map url / id.",
     aliases: ["m", "beatmap", "mapset"],
 })
-export class MapCommand extends AbstractCommand {
+export class MapCommand extends AbstractSessionCommand {
     @Import() declare private readonly osuService: OsuService;
     @Import() declare private readonly graphService: GraphService;
-    @Import() declare private readonly sessionService: SessionService;
     @Import() declare private readonly mapViewService: MapViewService;
     @Import() declare private readonly calculatorService: CalculatorService;
     @Import() declare private readonly beatmapResolverService: BeatmapResolverService;
@@ -63,10 +63,6 @@ export class MapCommand extends AbstractCommand {
             mods: this.mods.some() ? ModUtils.fromString(this.mods.unwrap().mods) : [],
         };
 
-        const sessionID = await this.sessionService.create("osu_map_view", data, this.mapViewService.getTtl());
-        const view = await this.mapViewService.build(sessionID, data, true);
-
-        const message = await ctx.respond(view);
-        this.sessionService.after(sessionID, () => message?.edit({ components: [] }));
+        await this.respondWithSession(ctx, "osu_map_view", data, this.mapViewService, true);
     }
 }

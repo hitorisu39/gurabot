@@ -17,6 +17,7 @@ import { UserAttributesCalculator } from "@domain/osu/utils/UserAttributesCalcul
 import { EProfileView, ProfileViewDto } from "@domain/osu/views/Profile.view";
 import { Genre, Grade, HighestRank, Status, UserGrades, UserLevel } from "@generated/adapter/types";
 import { MapFormatter } from "@domain/osu/formatters/Map.formatter";
+import { AbstractViewService } from "@/modules/AbstractViewService";
 
 interface IAverageStatRow {
     metric: string;
@@ -25,8 +26,8 @@ interface IAverageStatRow {
     max: string | number;
 }
 
-export class ProfileViewService extends AbstractService {
-    private readonly ttl: number = 120;
+export class ProfileViewService extends AbstractViewService<ProfileViewDto, EProfileView> {
+    protected readonly ttl: number = 120;
 
     public build(sessionID: string, data: ProfileViewDto, view: EProfileView): TMessagePayload {
         return { embeds: this.embeds(data, view), components: this.components(sessionID, data, view) };
@@ -424,10 +425,6 @@ export class ProfileViewService extends AbstractService {
         return embed;
     }
 
-    public getTtl(): number {
-        return this.ttl;
-    }
-
     //#region Internal
 
     private components(sessionID: string, data: ProfileViewDto, view: EProfileView): Array<ActionRow> {
@@ -490,18 +487,6 @@ export class ProfileViewService extends AbstractService {
             });
 
         return embed;
-    }
-
-    private rankChange(user: PopulatedUser): number | null {
-        const history = user.rankHistory?.data;
-        if (!history || history.length < 30) return null;
-
-        const prev = history[history.length - 30] || 0;
-        const curr = history[history.length - 1] || 0;
-
-        if (curr > 0 && prev > 0) return curr - prev;
-
-        return null;
     }
 
     private formatPeakRank(origin: string, highestRank?: HighestRank, ameobea?: AmeobeaPeakDto | null): string {

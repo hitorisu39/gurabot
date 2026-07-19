@@ -15,15 +15,16 @@ import { AbstractScoreView } from "./AbstractScoreView";
 import { ListScoreView } from "./ListScoreView.service";
 import { CompareScoreView } from "./CompareScoreView.service";
 import { ScoreUtils } from "@domain/osu/utils/ScoreUtils";
+import { AbstractViewService } from "@/modules/AbstractViewService";
 
-export class ScoreViewService extends AbstractService {
+export class ScoreViewService extends AbstractViewService<ScoresViewDto, Record<string, unknown>> {
     @Import() declare private readonly osuService: OsuService;
     
     // Views services
     @Import() declare private readonly listScoreView: ListScoreView;
     @Import() declare private readonly compareScoreView: CompareScoreView;
 
-    private readonly ttl: number = 180;
+    protected readonly ttl: number = 180;
     private views: Map<EScoreViewLayout, AbstractScoreView> = new Map();
 
     public init(): void {
@@ -63,10 +64,6 @@ export class ScoreViewService extends AbstractService {
         layout: EScoreViewLayout = EScoreViewLayout.List
     ): number {
         return this.getView(layout).getPageSize(size, activeAttributes);
-    }
-
-    public getTtl(): number {
-        return this.ttl;
     }
 
     public async populatePage(

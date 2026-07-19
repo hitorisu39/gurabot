@@ -25,7 +25,6 @@ import { SessionService } from "@/modules/cache/Session.service";
 )
 export abstract class AbstractRecentCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
-    @Import() declare private readonly sessionService: SessionService;
     @Import() declare private readonly scoreViewService: ScoreViewService;
 
     @Option("index", "Jump to a specific score index (1-100)")
@@ -128,12 +127,7 @@ export abstract class AbstractRecentCommand extends AbstractOsuCommand {
             page: 1,
         };
 
-        const sessionID = await this.sessionService.create("osu_scores_view", data, this.scoreViewService.getTtl());
-
-        const view = this.scoreViewService.build(sessionID, data);
-        const message = await ctx.respond(view);
-
-        this.sessionService.after(sessionID, () => message?.edit({ components: [] }));
+        await this.respondWithSession(ctx, "osu_scores_view", data, this.scoreViewService);
     }
 
     public getHelpContext(): Record<string, string> {

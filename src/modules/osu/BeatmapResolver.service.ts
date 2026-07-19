@@ -12,7 +12,7 @@ import {
 } from "@domain/osu/configs/Beatmap.config";
 import { osuBaseDomain } from "@domain/osu/configs/Osu.config";
 import { EBeatmapMatch } from "@domain/osu/enums/Beatmap.enum";
-import { Message } from "discord.js";
+import { Message, RESTJSONErrorCodes } from "discord.js";
 import { ChannelService } from "../channel/Channel.service";
 import { MessageContext } from "@/core/discord/context/MessageContext";
 import { EApplicationError, Exception } from "@domain/core/Exception";
@@ -95,7 +95,7 @@ export class BeatmapResolverService extends AbstractService {
                 const matched = this.fromMessage(replied);
                 if (matched) return matched;
             } catch (error: any) {
-                if (error?.code !== 10008) this.logger.debug(error);
+                if (error?.code !== RESTJSONErrorCodes.UnknownMessage) this.logger.debug(error);
             }
         }
 
