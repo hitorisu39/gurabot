@@ -18,11 +18,7 @@ import { SessionService } from "@/modules/cache/Session.service";
     For mods use this format: \`+mods!\` - exact match, \`+mods\` - includes mods, \`-mods!\` - excludes mods. To show only passes use \`recentpass\` command. To filter scores out by grade use \`grade\` option.
     Available grades are \`SSH\`, \`SS\`, \`SH\`, \`S\`, \`A\`, \`B\`, \`C\` and \`D\`.
 `)
-@Examples(
-    "recent hitorisu",
-    "recent hitorisu +HDHR!",
-    "recent hitorisu grade=S"
-)
+@Examples("recent hitorisu", "recent hitorisu +HDHR!", "recent hitorisu grade=S")
 export abstract class AbstractRecentCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
     @Import() declare private readonly scoreViewService: ScoreViewService;

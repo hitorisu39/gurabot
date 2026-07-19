@@ -26,7 +26,8 @@ export class PopulatedScoreEvaluator<
 
         return mapFiltered.filter((score) => {
             if (q.pp.some()) {
-                const actualPp = score.pp ?? (ScoreUtils.isPopulated(score) ? score.calculated.attributes.total : undefined);
+                const actualPp =
+                    score.pp ?? (ScoreUtils.isPopulated(score) ? score.calculated.attributes.total : undefined);
                 if (actualPp === undefined || !rangeContains(q.pp.unwrap(), actualPp)) return false;
             }
 

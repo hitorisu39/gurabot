@@ -48,7 +48,7 @@ export class CompareScoreView extends AbstractScoreView {
                 firstScore.pp ?? firstScore.calculated.attributes.total,
                 firstScore.calculatedFC?.attributes.total,
             );
-            
+
             let comboRatioString;
             if (isMania) {
                 const perfect = firstScore.statistics.perfect ?? 0;
@@ -86,15 +86,16 @@ export class CompareScoreView extends AbstractScoreView {
                     iconURL: ProfileFormatter.modeIcon(data.profile.mode),
                 })
                 .setThumbnail(firstScore.beatmapset.covers.listDouble)
-                .setTitle(`${firstScore.beatmapset.artist} - ${firstScore.beatmapset.title} [${firstScore.beatmap.version}] [${stars}]`)
+                .setTitle(
+                    `${firstScore.beatmapset.artist} - ${firstScore.beatmapset.title} [${firstScore.beatmap.version}] [${stars}]`,
+                )
                 .setURL(MapFormatter.link(firstScore.beatmap.id));
         }
 
         const remainingScores = isFirstPage ? pageScores.slice(1) : pageScores;
 
         if (remainingScores.length > 0) {
-            if (isFirstPage)
-                description.add("");
+            if (isFirstPage) description.add("");
 
             for (const score of remainingScores) {
                 if (!score || !ScoreUtils.isFullyPopulated(score)) continue;
@@ -117,7 +118,9 @@ export class CompareScoreView extends AbstractScoreView {
                     score.calculatedFC?.attributes.total,
                 );
 
-                description.add(`${gradeAndMods} ${accuracy} ${DiscordFormatter.space(2)} ${pp} (${stars}) ${DiscordFormatter.space(2)} ${comboAndMiss} ${DiscordFormatter.space(2)} ${age}`);
+                description.add(
+                    `${gradeAndMods} ${accuracy} ${DiscordFormatter.space(2)} ${pp} (${stars}) ${DiscordFormatter.space(2)} ${comboAndMiss} ${DiscordFormatter.space(2)} ${age}`,
+                );
             }
         }
 

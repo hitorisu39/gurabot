@@ -43,10 +43,21 @@ export abstract class AbstractProfileCommand extends AbstractOsuCommand {
             populated: null,
         };
 
-        const { sessionID } = await this.respondWithSession(ctx, "osu_profile_view", data, this.profileViewService, EProfileView.Overview);
+        const { sessionID } = await this.respondWithSession(
+            ctx,
+            "osu_profile_view",
+            data,
+            this.profileViewService,
+            EProfileView.Overview,
+        );
 
         // Intentionally populate afterwards so the user doesn't wait for the response.
         const populated = await this.osuService.populateMaps(scores);
-        await this.sessionService.update("osu_profile_view", sessionID, { scores: populated }, this.profileViewService.getTtl());
+        await this.sessionService.update(
+            "osu_profile_view",
+            sessionID,
+            { scores: populated },
+            this.profileViewService.getTtl(),
+        );
     }
 }

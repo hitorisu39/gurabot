@@ -1,4 +1,15 @@
-import { Aliases, Examples, Help, Import, IsEnum, IsInlineIndex, IsMods, IsQuery, IsRange, Option } from "@/core/decorators";
+import {
+    Aliases,
+    Examples,
+    Help,
+    Import,
+    IsEnum,
+    IsInlineIndex,
+    IsMods,
+    IsQuery,
+    IsRange,
+    Option,
+} from "@/core/decorators";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { OsuService } from "@/modules/osu/Osu.service";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
@@ -33,7 +44,7 @@ import { ScoreViewService } from "@/modules/osu/scores/ScoreView.service";
 @Examples(
     "top cs>=4 ar=10 od>=9.8 length>64 +hd",
     "top creator=sotarks +dt bpm>215 sort=date order=asc",
-    "top spaced name query=\"hatsune miku cs>=4\""
+    'top spaced name query="hatsune miku cs>=4"',
 )
 export abstract class AbstractTopCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;

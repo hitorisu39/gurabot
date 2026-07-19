@@ -45,11 +45,11 @@ export class MapCommand extends AbstractSessionCommand {
             this.map,
             this.version,
             AdapterProvider.Bancho,
-            "lowest"
+            "lowest",
         );
 
         if (!resolved.beatmapID || !resolved.beatmapsetID)
-            throw new Exception(EApplicationError.NOT_FOUND, "Could not resolve beatmap or mapset.")
+            throw new Exception(EApplicationError.NOT_FOUND, "Could not resolve beatmap or mapset.");
 
         const mapset = await this.osuService.beatmapset(resolved.beatmapsetID, AdapterProvider.Bancho, true);
         if (!mapset || !mapset.beatmaps?.length)

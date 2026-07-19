@@ -162,7 +162,7 @@ export const config = convict({
             format: String,
             default: "0",
             env: "DISCORD_DEV_ID",
-        }
+        },
     },
     api: {
         host: {

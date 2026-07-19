@@ -526,7 +526,7 @@ export const OsuProvider = SchemaProvider.define("osu", {
                 id: Field.Int(),
                 mode: Field.Enum(GameMode),
                 beatmapID: Field.Int(),
-                legacyOnly: Field.Boolean().Optional()
+                legacyOnly: Field.Boolean().Optional(),
             },
             path: (args) => {
                 let options = `mode=${args.mode}`;

@@ -5,9 +5,9 @@ export abstract class AbstractViewService<TData, TOptions = unknown> extends Abs
     protected abstract readonly ttl: number;
 
     public abstract build(
-        sessionID: string, 
-        data: TData, 
-        options?: TOptions
+        sessionID: string,
+        data: TData,
+        options?: TOptions,
     ): TMessagePayload | Promise<TMessagePayload>;
 
     public getTtl(): number {

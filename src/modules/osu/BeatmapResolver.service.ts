@@ -116,10 +116,10 @@ export class BeatmapResolverService extends AbstractService {
         mapOption?: CommandOption<string>,
         versionOption?: CommandOption<string>,
         server: AdapterProvider = AdapterProvider.Bancho,
-        fallback: "lowest" | "highest" = "highest"
+        fallback: "lowest" | "highest" = "highest",
     ): Promise<MatchedMapDto> {
         const stored = await this.resolveCommandTarget(ctx, mapOption);
-        
+
         let beatmapID = stored.beatmapID;
         let beatmapsetID = stored.beatmapsetID;
 
@@ -148,7 +148,7 @@ export class BeatmapResolverService extends AbstractService {
                 let distance = levenshtein(mapVersion, versionQuery);
 
                 if (mapVersion.includes(versionQuery)) {
-                    distance -= 0.5; 
+                    distance -= 0.5;
                 }
 
                 if (distance < minDistance) {

@@ -23,5 +23,5 @@ export enum EScoreListSize {
 
 export enum EScoreViewLayout {
     List = "List",
-    Compare = "Compare"
+    Compare = "Compare",
 }

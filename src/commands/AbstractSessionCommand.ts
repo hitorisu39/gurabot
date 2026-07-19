@@ -14,7 +14,7 @@ export abstract class AbstractSessionCommand extends AbstractCommand {
         sessionType: K,
         data: ICacheSchema[K],
         viewService: AbstractViewService<ICacheSchema[K], TOptions>,
-        options?: TOptions
+        options?: TOptions,
     ): Promise<{ message: Message | InteractionResponse | null; sessionID: string }> {
         const sessionID = await this.sessionService.create(sessionType, data, viewService.getTtl());
         const view = await viewService.build(sessionID, data, options);

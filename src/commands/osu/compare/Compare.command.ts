@@ -16,7 +16,7 @@ import { BaseScoreEvaluator } from "@domain/osu/utils/BaseScoreEvaluator";
 
 export enum ECompareSort {
     PP = "pp",
-    Score = "score"
+    Score = "score",
 }
 
 @Command({
@@ -65,13 +65,20 @@ export class CompareCommand extends AbstractOsuCommand {
         const target = await this.resolveTarget(ctx);
         const user = await this.osuService.user(target.query, target.mode, target.server);
 
-        const resolved = await this.beatmapResolverService.resolveTargetWithVersion(ctx, this.map, this.version, target.server);
-        if (!resolved.beatmapID)
-            throw new Exception(EApplicationError.NOT_FOUND, "Could not find beatmap.");
+        const resolved = await this.beatmapResolverService.resolveTargetWithVersion(
+            ctx,
+            this.map,
+            this.version,
+            target.server,
+        );
+        if (!resolved.beatmapID) throw new Exception(EApplicationError.NOT_FOUND, "Could not find beatmap.");
 
         let scores = await this.osuService.userBeatmapScores(user.id, target.mode, resolved.beatmapID, target.server);
         if (!scores || !scores.length)
-            throw new Exception(EApplicationError.NOT_FOUND, `No scores found for **${user.username}** on this beatmap.`);
+            throw new Exception(
+                EApplicationError.NOT_FOUND,
+                `No scores found for **${user.username}** on this beatmap.`,
+            );
 
         const sortOption = this.sort.unwrapOr(EScoreQuerySort.PP);
         const orderOption = this.order.unwrapOr(ESortOrder.Descending);
@@ -82,7 +89,7 @@ export class CompareCommand extends AbstractOsuCommand {
             this.index,
             this.grade,
             sortOption,
-            orderOption
+            orderOption,
         );
 
         scores = evaluator.filter(scores);
@@ -95,8 +102,8 @@ export class CompareCommand extends AbstractOsuCommand {
         const count = scores.length;
         const plural = count === 1 ? "" : "s";
 
-        const displayQuery = evaluator.display(count, "on the beatmap:") 
-            ?? `Found **${count}** score${plural} on the beatmap:`;
+        const displayQuery =
+            evaluator.display(count, "on the beatmap:") ?? `Found **${count}** score${plural} on the beatmap:`;
 
         const data: ScoresViewDto = {
             timestamp: Date.now(),

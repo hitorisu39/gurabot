@@ -157,9 +157,11 @@ export class CommandRouter {
         const lower = name.toLowerCase().trim();
         const asSubcommandKey = lower.replace(/\s+/g, ":");
 
-        return this.prefixCommands.get(lower) || 
-            this.slashSubcommands.get(asSubcommandKey) || 
-            this.slashRootCommands.get(lower);
+        return (
+            this.prefixCommands.get(lower) ||
+            this.slashSubcommands.get(asSubcommandKey) ||
+            this.slashRootCommands.get(lower)
+        );
     }
 
     public getAllCommandNames(): Array<string> {

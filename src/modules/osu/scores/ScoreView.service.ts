@@ -19,7 +19,7 @@ import { AbstractViewService } from "@/modules/AbstractViewService";
 
 export class ScoreViewService extends AbstractViewService<ScoresViewDto, Record<string, unknown>> {
     @Import() declare private readonly osuService: OsuService;
-    
+
     // Views services
     @Import() declare private readonly listScoreView: ListScoreView;
     @Import() declare private readonly compareScoreView: CompareScoreView;
@@ -30,7 +30,7 @@ export class ScoreViewService extends AbstractViewService<ScoresViewDto, Record<
     public init(): void {
         this.views = new Map([
             [EScoreViewLayout.List, this.listScoreView],
-            [EScoreViewLayout.Compare, this.compareScoreView]
+            [EScoreViewLayout.Compare, this.compareScoreView],
         ]);
     }
 
@@ -47,9 +47,10 @@ export class ScoreViewService extends AbstractViewService<ScoresViewDto, Record<
 
         const components = totalPages > 1 ? [Pagination.build("osu_scores", sessionID, data.page, totalPages)] : [];
 
-        const embed = (data.scores.length === 1 && pageScores[0]) 
-            ? view.renderSingle(data, pageScores[0]) 
-            : view.render(data, pageScores, meta);
+        const embed =
+            data.scores.length === 1 && pageScores[0]
+                ? view.renderSingle(data, pageScores[0])
+                : view.render(data, pageScores, meta);
 
         return {
             content: data.displayQuery ?? undefined,
@@ -59,9 +60,9 @@ export class ScoreViewService extends AbstractViewService<ScoresViewDto, Record<
     }
 
     public getPageSize(
-        size: EScoreListSize, 
-        activeAttributes?: Array<string>, 
-        layout: EScoreViewLayout = EScoreViewLayout.List
+        size: EScoreListSize,
+        activeAttributes?: Array<string>,
+        layout: EScoreViewLayout = EScoreViewLayout.List,
     ): number {
         return this.getView(layout).getPageSize(size, activeAttributes);
     }

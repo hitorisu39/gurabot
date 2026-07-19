@@ -62,7 +62,7 @@ export abstract class AbstractScoreView extends AbstractService {
             score.pp ?? score.calculated.attributes.total,
             score.calculatedFC?.attributes.total,
         );
-        
+
         let comboRatioString;
         if (isMania) {
             const perfect = score.statistics.perfect ?? 0;

@@ -260,7 +260,7 @@ export class OsuService extends AbstractService {
         id: number,
         mode: GameMode,
         beatmapID: number,
-        provider: AdapterProvider = AdapterProvider.Bancho
+        provider: AdapterProvider = AdapterProvider.Bancho,
     ): Promise<Array<Score>> {
         return await this.adapter[provider].user_beatmap_scores({ id, mode, beatmapID });
     }

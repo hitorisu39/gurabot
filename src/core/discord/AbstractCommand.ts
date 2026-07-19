@@ -20,7 +20,7 @@ export abstract class AbstractCommand {
 
     /**
      * Method responsible for executing command logic.
-     * 
+     *
      * @param ctx Command context
      */
     public abstract execute(ctx: CommandContext): Promise<void> | void;
