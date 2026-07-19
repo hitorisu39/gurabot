@@ -8,7 +8,7 @@ import { CommandOption, ICommandMods, ICommandQueryData, ICommandRange } from "@
 import { EScoreListSize, EScoreQuerySort, ESortOrder } from "@domain/osu/enums/Score.enum";
 import { PopulatedScoreEvaluator } from "@domain/osu/utils/PopulatedScoreEvaluator";
 import { ScoresViewDto } from "@domain/osu/views/Scores.view";
-import { ScoresViewService } from "@/modules/osu/scores/ScoresView.service";
+import { ScoreViewService } from "@/modules/osu/scores/ScoreView.service";
 import { Embed } from "@/core/discord/ui/Embed";
 import { ProviderMeta } from "@generated/adapter";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
@@ -16,7 +16,7 @@ import { AbstractOsuCommand } from "../AbstractOsuCommand";
 export abstract class AbstractRecentListCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
     @Import() declare private readonly sessionService: SessionService;
-    @Import() declare private readonly scoresViewService: ScoresViewService;
+    @Import() declare private readonly scoreViewService: ScoreViewService;
 
     @Option("query", "Filter scores (e.g. pp range, cs, ar, artist, etc.)")
     @IsQuery(PopulatedScoresQueryDto)
@@ -107,8 +107,8 @@ export abstract class AbstractRecentListCommand extends AbstractOsuCommand {
             return;
         }
 
-        const pageSize = this.scoresViewService.getPageSize(sizeOption, activeAttributes);
-        await this.scoresViewService.populatePage(finalScores, 1, pageSize, target.mode, target.server);
+        const pageSize = this.scoreViewService.getPageSize(sizeOption, activeAttributes);
+        await this.scoreViewService.populatePage(finalScores, 1, pageSize, target.mode, target.server);
 
         const data: ScoresViewDto = {
             timestamp: Date.now(),
@@ -121,9 +121,9 @@ export abstract class AbstractRecentListCommand extends AbstractOsuCommand {
             page: 1,
         };
 
-        const sessionID = await this.sessionService.create("osu_scores_view", data, this.scoresViewService.getTtl());
+        const sessionID = await this.sessionService.create("osu_scores_view", data, this.scoreViewService.getTtl());
 
-        const view = this.scoresViewService.build(sessionID, data);
+        const view = this.scoreViewService.build(sessionID, data);
         const message = await ctx.respond(view);
 
         this.sessionService.after(sessionID, () => message?.edit({ components: [] }));

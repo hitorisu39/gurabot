@@ -20,3 +20,8 @@ export enum EScoreListSize {
     Detailed = "Detailed",
     Compact = "Compact",
 }
+
+export enum EScoreViewLayout {
+    List = "List",
+    Compare = "Compare"
+}

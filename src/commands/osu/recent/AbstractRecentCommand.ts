@@ -8,7 +8,7 @@ import { Embed } from "@/core/discord/ui/Embed";
 import { ProviderMeta } from "@generated/adapter";
 import { BaseScoreEvaluator } from "@domain/osu/utils/BaseScoreEvaluator";
 import { EScoreListSize, EScoreQuerySort, ESortOrder } from "@domain/osu/enums/Score.enum";
-import { ScoresViewService } from "@/modules/osu/scores/ScoresView.service";
+import { ScoreViewService } from "@/modules/osu/scores/ScoreView.service";
 import { ScoresViewDto } from "@domain/osu/views/Scores.view";
 import { SessionService } from "@/modules/cache/Session.service";
 
@@ -26,7 +26,7 @@ import { SessionService } from "@/modules/cache/Session.service";
 export abstract class AbstractRecentCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
     @Import() declare private readonly sessionService: SessionService;
-    @Import() declare private readonly scoresViewService: ScoresViewService;
+    @Import() declare private readonly scoreViewService: ScoreViewService;
 
     @Option("index", "Jump to a specific score index (1-100)")
     @IsInlineIndex()
@@ -115,7 +115,7 @@ export abstract class AbstractRecentCommand extends AbstractOsuCommand {
             displayQuery = `Try #${tries}`;
         }
 
-        await this.scoresViewService.populatePage(finalScores, 1, 1, target.mode, target.server);
+        await this.scoreViewService.populatePage(finalScores, 1, 1, target.mode, target.server);
 
         const data: ScoresViewDto = {
             timestamp: Date.now(),
@@ -128,9 +128,9 @@ export abstract class AbstractRecentCommand extends AbstractOsuCommand {
             page: 1,
         };
 
-        const sessionID = await this.sessionService.create("osu_scores_view", data, this.scoresViewService.getTtl());
+        const sessionID = await this.sessionService.create("osu_scores_view", data, this.scoreViewService.getTtl());
 
-        const view = this.scoresViewService.build(sessionID, data);
+        const view = this.scoreViewService.build(sessionID, data);
         const message = await ctx.respond(view);
 
         this.sessionService.after(sessionID, () => message?.edit({ components: [] }));

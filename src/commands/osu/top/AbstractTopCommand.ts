@@ -10,7 +10,7 @@ import { CommandOption, ICommandMods, ICommandQueryData, ICommandRange } from "@
 import { EScoreListSize, EScoreQuerySort, ESortOrder } from "@domain/osu/enums/Score.enum";
 import { PopulatedScoreEvaluator } from "@domain/osu/utils/PopulatedScoreEvaluator";
 import { ScoresViewDto } from "@domain/osu/views/Scores.view";
-import { ScoresViewService } from "@/modules/osu/scores/ScoresView.service";
+import { ScoreViewService } from "@/modules/osu/scores/ScoreView.service";
 
 @Help(`
     Shows the top {mode} plays of the specified player.
@@ -20,7 +20,7 @@ import { ScoresViewService } from "@/modules/osu/scores/ScoresView.service";
     Exact values: \`version\`.
 
     **Mapset Filters**
-    Exact strings: \`artist\`, \`creator\`, \`title\`.
+    Exact strings: \`artist\`, \`creator\`, \`title\`.\n
 
     **Score Filters**
     Ranges supported: \`accuracy\`, \`combo\`, \`index\`, \`misses\`, \`pp\`, \`ppfc\`.
@@ -39,9 +39,10 @@ export abstract class AbstractTopCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
     @Import() declare private readonly profileViewService: ProfileViewService;
     @Import() declare private readonly sessionService: SessionService;
-    @Import() declare private readonly scoresViewService: ScoresViewService;
+    @Import() declare private readonly scoreViewService: ScoreViewService;
 
     @Option("query", "Filter scores (e.g. pp range, cs, ar, artist, etc.)")
+    @Aliases("search", "s", "q")
     @IsQuery(PopulatedScoresQueryDto)
     declare private readonly query: CommandOption<ICommandQueryData<PopulatedScoresQueryDto>>;
 
@@ -119,8 +120,8 @@ export abstract class AbstractTopCommand extends AbstractOsuCommand {
         finalScores = evaluator.sort(finalScores);
         finalScores = evaluator.index(finalScores);
 
-        const pageSize = this.scoresViewService.getPageSize(sizeOption, activeAttributes);
-        await this.scoresViewService.populatePage(finalScores, 1, pageSize, target.mode, target.server);
+        const pageSize = this.scoreViewService.getPageSize(sizeOption, activeAttributes);
+        await this.scoreViewService.populatePage(finalScores, 1, pageSize, target.mode, target.server);
 
         const data: ScoresViewDto = {
             timestamp: Date.now(),
@@ -133,9 +134,9 @@ export abstract class AbstractTopCommand extends AbstractOsuCommand {
             page: 1,
         };
 
-        const sessionID = await this.sessionService.create("osu_scores_view", data, this.scoresViewService.getTtl());
+        const sessionID = await this.sessionService.create("osu_scores_view", data, this.scoreViewService.getTtl());
 
-        const view = this.scoresViewService.build(sessionID, data);
+        const view = this.scoreViewService.build(sessionID, data);
         const message = await ctx.respond(view);
 
         this.sessionService.after(sessionID, () => message?.edit({ components: [] }));

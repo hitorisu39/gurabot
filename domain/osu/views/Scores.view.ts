@@ -1,7 +1,7 @@
 import { Score } from "@generated/adapter/types";
 import { PopulatedUser } from "../Profile.dto";
 import { Exclude, Expose, Type } from "class-transformer";
-import { EScoreListSize } from "../enums/Score.enum";
+import { EScoreListSize, EScoreViewLayout } from "../enums/Score.enum";
 
 @Exclude()
 export class ScoresViewDto {
@@ -30,4 +30,7 @@ export class ScoresViewDto {
 
     @Expose()
     declare pageSize: EScoreListSize;
+
+    @Expose()
+    declare layout?: EScoreViewLayout;
 }

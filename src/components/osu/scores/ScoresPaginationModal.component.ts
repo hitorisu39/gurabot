@@ -5,12 +5,12 @@ import { ComponentContext } from "@/core/discord/context/ComponentContext";
 import { SessionService } from "@/modules/cache/Session.service";
 import { ScoresViewDto } from "@domain/osu/views/Scores.view";
 import { plainToInstance } from "class-transformer";
-import { ScoresViewService } from "@/modules/osu/scores/ScoresView.service";
+import { ScoreViewService } from "@/modules/osu/scores/ScoreView.service";
 
 @Modal(/^osu_scores_modal:(?<sessionID>[a-zA-Z0-9_-]+)$/)
 export class ScoresPaginationModal extends AbstractComponent {
     @Import() declare private readonly sessionService: SessionService;
-    @Import() declare private readonly scoresViewService: ScoresViewService;
+    @Import() declare private readonly scoreViewService: ScoreViewService;
 
     public async execute(ctx: ComponentContext): Promise<void> {
         const { sessionID } = ctx.params;
@@ -29,7 +29,7 @@ export class ScoresPaginationModal extends AbstractComponent {
 
         const newPage = parseInt(input);
 
-        const pageSize = this.scoresViewService.getPageSize(data.pageSize, data.activeAttributes);
+        const pageSize = this.scoreViewService.getPageSize(data.pageSize, data.activeAttributes);
         const totalPages = Math.ceil(data.scores.length / pageSize);
 
         if (isNaN(newPage) || newPage < 1 || newPage > totalPages) return;
@@ -42,14 +42,14 @@ export class ScoresPaginationModal extends AbstractComponent {
         await ctx.deferUpdate();
         data.page = newPage;
 
-        await this.scoresViewService.populatePage(
+        await this.scoreViewService.populatePage(
             data.scores,
             data.page,
             pageSize,
             data.profile.mode,
             data.profile.provider,
         );
-        await this.sessionService.update("osu_scores_view", sessionID, data, this.scoresViewService.getTtl());
-        await ctx.update(this.scoresViewService.build(sessionID, data));
+        await this.sessionService.update("osu_scores_view", sessionID, data, this.scoreViewService.getTtl());
+        await ctx.update(this.scoreViewService.build(sessionID, data));
     }
 }

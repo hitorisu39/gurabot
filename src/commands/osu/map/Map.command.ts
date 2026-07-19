@@ -1,5 +1,5 @@
 import { CommandContext } from "@/core/discord/context/CommandContext";
-import { Command, Import, IsMods, Option } from "@/core/decorators";
+import { Aliases, Command, Import, Inject, IsMods, IsString, Option } from "@/core/decorators";
 import { OsuService } from "@/modules/osu/Osu.service";
 import { CommandOption, ICommandMods } from "@domain/core/Command";
 import { CalculatorService } from "@/modules/osu/calculator/Calculator.service";
@@ -27,38 +27,39 @@ export class MapCommand extends AbstractCommand {
     @Import() declare private readonly beatmapResolverService: BeatmapResolverService;
 
     @Option("map", "Specify a map url or id")
+    @Inject()
     declare private readonly map: CommandOption<string>;
+
+    @Option("version", "Specify a specific difficulty name in the mapset")
+    @IsString()
+    @Aliases("v")
+    declare private readonly version: CommandOption<string>;
 
     @Option("mods", "Apply mods to calculations (e.g., HDDT)")
     @IsMods()
     declare private readonly mods: CommandOption<ICommandMods>;
 
     public async execute(ctx: CommandContext): Promise<void> {
-        const stored = await this.beatmapResolverService.resolveCommandTarget(ctx, this.map);
+        const resolved = await this.beatmapResolverService.resolveTargetWithVersion(
+            ctx,
+            this.map,
+            this.version,
+            AdapterProvider.Bancho,
+            "lowest"
+        );
 
-        const mapID = stored.beatmapID;
-        let mapsetID = stored.beatmapsetID;
+        if (!resolved.beatmapID || !resolved.beatmapsetID)
+            throw new Exception(EApplicationError.NOT_FOUND, "Could not resolve beatmap or mapset.")
 
-        if (!mapsetID && mapID) {
-            const map = await this.osuService.beatmap(mapID);
-            if (!map) throw new Exception(EApplicationError.NOT_FOUND, `Beatmap \`${mapID}\` was not found.`);
-            mapsetID = map.beatmapsetID;
-        }
-
-        if (!mapsetID) throw new Exception(EApplicationError.NOT_FOUND, "Could not determine beatmapset ID.");
-
-        const mapset = await this.osuService.beatmapset(mapsetID, AdapterProvider.Bancho, true);
+        const mapset = await this.osuService.beatmapset(resolved.beatmapsetID, AdapterProvider.Bancho, true);
         if (!mapset || !mapset.beatmaps?.length)
             throw new Exception(EApplicationError.NOT_FOUND, "Beatmapset not found or has no beatmaps.");
-
-        mapset.beatmaps.sort((a, b) => a.difficulty - b.difficulty);
-        const targetMapID = mapID || mapset.beatmaps[0]!.id;
 
         const data: MapViewDto = {
             timestamp: Date.now(),
             authorID: ctx.author.id,
             beatmapset: mapset,
-            beatmapID: targetMapID,
+            beatmapID: resolved.beatmapID,
             mods: this.mods.some() ? ModUtils.fromString(this.mods.unwrap().mods) : [],
         };
 

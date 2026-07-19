@@ -170,7 +170,7 @@ export class BaseScoreEvaluator<Q extends BaseScoreQueryDto = BaseScoreQueryDto>
         return parts;
     }
 
-    public display(count: number): string | null {
+    public display(count: number, suffix: string = "matching the filters:"): string | null {
         const queryParts = this.partialDisplay();
         const isDefaultSort = this.sortType === EScoreQuerySort.PP && this.order === ESortOrder.Descending;
 
@@ -211,7 +211,7 @@ export class BaseScoreEvaluator<Q extends BaseScoreQueryDto = BaseScoreQueryDto>
 
         if (this.mods.some() || queryParts.length > 0) {
             const plural = count === 1 ? "" : "s";
-            text += `\nFound **${count}** score${plural} matching the filters:`;
+            text += `\nFound **${count}** score${plural} ${suffix}`;
         }
 
         return text;

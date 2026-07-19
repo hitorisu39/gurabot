@@ -521,5 +521,21 @@ export const OsuProvider = SchemaProvider.define("osu", {
             returns: Beatmapset,
             mapping: BeatmapsetMapping,
         },
+        user_beatmap_scores: {
+            args: {
+                id: Field.Int(),
+                mode: Field.Enum(GameMode),
+                beatmapID: Field.Int(),
+                legacyOnly: Field.Boolean().Optional()
+            },
+            path: (args) => {
+                let options = `mode=${args.mode}`;
+                if (args.legacyOnly) options += `&legacy_only=1`;
+                return `/beatmaps/${args.beatmapID}/scores/users/${args.id}/all?${options}`;
+            },
+            method: "GET",
+            returns: { model: Score, isArray: true, dataPath: "scores" },
+            mapping: ScoreMapping,
+        },
     },
 });

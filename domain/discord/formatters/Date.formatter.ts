@@ -51,6 +51,34 @@ export class DateFormatter {
         return this.parse(date).fromNow();
     }
 
+    // Elapsed compact age (e.g., "5y", "5mo", "12d", "2h", "15m", "now")
+    public static age(date: Date | number | string): string {
+        const ended = this.parse(date);
+        const now = dayjs();
+        const diff = now.diff(ended);
+        const dur = dayjs.duration(diff);
+
+        const years = dur.years();
+        if (years > 0) return `${years}y`;
+
+        const months = dur.months();
+        if (months > 0) return `${months}mo`;
+
+        const days = dur.days();
+        if (days > 0) return `${days}d`;
+
+        const hours = dur.hours();
+        if (hours > 0) return `${hours}h`;
+
+        const minutes = dur.minutes();
+        if (minutes > 0) return `${minutes}m`;
+
+        const seconds = dur.seconds();
+        if (seconds > 0) return `${seconds}s`;
+
+        return "now";
+    }
+
     /**
      * t => Short time (e.g., 16:20)
      * T => Long time (e.g., 16:20:30)

@@ -1,8 +1,9 @@
 import { Score } from "@generated/adapter/types";
-import { PopulatedScore, PopulatedScoresQueryDto } from "../Score.dto";
+import { PopulatedScoresQueryDto } from "../Score.dto";
 import { ScoreWithMapsEvaluator } from "./ScoreWithMapsEvaluator";
 import { EScoreQuerySort } from "../enums/Score.enum";
 import { rangeContains } from "@domain/utils";
+import { ScoreUtils } from "./ScoreUtils";
 
 export class PopulatedScoreEvaluator<
     Q extends PopulatedScoresQueryDto = PopulatedScoresQueryDto,
@@ -18,10 +19,6 @@ export class PopulatedScoreEvaluator<
         );
     }
 
-    private isPopulated(score: Score): score is PopulatedScore {
-        return "calculated" in score;
-    }
-
     public filter<T extends Score>(scores: Array<T>): Array<T> {
         const mapFiltered = super.filter(scores);
         if (!this.query) return mapFiltered;
@@ -29,12 +26,12 @@ export class PopulatedScoreEvaluator<
 
         return mapFiltered.filter((score) => {
             if (q.pp.some()) {
-                const actualPp = score.pp ?? (this.isPopulated(score) ? score.calculated.attributes.total : undefined);
+                const actualPp = score.pp ?? (ScoreUtils.isPopulated(score) ? score.calculated.attributes.total : undefined);
                 if (actualPp === undefined || !rangeContains(q.pp.unwrap(), actualPp)) return false;
             }
 
             // Calculations Check
-            if (this.isPopulated(score)) {
+            if (ScoreUtils.isPopulated(score)) {
                 if (
                     q.stars.some() &&
                     !rangeContains(q.stars.unwrap(), score.calculated.difficulty.attributes.starRating)
@@ -56,9 +53,9 @@ export class PopulatedScoreEvaluator<
     protected getSortValue(score: Score): number {
         switch (this.sortType) {
             case EScoreQuerySort.Stars:
-                return this.isPopulated(score) ? score.calculated.difficulty.attributes.starRating : 0;
+                return ScoreUtils.isPopulated(score) ? score.calculated.difficulty.attributes.starRating : 0;
             case EScoreQuerySort.PPFC:
-                return this.isPopulated(score)
+                return ScoreUtils.isPopulated(score)
                     ? (score.calculatedFC?.attributes.total ?? score.calculated.attributes.total)
                     : 0;
             default:

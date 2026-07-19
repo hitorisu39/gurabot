@@ -255,6 +255,16 @@ export class OsuService extends AbstractService {
         return apiData;
     }
 
+    @Trace("osu_user_beatmap_scores")
+    public async userBeatmapScores(
+        id: number,
+        mode: GameMode,
+        beatmapID: number,
+        provider: AdapterProvider = AdapterProvider.Bancho
+    ): Promise<Array<Score>> {
+        return await this.adapter[provider].user_beatmap_scores({ id, mode, beatmapID });
+    }
+
     @Trace("osu_populate_maps")
     public async populateMaps(
         scores: Array<Score>,
