@@ -3,9 +3,35 @@ import type { IPerformanceCalculationResponse } from "@domain/core/Calculator";
 import { CommandOption, ICommandDateRange, ICommandRange } from "@domain/core/Command";
 import { Beatmap, Beatmapset, GameMode, Score } from "@generated/adapter/types";
 import { Exclude, Expose, Type } from "class-transformer";
+import { EPersonalBestCase } from "./enums/Score.enum";
 
 @Exclude()
-export class ScoreWithMaps extends Score {
+export class PersonalBestPlacementDto {
+    /**
+     * Zero-based index. Formatting adds one when displaying the rank.
+     */
+    @Expose()
+    declare index: number;
+
+    @Expose()
+    declare case: EPersonalBestCase;
+}
+
+@Exclude()
+export class ScoreWithPlacement extends Score {
+    @Expose()
+    @Type(() => PersonalBestPlacementDto)
+    declare personalBest?: PersonalBestPlacementDto;
+
+    /**
+     * Zero-based global leaderboard index.
+     */
+    @Expose()
+    declare globalTop?: number;
+}
+
+@Exclude()
+export class ScoreWithMaps extends ScoreWithPlacement {
     @Expose()
     @Type(() => Beatmap)
     declare beatmap: Beatmap;

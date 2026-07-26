@@ -3,7 +3,7 @@ import { CommandContext } from "@/core/discord/context/CommandContext";
 import { OsuService } from "@/modules/osu/Osu.service";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
 import { CommandOption, ICommandMods, ICommandRange } from "@domain/core/Command";
-import { Grade } from "@generated/adapter/types";
+import { Grade, Score } from "@generated/adapter/types";
 import { Embed } from "@/core/discord/ui/Embed";
 import { ProviderMeta } from "@generated/adapter";
 import { BaseScoreEvaluator } from "@domain/osu/utils/BaseScoreEvaluator";
@@ -52,7 +52,7 @@ export abstract class AbstractRecentCommand extends AbstractOsuCommand {
             provider: target.server,
         });
 
-        if (!scores || scores.length === 0) {
+        if (!scores.length) {
             await ctx.respond(
                 Embed.error(
                     `No scores found for **${user.username}** in the past 24 hours on ${ProviderMeta[target.server].name} (${target.mode}).`,
@@ -83,34 +83,9 @@ export abstract class AbstractRecentCommand extends AbstractOsuCommand {
         finalScores = [targetScore];
 
         let displayQuery: string | null = null;
+        if (!passed) displayQuery = `Try #${this.getTryCount(scores, targetScore)}`;
 
-        if (!passed) {
-            const targetMapID = targetScore.beatmapID;
-            const targetMods = targetScore.mods
-                .map((m) => m.acronym)
-                .sort()
-                .join("");
-
-            let tries = 0;
-
-            // Iterate from oldest to newest to calculate tries
-            for (let i = scores.length - 1; i >= 0; i--) {
-                const s = scores[i];
-                const sMapID = s?.beatmapID;
-                const sMods = s?.mods
-                    .map((m) => m.acronym)
-                    .sort()
-                    .join("");
-
-                if (sMapID === targetMapID && sMods === targetMods) tries++;
-
-                if (s === targetScore) break;
-            }
-
-            displayQuery = `Try #${tries}`;
-        }
-
-        await this.scoreViewService.populatePage(finalScores, 1, 1, target.mode, target.server);
+        const personalScoresPromise = this.osuService.best(user.id, target.mode, 100, target.server);
 
         const data: ScoresViewDto = {
             timestamp: Date.now(),
@@ -123,6 +98,7 @@ export abstract class AbstractRecentCommand extends AbstractOsuCommand {
             page: 1,
         };
 
+        await this.scoreViewService.prepare(data, { personalScores: personalScoresPromise });
         await this.respondWithSession(ctx, "osu_scores_view", data, this.scoreViewService);
     }
 
@@ -131,5 +107,37 @@ export abstract class AbstractRecentCommand extends AbstractOsuCommand {
             ...super.getHelpContext(),
             passed: this.forcedPassed ? "passed " : "",
         };
+    }
+
+    private getTryCount(scores: Array<Score>, targetScore: Score): number {
+        const targetMapID = targetScore.beatmapID;
+        const targetMods = this.modsKey(targetScore);
+
+        let tries = 0;
+
+        for (let index = scores.length - 1; index >= 0; index--) {
+            const score = scores[index];
+
+            if (!score) {
+                continue;
+            }
+
+            if (score.beatmapID === targetMapID && this.modsKey(score) === targetMods) {
+                tries++;
+            }
+
+            if (score === targetScore) {
+                break;
+            }
+        }
+
+        return tries;
+    }
+
+    private modsKey(score: Score): string {
+        return score.mods
+            .map((mod) => mod.acronym)
+            .sort()
+            .join("");
     }
 }

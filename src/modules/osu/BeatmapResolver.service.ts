@@ -2,7 +2,7 @@ import { Import } from "@/core/decorators";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { AbstractService } from "@/core/framework/AbstractService";
 import { CommandOption } from "@domain/core/Command";
-import { MatchedMapDto } from "@domain/osu/Beatmap.dto";
+import { MatchedMapDto, ResolvedBeatmapDto } from "@domain/osu/Beatmap.dto";
 import {
     beatmapDefaultRegex,
     beatmapLongRegex,
@@ -16,7 +16,7 @@ import { Message, RESTJSONErrorCodes } from "discord.js";
 import { ChannelService } from "../channel/Channel.service";
 import { MessageContext } from "@/core/discord/context/MessageContext";
 import { EApplicationError, Exception } from "@domain/core/Exception";
-import { AdapterProvider } from "@generated/adapter/types";
+import { AdapterProvider, Beatmap } from "@generated/adapter/types";
 import { OsuService } from "./Osu.service";
 import { levenshtein } from "@domain/utils";
 
@@ -117,16 +117,21 @@ export class BeatmapResolverService extends AbstractService {
         versionOption?: CommandOption<string>,
         server: AdapterProvider = AdapterProvider.Bancho,
         fallback: "lowest" | "highest" = "highest",
-    ): Promise<MatchedMapDto> {
+    ): Promise<ResolvedBeatmapDto> {
         const stored = await this.resolveCommandTarget(ctx, mapOption);
 
         let beatmapID = stored.beatmapID;
         let beatmapsetID = stored.beatmapsetID;
+        let beatmap: Beatmap | null = null;
 
         if (!beatmapsetID && beatmapID) {
-            const map = await this.osuService.beatmap(beatmapID, server);
-            if (!map) throw new Exception(EApplicationError.NOT_FOUND, `Beatmap \`${beatmapID}\` was not found.`);
-            beatmapsetID = map.beatmapsetID;
+            beatmap = await this.osuService.beatmap(beatmapID, server);
+
+            if (!beatmap) {
+                throw new Exception(EApplicationError.NOT_FOUND, `Beatmap \`${beatmapID}\` was not found.`);
+            }
+
+            beatmapsetID = beatmap.beatmapsetID;
         }
 
         if (!beatmapsetID) {
@@ -135,50 +140,68 @@ export class BeatmapResolverService extends AbstractService {
 
         if (versionOption?.some()) {
             const versionQuery = versionOption.unwrap().toLowerCase();
+
             const mapset = await this.osuService.beatmapset(beatmapsetID, server);
-            if (!mapset || !mapset.beatmaps?.length) {
+
+            if (!mapset?.beatmaps?.length) {
                 throw new Exception(EApplicationError.NOT_FOUND, "Beatmapset not found or has no beatmaps.");
             }
 
-            const substringMatches = mapset.beatmaps.filter(b => 
-                b.version.toLowerCase().includes(versionQuery)
+            const substringMatches = mapset.beatmaps.filter((candidate) =>
+                candidate.version.toLowerCase().includes(versionQuery),
             );
-
-            let matchedMap = mapset.beatmaps[0]!;
-            let minDistance = Infinity;
 
             const pool = substringMatches.length > 0 ? substringMatches : mapset.beatmaps;
 
-            for (const b of pool) {
-                const mapVersion = b.version.toLowerCase();
-                let distance = levenshtein(mapVersion, versionQuery);
+            let matchedMap = pool[0]!;
+            let minDistance = Number.POSITIVE_INFINITY;
 
-                if (mapVersion.includes(versionQuery)) {
+            for (const candidate of pool) {
+                const candidateVersion = candidate.version.toLowerCase();
+
+                let distance = levenshtein(candidateVersion, versionQuery);
+
+                if (candidateVersion.includes(versionQuery)) {
                     distance -= 0.5;
                 }
 
                 if (distance < minDistance) {
                     minDistance = distance;
-                    matchedMap = b;
+                    matchedMap = candidate;
                 }
             }
 
+            beatmap = matchedMap;
             beatmapID = matchedMap.id;
+            beatmapsetID = matchedMap.beatmapsetID ?? beatmapsetID;
         } else if (!beatmapID) {
             const mapset = await this.osuService.beatmapset(beatmapsetID, server, true);
-            if (!mapset || !mapset.beatmaps?.length) {
+
+            if (!mapset?.beatmaps?.length) {
                 throw new Exception(EApplicationError.NOT_FOUND, "Beatmapset not found or has no beatmaps.");
             }
 
-            if (fallback === "highest") {
-                mapset.beatmaps.sort((a, b) => b.difficulty - a.difficulty);
-            } else {
-                mapset.beatmaps.sort((a, b) => a.difficulty - b.difficulty);
-            }
+            const orderedMaps = [...mapset.beatmaps].sort((a, b) =>
+                fallback === "highest" ? b.difficulty - a.difficulty : a.difficulty - b.difficulty,
+            );
 
-            beatmapID = mapset.beatmaps[0]!.id;
+            beatmap = orderedMaps[0]!;
+            beatmapID = beatmap.id;
+            beatmapsetID = beatmap.beatmapsetID ?? beatmapsetID;
         }
 
-        return { beatmapID, beatmapsetID };
+        if (!beatmap && beatmapID) {
+            beatmap = await this.osuService.beatmap(beatmapID, server);
+        }
+
+        if (!beatmap) {
+            throw new Exception(EApplicationError.NOT_FOUND, "Could not resolve beatmap.");
+        }
+
+        return {
+            beatmapID: beatmap.id,
+            beatmapsetID: beatmap.beatmapsetID ?? beatmapsetID,
+            beatmap,
+        };
     }
 }

@@ -31,6 +31,9 @@ export class CompareScoreView extends AbstractScoreView {
         const isFirstPage = data.page === 1;
 
         if (isFirstPage && firstScore && ScoreUtils.isFullyPopulated(firstScore)) {
+            const placement = ScoreFormatter.placement(firstScore);
+            if (placement) description.add(placement);
+
             const stars = MapFormatter.stars(firstScore.calculated.difficulty.attributes.starRating);
             const mods = ScoreFormatter.mods(firstScore.mods);
 
@@ -73,7 +76,7 @@ export class CompareScoreView extends AbstractScoreView {
             const statsThirdRow = [
                 `${MapFormatter.length(liveLength)}`,
                 `\`CS: ${DiscordFormatter.fixed(attrs.cs)} AR: ${DiscordFormatter.fixed(attrs.ar)} OD: ${DiscordFormatter.fixed(attrs.od)} HP: ${DiscordFormatter.fixed(attrs.hp)}\``,
-                `♩ ${DiscordFormatter.fixed(liveBpm)}`,
+                `♫ ${DiscordFormatter.fixed(liveBpm)}`,
             ]
                 .filter(Boolean)
                 .join(scoreStatsDelimiter);
@@ -118,9 +121,11 @@ export class CompareScoreView extends AbstractScoreView {
                     score.calculatedFC?.attributes.total,
                 );
 
-                description.add(
-                    `${gradeAndMods} ${accuracy} ${DiscordFormatter.space(2)} ${pp} (${stars}) ${DiscordFormatter.space(2)} ${comboAndMiss} ${DiscordFormatter.space(2)} ${age}`,
-                );
+                const placement = ScoreFormatter.placement(score, true);
+
+                const parts = [`${gradeAndMods} ${accuracy}`, `${pp} (${stars})`, comboAndMiss, age, placement];
+
+                description.add(parts.filter(Boolean).join(` ${DiscordFormatter.space(2)} `));
             }
         }
 

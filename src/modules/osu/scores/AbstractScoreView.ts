@@ -3,7 +3,6 @@ import { Embed } from "@/core/discord/ui/Embed";
 import { AbstractService } from "@/core/framework/AbstractService";
 import { DateFormatter } from "@domain/discord/formatters/Date.formatter";
 import { ProfileFormatter } from "@domain/osu/formatters/Profile.formatter";
-import { PopulatedScore } from "@domain/osu/Score.dto";
 import { ScoresViewDto } from "@domain/osu/views/Scores.view";
 import { GameMode, Score } from "@generated/adapter/types";
 import { ProfileViewService } from "../profile/ProfileView.service";
@@ -35,6 +34,9 @@ export abstract class AbstractScoreView extends AbstractService {
     public renderSingle(data: ScoresViewDto, score: Score): Embed {
         const embed = this.profileViewService.createBaseEmbed(data.profile, data.timestamp, false);
         if (!ScoreUtils.isFullyPopulated(score)) return embed;
+
+        const placement = ScoreFormatter.placement(score);
+        if (placement) embed.setDescription(placement);
 
         const description = new DescriptionBuilder();
         const isMania = data.profile.mode === GameMode.Mania;
@@ -87,7 +89,7 @@ export abstract class AbstractScoreView extends AbstractService {
         const statsThirdRow = [
             `${MapFormatter.length(liveLength)}`,
             `\`CS: ${DiscordFormatter.fixed(attrs.cs)} AR: ${DiscordFormatter.fixed(attrs.ar)} OD: ${DiscordFormatter.fixed(attrs.od)} HP: ${DiscordFormatter.fixed(attrs.hp)}\``,
-            `♩ ${DiscordFormatter.fixed(liveBpm)}`,
+            `♫ ${DiscordFormatter.fixed(liveBpm)}`,
         ]
             .filter(Boolean)
             .join(scoreStatsDelimiter);

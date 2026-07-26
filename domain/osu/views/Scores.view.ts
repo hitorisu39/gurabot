@@ -1,7 +1,7 @@
-import { Score } from "@generated/adapter/types";
 import { PopulatedUser } from "../Profile.dto";
 import { Exclude, Expose, Type } from "class-transformer";
 import { EScoreListSize, EScoreViewLayout } from "../enums/Score.enum";
+import { PopulatedScore, ScoreWithPlacement } from "../Score.dto";
 
 @Exclude()
 export class ScoresViewDto {
@@ -16,8 +16,8 @@ export class ScoresViewDto {
     declare profile: PopulatedUser;
 
     @Expose()
-    @Type(() => Score)
-    declare scores: Array<Score>;
+    @Type(() => PopulatedScore)
+    declare scores: Array<ScoreWithPlacement>;
 
     @Expose()
     declare displayQuery: string | null;

@@ -4,10 +4,12 @@ import { Import, Trace } from "@/core/decorators";
 import { CalculatorService } from "./calculator/Calculator.service";
 import { PopulatedUser } from "@domain/osu/Profile.dto";
 import { plainToInstance } from "class-transformer";
-import { PopulatedScore, ScoreWithMaps } from "@domain/osu/Score.dto";
+import { PopulatedScore, ScoreWithMaps, ScoreWithPlacement } from "@domain/osu/Score.dto";
 import { ProviderMeta } from "@generated/adapter";
 import { CalculatorMapService } from "./calculator/CalculatorMap.service";
 import type { TRepository } from "@/core";
+import { ScorePlacementEvaluator } from "@domain/osu/utils/ScorePlacementEvaluator";
+import { BeatmapUtils } from "@domain/osu/utils/BeatmapUtils";
 
 interface IUserWithScoresInput {
     nameOrID: string | number;
@@ -18,13 +20,28 @@ interface IUserWithScoresInput {
     provider?: AdapterProvider;
 }
 
+interface IPopulateScorePlacementsInput<T extends Score> {
+    scores: Array<T>;
+    userID: number;
+    mode: GameMode;
+    beatmap: Beatmap;
+    provider?: AdapterProvider;
+    personalScores?: Array<Score> | Promise<Array<Score>>;
+    globalScores?: Array<Score> | Promise<Array<Score>>;
+}
+
+interface IUserBeatmapScoreContext {
+    scores: Array<Score>;
+    personalScores: Array<Score>;
+    globalScores: Array<Score>;
+}
+
 export class OsuService extends AbstractService {
     @Import() declare private readonly calculatorService: CalculatorService;
     @Import() declare private readonly calculatorMapService: CalculatorMapService;
 
     /**
-     * For how long we want to cache the osu! profile
-     * in seconds.
+     * For how long we want to cache the osu! profile in seconds.
      */
     private readonly profileCacheTtl: number = 300;
 
@@ -265,6 +282,39 @@ export class OsuService extends AbstractService {
         return await this.adapter[provider].user_beatmap_scores({ id, mode, beatmapID });
     }
 
+    @Trace("osu_user_beatmap_score_context")
+    public async userBeatmapScoreContext(
+        id: number,
+        mode: GameMode,
+        beatmap: Beatmap,
+        provider: AdapterProvider = AdapterProvider.Bancho,
+    ): Promise<IUserBeatmapScoreContext> {
+        const globalScoresPromise = BeatmapUtils.hasLeaderboard(beatmap)
+            ? this.beatmapScores(beatmap.id, mode, provider)
+            : Promise.resolve<Array<Score>>([]);
+
+        const [scores, personalScores, globalScores] = await Promise.all([
+            this.userBeatmapScores(id, mode, beatmap.id, provider),
+            this.best(id, mode, 100, provider),
+            globalScoresPromise,
+        ]);
+
+        return {
+            scores,
+            personalScores,
+            globalScores,
+        };
+    }
+
+    @Trace("osu_beatmap_scores")
+    public async beatmapScores(
+        beatmapID: number,
+        mode: GameMode,
+        provider: AdapterProvider = AdapterProvider.Bancho,
+    ): Promise<Array<Score>> {
+        return await this.adapter[provider].beatmap_scores({ beatmapID, mode });
+    }
+
     @Trace("osu_populate_maps")
     public async populateMaps(
         scores: Array<Score>,
@@ -310,6 +360,33 @@ export class OsuService extends AbstractService {
         const withMaps = await this.populateMaps(scores, provider);
         const populated = await this.populateCalculations(withMaps, mode, includeFC);
         return populated;
+    }
+
+    @Trace("osu_populate_score_placements")
+    public async populateScorePlacements<T extends Score>(
+        data: IPopulateScorePlacementsInput<T>,
+    ): Promise<Array<T & ScoreWithPlacement>> {
+        if (!data.scores.length) {
+            return [];
+        }
+
+        const provider = data.provider ?? AdapterProvider.Bancho;
+
+        const personalScoresPromise =
+            data.personalScores !== undefined
+                ? Promise.resolve(data.personalScores)
+                : this.best(data.userID, data.mode, 100, provider);
+
+        const globalScoresPromise =
+            data.globalScores !== undefined
+                ? Promise.resolve(data.globalScores)
+                : BeatmapUtils.hasLeaderboard(data.beatmap)
+                  ? this.beatmapScores(data.beatmap.id, data.mode, provider)
+                  : Promise.resolve<Array<Score>>([]);
+
+        const [personalScores, globalScores] = await Promise.all([personalScoresPromise, globalScoresPromise]);
+
+        return new ScorePlacementEvaluator(data.beatmap, personalScores, globalScores).evaluate(data.scores);
     }
 
     @Trace("osu_resolve_cached_id")

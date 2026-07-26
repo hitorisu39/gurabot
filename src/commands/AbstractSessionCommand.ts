@@ -1,4 +1,4 @@
-import { Import } from "@/core/decorators";
+import { Import, Trace } from "@/core/decorators";
 import { AbstractCommand } from "@/core/discord/AbstractCommand";
 import { SessionService } from "@/modules/cache/Session.service";
 import { InteractionResponse, Message } from "discord.js";
@@ -9,6 +9,7 @@ import { AbstractViewService } from "@/modules/AbstractViewService";
 export abstract class AbstractSessionCommand extends AbstractCommand {
     @Import() declare protected readonly sessionService: SessionService;
 
+    @Trace("respond_with_session")
     protected async respondWithSession<K extends keyof ICacheSchema, TOptions>(
         ctx: CommandContext,
         sessionType: K,

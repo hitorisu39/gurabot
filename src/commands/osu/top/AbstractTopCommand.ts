@@ -14,7 +14,7 @@ import { CommandContext } from "@/core/discord/context/CommandContext";
 import { OsuService } from "@/modules/osu/Osu.service";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
 import { ProfileViewService } from "@/modules/osu/profile/ProfileView.service";
-import { Grade, Score } from "@generated/adapter/types";
+import { Grade } from "@generated/adapter/types";
 import { PopulatedScoresQueryDto } from "@domain/osu/Score.dto";
 import { CommandOption, ICommandMods, ICommandQueryData, ICommandRange } from "@domain/core/Command";
 import { EScoreListSize, EScoreQuerySort, ESortOrder } from "@domain/osu/enums/Score.enum";
@@ -114,24 +114,17 @@ export abstract class AbstractTopCommand extends AbstractOsuCommand {
             provider: target.server,
         });
 
-        let workingScores: Array<Score> = scores;
+        let finalScores = scores;
 
-        if (evaluator.withMaps || evaluator.populated) {
-            const scoresWithMaps = await this.osuService.populateMaps(scores);
-            workingScores = scoresWithMaps;
-
-            if (evaluator.populated) {
-                const populatedScores = await this.osuService.populateCalculations(scoresWithMaps, target.mode, true);
-                workingScores = populatedScores;
-            }
+        if (evaluator.populated) {
+            finalScores = await this.osuService.populateAll(scores, target.mode, true, target.server);
+        } else if (evaluator.withMaps) {
+            finalScores = await this.osuService.populateMaps(scores, target.server);
         }
 
-        let finalScores = evaluator.filter(workingScores);
-        finalScores = evaluator.sort(finalScores);
-        finalScores = evaluator.index(finalScores);
-
-        const pageSize = this.scoreViewService.getPageSize(sizeOption, activeAttributes);
-        await this.scoreViewService.populatePage(finalScores, 1, pageSize, target.mode, target.server);
+        const filtered = evaluator.filter(finalScores);
+        const sorted = evaluator.sort(filtered);
+        finalScores = evaluator.index(sorted);
 
         const data: ScoresViewDto = {
             timestamp: Date.now(),
@@ -144,6 +137,7 @@ export abstract class AbstractTopCommand extends AbstractOsuCommand {
             page: 1,
         };
 
+        await this.scoreViewService.prepare(data, { personalScores: scores });
         await this.respondWithSession(ctx, "osu_scores_view", data, this.scoreViewService);
     }
 }

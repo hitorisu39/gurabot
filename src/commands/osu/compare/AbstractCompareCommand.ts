@@ -1,5 +1,17 @@
 import { CommandContext } from "@/core/discord/context/CommandContext";
-import { Aliases, Command, Examples, Help, Import, IsEnum, IsInlineIndex, IsMods, IsRange, IsString, Option } from "@/core/decorators";
+import {
+    Aliases,
+    Command,
+    Examples,
+    Help,
+    Import,
+    IsEnum,
+    IsInlineIndex,
+    IsMods,
+    IsRange,
+    IsString,
+    Option,
+} from "@/core/decorators";
 import { OsuService } from "@/modules/osu/Osu.service";
 import { CommandOption, ICommandMods, ICommandRange } from "@domain/core/Command";
 import { CalculatorService } from "@/modules/osu/calculator/Calculator.service";
@@ -29,12 +41,7 @@ import { ProviderMeta } from "@generated/adapter";
     Sort: \`sort=<option>\` (\`pp\`, \`score\`, \`accuracy\`, \`combo\`, \`misses\`, \`date\`).
     Index: \`index=<index>\` (or shorthand \`i=<index>\`) to view a specific placement.
 `)
-@Examples(
-    "compare",
-    "c v=Insane",
-    "c sort=score +hd!",
-    "c grade=S order=asc i=1-5"
-)
+@Examples("compare", "c v=Insane", "c sort=score +hd!", "c grade=S order=asc i=1-5")
 export class AbstractCompareCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
     @Import() declare private readonly graphService: GraphService;
@@ -73,31 +80,25 @@ export class AbstractCompareCommand extends AbstractOsuCommand {
     declare private readonly index: CommandOption<ICommandRange>;
 
     public async execute(ctx: CommandContext): Promise<void> {
-        console.log("COMPARE COMMAND DEBUG:", {
-            mapSome: this.map.some(),
-            mapValue: this.map.unwrapUnchecked(),
-            versionSome: this.version.some(),
-            versionValue: this.version.unwrapUnchecked(),
-            nameSome: this.name.some(),
-            nameValue: this.name.unwrapUnchecked()
-        });
-
         const target = await this.resolveTarget(ctx);
-        const user = await this.osuService.user(target.query, target.mode, target.server);
 
-        const resolved = await this.beatmapResolverService.resolveTargetWithVersion(
-            ctx,
-            this.map,
-            this.version,
+        const [user, resolved] = await Promise.all([
+            this.osuService.user(target.query, target.mode, target.server),
+            this.beatmapResolverService.resolveTargetWithVersion(ctx, this.map, this.version, target.server),
+        ]);
+
+        const context = await this.osuService.userBeatmapScoreContext(
+            user.id,
+            target.mode,
+            resolved.beatmap,
             target.server,
         );
-        if (!resolved.beatmapID) throw new Exception(EApplicationError.NOT_FOUND, "Could not find beatmap.");
+        let scores = context.scores;
 
-        let scores = await this.osuService.userBeatmapScores(user.id, target.mode, resolved.beatmapID, target.server);
         if (!scores || !scores.length)
             throw new Exception(
                 EApplicationError.NOT_FOUND,
-                `No scores found for **${user.username}** on this beatmap on ${ProviderMeta[target.server].name} (${target.mode}).`
+                `No scores found for **${user.username}** on this beatmap on ${ProviderMeta[target.server].name} (${target.mode}).`,
             );
 
         const sortOption = this.sort.unwrapOr(EScoreQuerySort.PP);
@@ -137,8 +138,10 @@ export class AbstractCompareCommand extends AbstractOsuCommand {
             layout: EScoreViewLayout.Compare,
         };
 
-        const pageSize = this.scoreViewService.getPageSize(data.pageSize, data.activeAttributes, data.layout);
-        await this.scoreViewService.populatePage(scores, 1, pageSize, target.mode, target.server);
+        await this.scoreViewService.prepare(data, {
+            personalScores: context.personalScores,
+            globalScores: context.globalScores,
+        });
         await this.respondWithSession(ctx, "osu_scores_view", data, this.scoreViewService);
     }
 }

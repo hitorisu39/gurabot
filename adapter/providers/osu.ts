@@ -537,5 +537,20 @@ export const OsuProvider = SchemaProvider.define("osu", {
             returns: { model: Score, isArray: true, dataPath: "scores" },
             mapping: ScoreMapping,
         },
+        beatmap_scores: {
+            args: {
+                beatmapID: Field.Int(),
+                mode: Field.Enum(GameMode),
+                legacyOnly: Field.Boolean().Optional(),
+            },
+            path: (args) => {
+                let options = `mode=${args.mode}`;
+                if (args.legacyOnly) options += `&legacy_only=1`;
+                return `/beatmaps/${args.beatmapID}/scores`;
+            },
+            method: "GET",
+            returns: { model: Score, isArray: true, dataPath: "scores" },
+            mapping: ScoreMapping,
+        },
     },
 });

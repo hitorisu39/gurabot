@@ -25,3 +25,10 @@ export enum EScoreViewLayout {
     List = "List",
     Compare = "Compare",
 }
+
+export enum EPersonalBestCase {
+    ScorePresent = "ScorePresent",
+    ScorePresentPresumably = "ScorePresentPresumably",
+    NotRanked = "NotRanked",
+    ScoreWorse = "ScoreWorse",
+}

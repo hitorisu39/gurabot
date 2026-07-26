@@ -1,7 +1,9 @@
 import { discordEmoteGrades, discordEmoteMiss } from "@domain/discord/configs/Emotes.config";
 import { ParsedMod } from "@generated/adapter/mods";
-import { Beatmap, GameMode, Grade, ScoreStatistics } from "@generated/adapter/types";
+import { Beatmap, GameMode, Grade, Score, ScoreStatistics } from "@generated/adapter/types";
 import { osuBaseDomain } from "../configs/Osu.config";
+import { PersonalBestPlacementDto, ScoreWithPlacement } from "../Score.dto";
+import { EPersonalBestCase } from "../enums/Score.enum";
 
 export class ScoreFormatter {
     public static completion(statistics: ScoreStatistics, beatmap: Beatmap, mode: GameMode): number | null {
@@ -113,5 +115,48 @@ export class ScoreFormatter {
         }
 
         return `${finalTitle} [${finalVersion}]`;
+    }
+
+    public static placement(score: Score, compact: boolean = false): string {
+        const placedScore = score as ScoreWithPlacement;
+
+        const personal = placedScore.personalBest
+            ? this.personalPlacement(score, placedScore.personalBest, compact)
+            : "";
+
+        const global =
+            placedScore.globalTop !== undefined
+                ? compact
+                    ? `GT#${placedScore.globalTop + 1}`
+                    : `Global Top #${placedScore.globalTop + 1}`
+                : "";
+
+        const parts = [personal, global].filter(Boolean);
+
+        if (!parts.length) {
+            return "";
+        }
+
+        const text = parts.join(" and ");
+
+        return compact ? `**${text}**` : `__**${text}**__`;
+    }
+
+    private static personalPlacement(score: Score, personal: PersonalBestPlacementDto, compact: boolean): string {
+        const placement = compact ? `PB#${personal.index + 1}` : `Personal Best #${personal.index + 1}`;
+
+        switch (personal.case) {
+            case EPersonalBestCase.ScorePresent:
+                return placement;
+            case EPersonalBestCase.ScorePresentPresumably: {
+                const hasBeenProcessingForMinute = Date.now() - score.endedAt.getTime() >= 60 * 1000;
+
+                return hasBeenProcessingForMinute ? `${placement} (processing)` : placement;
+            }
+            case EPersonalBestCase.NotRanked:
+                return `${placement} (if ranked)`;
+            default:
+                return "";
+        }
     }
 }

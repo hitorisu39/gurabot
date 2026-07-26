@@ -1,13 +1,9 @@
 import { Import } from "@/core/decorators";
 import { TMessagePayload } from "@/core/discord/context/CommandContext";
-import { AbstractService } from "@/core/framework/AbstractService";
 import { Pagination } from "@domain/discord/utils/Pagination";
-import { PopulatedScore } from "@domain/osu/Score.dto";
 import { ScoresViewDto } from "@domain/osu/views/Scores.view";
 import { AdapterProvider, GameMode, Score } from "@generated/adapter/types";
 import { OsuService } from "../Osu.service";
-import { ProfileViewService } from "../profile/ProfileView.service";
-import { scoreCompactPageSize, scoreDetailedPageSize, scoreStatsDelimiter } from "@domain/osu/configs/Score.config";
 import { EScoreListSize, EScoreViewLayout } from "@domain/osu/enums/Score.enum";
 
 // Views
@@ -16,6 +12,11 @@ import { ListScoreView } from "./ListScoreView.service";
 import { CompareScoreView } from "./CompareScoreView.service";
 import { ScoreUtils } from "@domain/osu/utils/ScoreUtils";
 import { AbstractViewService } from "@/modules/AbstractViewService";
+
+interface IScoreViewPopulateContext {
+    personalScores?: Array<Score> | Promise<Array<Score>>;
+    globalScores?: Array<Score> | Promise<Array<Score>>;
+}
 
 export class ScoreViewService extends AbstractViewService<ScoresViewDto, Record<string, unknown>> {
     @Import() declare private readonly osuService: OsuService;
@@ -57,6 +58,68 @@ export class ScoreViewService extends AbstractViewService<ScoresViewDto, Record<
             embeds: [embed],
             components: components,
         };
+    }
+
+    public async prepare(data: ScoresViewDto, ctx: IScoreViewPopulateContext = {}): Promise<void> {
+        const layout = data.layout ?? EScoreViewLayout.List;
+        const mode = data.profile.mode;
+        const provider = data.profile.provider;
+
+        const pageSize = this.getPageSize(data.pageSize, data.activeAttributes, layout);
+
+        await this.populatePage(data.scores, data.page, pageSize, mode, provider);
+
+        if (!this.shouldPopulatePlacements(data)) {
+            return;
+        }
+
+        const firstScore = data.scores[0];
+
+        if (!firstScore || !ScoreUtils.hasMaps(firstScore)) {
+            return;
+        }
+
+        await this.populateMissingPlacements(data.scores, mode, provider);
+
+        const placedScores = await this.osuService.populateScorePlacements({
+            scores: data.scores,
+            userID: data.profile.id,
+            mode,
+            beatmap: firstScore.beatmap,
+            provider,
+            personalScores: ctx.personalScores,
+            globalScores: ctx.globalScores,
+        });
+
+        data.scores.splice(0, data.scores.length, ...placedScores);
+    }
+
+    private shouldPopulatePlacements(data: ScoresViewDto): boolean {
+        const layout = data.layout ?? EScoreViewLayout.List;
+
+        return layout === EScoreViewLayout.Compare || data.scores.length === 1;
+    }
+
+    private async populateMissingPlacements(
+        scores: Array<Score>,
+        mode: GameMode,
+        provider: AdapterProvider,
+    ): Promise<void> {
+        const missing = scores.filter((score) => ScoreUtils.pp(score) === undefined);
+
+        if (!missing.length) {
+            return;
+        }
+
+        const populated = await this.osuService.populateAll(missing, mode, true, provider);
+
+        for (const populatedScore of populated) {
+            const index = scores.findIndex((score) => ScoreUtils.compare(score, populatedScore));
+
+            if (index !== -1) {
+                scores.splice(index, 1, populatedScore);
+            }
+        }
     }
 
     public getPageSize(
