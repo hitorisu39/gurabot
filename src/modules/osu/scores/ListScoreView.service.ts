@@ -8,7 +8,12 @@ import { DescriptionBuilder } from "@/core/discord/ui/DescriptionBuilder";
 import { ScoreFormatter } from "@domain/osu/formatters/Score.formatter";
 import { discordMaxVisualLineLength } from "@domain/discord/configs/Discord.config";
 import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";
-import { scoreCompactPageSize, scoreDetailedPageSize, scoreStatsDelimiter } from "@domain/osu/configs/Score.config";
+import {
+    scoreCompactPageSize,
+    scoreDetailedPageSize,
+    scoreStatsCompactDelimiter,
+    scoreStatsDelimiter,
+} from "@domain/osu/configs/Score.config";
 import { BeatmapAttributesCalculator } from "@domain/osu/utils/BeatmapAttributesCalculator";
 import { EScoreListSize } from "@domain/osu/enums/Score.enum";
 import { MapFormatter } from "@domain/osu/formatters/Map.formatter";
@@ -29,7 +34,7 @@ export class ListScoreView extends AbstractScoreView {
         const detailed = data.pageSize === EScoreListSize.Detailed;
         const embed = this.profileViewService.createBaseEmbed(data.profile, data.timestamp, false);
 
-        if (!pageScores.length) return embed.setDescription("No scores.");
+        // if (!pageScores.length) return embed.setDescription("No scores.");
 
         const description = new DescriptionBuilder();
         const isMania = data.profile.mode === GameMode.Mania;
@@ -61,7 +66,11 @@ export class ListScoreView extends AbstractScoreView {
             description.add(top);
 
             if (detailed) {
-                const statistics = ScoreFormatter.statistics(score.statistics, data.profile.mode, " • ");
+                const statistics = ScoreFormatter.statistics(
+                    score.statistics,
+                    data.profile.mode,
+                    scoreStatsCompactDelimiter,
+                );
 
                 const statsFirstRow = [
                     `${ScoreFormatter.grade(score.grade, score.passed, score.id)} ${ScoreFormatter.accuracy(score.accuracy)}`,

@@ -1,9 +1,15 @@
-import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
+import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from "axios";
 import { TLogger } from "./core/types";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 
 export interface IHttpClientOptions extends AxiosRequestConfig {
     name?: string;
+}
+
+interface IExtendedRequestConfig extends InternalAxiosRequestConfig {
+    metadata?: {
+        startedAt: number;
+    };
 }
 
 export class HttpClient {
@@ -18,12 +24,32 @@ export class HttpClient {
 
     private setupInterceptors(): void {
         this.client.interceptors.request.use((config) => {
+            const timedConfig = config as IExtendedRequestConfig;
+
+            timedConfig.metadata = {
+                startedAt: Date.now(),
+            };
+
             this.logger.debug(`[${config.method?.toUpperCase()}] ${config.baseURL || ""}${config.url}`);
             return config;
         });
 
         this.client.interceptors.response.use(
-            (response: AxiosResponse) => response,
+            (response: AxiosResponse) => {
+                const durationMs = this.getDuration(response.config);
+
+                this.logger.debug(
+                    {
+                        method: response.config.method?.toUpperCase(),
+                        url: response.config.url,
+                        status: response.status,
+                        durationMs,
+                    },
+                    `HTTP request completed in ${durationMs}ms`,
+                );
+
+                return response;
+            },
             (error: AxiosError) => {
                 const status = error.response?.status;
                 const url = error.config?.url;
@@ -37,6 +63,11 @@ export class HttpClient {
                 );
             },
         );
+    }
+
+    private getDuration(config?: InternalAxiosRequestConfig): number | undefined {
+        const startedAt = (config as IExtendedRequestConfig | undefined)?.metadata?.startedAt;
+        return startedAt === undefined ? undefined : Date.now() - startedAt;
     }
 
     public async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {

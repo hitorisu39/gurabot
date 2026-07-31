@@ -13,9 +13,10 @@ export class CalculatorAttributesService extends AbstractService {
     public async get<M extends GameMode>(
         beatmapID: number,
         mode: M,
-        mods: Array<ParsedMod>
+        mods: Array<ParsedMod>,
+        clockRate?: number,
     ): Promise<TDifficultyAttributes<M>> {
-        const { cacheString, custom } = this.getModCacheString(mods);
+        const { cacheString, custom } = this.getModCacheString(mods, clockRate);
 
         const cached = await this.getFromDatabase(beatmapID, mode, cacheString);
         if (cached) return cached as TDifficultyAttributes<M>;
@@ -30,7 +31,8 @@ export class CalculatorAttributesService extends AbstractService {
         const response = await this.calculator.difficulty({
             mode,
             beatmapPath: this.calculatorMapService.getPath(beatmapID),
-            mods: protoMods
+            mods: protoMods,
+            clockRate
         });
 
         await this.saveToDatabase(beatmapID, mode, cacheString, response.attributes, custom);
@@ -41,9 +43,10 @@ export class CalculatorAttributesService extends AbstractService {
     public async getWithStrains<M extends GameMode>(
         beatmapID: number,
         mode: M,
-        mods: Array<ParsedMod>
+        mods: Array<ParsedMod>,
+        clockRate?: number,
     ): Promise<IDifficultyCalculationResponse<M>> {
-        const { cacheString, custom } = this.getModCacheString(mods);
+        const { cacheString, custom } = this.getModCacheString(mods, clockRate);
 
         const protoMods = mods.map((m) => ({
             acronym: m.acronym,
@@ -56,6 +59,7 @@ export class CalculatorAttributesService extends AbstractService {
             mode,
             beatmapPath: this.calculatorMapService.getPath(beatmapID),
             mods: protoMods,
+            clockRate,
             calculateStrains: true
         });
 
@@ -117,27 +121,38 @@ export class CalculatorAttributesService extends AbstractService {
 
     //#region Internal
 
-    private getModCacheString(mods: Array<ParsedMod>): { cacheString: string, custom: boolean } {
+    private getModCacheString(
+        mods: Array<ParsedMod>,
+        clockRate?: number,
+    ): { cacheString: string; custom: boolean } {
         const perfMods = ModUtils.difficultyAffecting(mods);
         let custom = false;
 
-        if (perfMods.length === 0) {
-            return { cacheString: "NM", custom };
-        }
+        let cacheString =
+            perfMods.length === 0
+                ? "NM"
+                : perfMods
+                    .map((mod) => {
+                        if (!mod.settings || Object.keys(mod.settings).length === 0) {
+                            return mod.acronym;
+                        }
 
-        const cacheString = perfMods.map(m => {
-            if (!m.settings || Object.keys(m.settings).length === 0) {
-                return m.acronym;
-            }
-            
+                        custom = true;
+
+                        const settings = Object.entries(mod.settings)
+                            .sort(([a], [b]) => a.localeCompare(b))
+                            .map(([key, value]) => `${key}=${value}`)
+                            .join(",");
+
+                        return `${mod.acronym}(${settings})`;
+                    })
+                    .sort()
+                    .join("");
+
+        if (clockRate !== undefined) {
             custom = true;
-            const settingsStr = Object.entries(m.settings)
-                .sort(([a], [b]) => a.localeCompare(b))
-                .map(([k, v]) => `${k}=${v}`)
-                .join(',');
-                
-            return `${m.acronym}(${settingsStr})`;
-        }).sort().join("");
+            cacheString += `@${clockRate.toFixed(6)}x`;
+        }
 
         return { cacheString, custom };
     }

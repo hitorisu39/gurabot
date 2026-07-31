@@ -4,6 +4,7 @@ import { PopulatedUser } from "@domain/osu/Profile.dto";
 import { MapViewDto } from "@domain/osu/views/Map.view";
 import { ProfileViewDto } from "@domain/osu/views/Profile.view";
 import { ScoresViewDto } from "@domain/osu/views/Scores.view";
+import { SimulateViewDto } from "@domain/osu/views/Simulate.view";
 
 export interface ICacheSchema {
     // Discord
@@ -14,6 +15,7 @@ export interface ICacheSchema {
     osu_profile_view: ProfileViewDto;
     osu_scores_view: ScoresViewDto;
     osu_map_view: MapViewDto;
+    osu_simulate_view: SimulateViewDto;
 
     // Osu
     osu_user_profile: PopulatedUser;

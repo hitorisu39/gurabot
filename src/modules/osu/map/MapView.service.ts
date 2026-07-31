@@ -1,5 +1,4 @@
 import { Import } from "@/core/decorators";
-import { AbstractService } from "@/core/framework/AbstractService";
 import { CalculatorService } from "../calculator/Calculator.service";
 import { MapViewDto } from "@domain/osu/views/Map.view";
 import { TMessagePayload } from "@/core/discord/context/CommandContext";
@@ -38,6 +37,7 @@ export class MapViewService extends AbstractViewService<MapViewDto, boolean> {
             currentMap.mode,
             data.mods,
         );
+
         const embed = await this.createEmbed(data.beatmapset, currentMap, data, difficulty);
         embed.setImage("attachment://strains.png");
 

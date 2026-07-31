@@ -15,19 +15,21 @@ export class CalculatorService extends AbstractService {
     public async difficulty<M extends GameMode>(
         beatmapID: number,
         mode: M,
-        mods: Array<ParsedMod>
+        mods: Array<ParsedMod>,
+        clockRate?: number,
     ): Promise<TDifficultyAttributes<M>> {
         await this.calculatorMapService.download(beatmapID);
-        return this.calculatorAttributesService.get(beatmapID, mode, mods);
+        return this.calculatorAttributesService.get(beatmapID, mode, mods, clockRate);
     }
 
     public async difficultyWithStrains<M extends GameMode>(
         beatmapID: number,
         mode: M,
-        mods: Array<ParsedMod>
+        mods: Array<ParsedMod>,
+        clockRate?: number,
     ): Promise<IDifficultyCalculationResponse<M>> {
         await this.calculatorMapService.download(beatmapID);
-        return this.calculatorAttributesService.getWithStrains(beatmapID, mode, mods);
+        return this.calculatorAttributesService.getWithStrains(beatmapID, mode, mods, clockRate);
     }
 
     public async performance<M extends GameMode>(
@@ -38,7 +40,7 @@ export class CalculatorService extends AbstractService {
     ): Promise<IPerformanceCalculationResponse<M>> {
         await this.calculatorMapService.download(beatmapID);
 
-        const precalculatedDifficulty = await this.calculatorAttributesService.get(beatmapID, mode, mods);
+        const precalculatedDifficulty = options.precalculatedDifficulty ?? await this.calculatorAttributesService.get(beatmapID, mode, mods, options.clockRate);
 
         const protoMods = mods.map(m => ({
             acronym: m.acronym,

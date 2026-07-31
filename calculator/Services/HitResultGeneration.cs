@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using Calculator.Protos;
 using osu.Game.Beatmaps;
 using osu.Game.Rulesets.Catch.Objects;
@@ -8,7 +5,6 @@ using osu.Game.Rulesets.Mania.Objects;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Scoring;
-using osu.Game.Rulesets.Taiko.Objects;
 
 namespace Calculator.Services;
 
@@ -29,7 +25,7 @@ public class HitResultGeneration
 
         return rulesetId switch
         {
-            0 => GenerateStandard(beatmap, accuracy, countMiss, countMeh, countOk, countLargeTickMisses, countSliderTailMisses),
+            0 => GenerateStandard(beatmap, mods, accuracy, countMiss, countMeh, countOk, countLargeTickMisses, countSliderTailMisses),
             1 => GenerateTaiko(accuracy, beatmap, countMiss, countOk),
             2 => GenerateCatch(beatmap, accuracy, countMiss, countMeh, countOk),
             3 => GenerateMania(beatmap, mods, accuracy, countMiss, countMeh, countOk, countGood, countGreat),
@@ -37,7 +33,7 @@ public class HitResultGeneration
         };
     }
 
-    private Dictionary<HitResult, int> GenerateStandard(IBeatmap beatmap, double accuracy, int countMiss, int? countMeh, int? countGood, int? countLargeTickMisses, int? countSliderTailMisses)
+    private Dictionary<HitResult, int> GenerateStandard(IBeatmap beatmap, Mod[] mods, double accuracy, int countMiss, int? countMeh, int? countGood, int? countLargeTickMisses, int? countSliderTailMisses)
     {
         int countGreat;
         int totalResultCount = beatmap.HitObjects.Count;
@@ -88,11 +84,40 @@ public class HitResultGeneration
             { HitResult.Miss, countMiss },
         };
 
-        if (countLargeTickMisses != null)
-            result[HitResult.LargeTickMiss] = countLargeTickMisses.Value;
+        bool isClassic = mods.Any(mod => mod.Acronym == "CL");
 
-        if (countSliderTailMisses != null)
-            result[HitResult.SliderTailHit] = beatmap.HitObjects.Count(x => x is Slider) - countSliderTailMisses.Value;
+        if (!isClassic)
+        {
+            int totalLargeTicks = beatmap.HitObjects.Sum(
+                hitObject => hitObject.NestedHitObjects.Count(
+                    nested => nested is SliderTick || nested is SliderRepeat
+                )
+            );
+
+            int largeTickMisses = Math.Clamp(
+                countLargeTickMisses ?? 0,
+                0,
+                totalLargeTicks
+            );
+
+            result[HitResult.LargeTickHit] =
+                totalLargeTicks - largeTickMisses;
+
+            result[HitResult.LargeTickMiss] =
+                largeTickMisses;
+
+            int totalSliderEnds =
+                beatmap.HitObjects.Count(hitObject => hitObject is Slider);
+
+            int sliderTailMisses = Math.Clamp(
+                countSliderTailMisses ?? 0,
+                0,
+                totalSliderEnds
+            );
+
+            result[HitResult.SliderTailHit] =
+                totalSliderEnds - sliderTailMisses;
+        }
 
         return result;
     }

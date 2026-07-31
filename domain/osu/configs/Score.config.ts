@@ -6,3 +6,8 @@ export const scoreDetailedPageSize = 5;
 
 // Default delimiter for score statistics.
 export const scoreStatsDelimiter = "  •  ";
+
+/**
+ * Compact delimiter for dense hit-count displays.
+ */
+export const scoreStatsCompactDelimiter = " • ";

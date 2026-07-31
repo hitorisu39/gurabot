@@ -385,7 +385,7 @@ async function generateMods() {
 
     modsFile += `const MOD_METADATA: Record<string, { name: string, type: ModType, incompatibleWith: string[] }> = {\n`;
     modMap.forEach((mod) => {
-        const incompact = mod.IncompatibleWith ? JSON.stringify(mod.IncompatibleWith) : "[]";
+        const incompact = mod.IncompatibleMods ? JSON.stringify(mod.IncompatibleMods) : "[]";
         modsFile += `    "${mod.Acronym}": { name: "${mod.Name.replace(/'/g, "\\'")}", type: "${mod.Type}", incompatibleWith: ${incompact} },\n`;
     });
     modsFile += `};\n\n`;
@@ -489,14 +489,24 @@ async function generateMods() {
     }
 
     static findIncompatibilities(mods: Array<ParsedMod>): Record<string, Array<string>> {
-        const conflicts: Record<string, string[]> = {};
+        const conflicts: Record<string, Array<string>> = {};
+
         if (mods.length < 2) return conflicts;
 
-        const acronymsInSet = new Set(mods.map(m => m.acronym));
+        const acronyms = new Set(mods.map((mod) => mod.acronym));
 
         for (const mod of mods) {
-            const incompatList = MOD_METADATA[mod.acronym]?.incompatibleWith || [];
-            const currentConflicts = incompatList.filter(incompatibleAcro => acronymsInSet.has(incompatibleAcro));
+            const incompatible = MOD_METADATA[mod.acronym]?.incompatibleWith ?? [];
+
+            const currentConflicts = [
+                ...new Set(
+                    incompatible.filter(
+                        (acronym) =>
+                            acronym !== mod.acronym &&
+                            acronyms.has(acronym),
+                    ),
+                ),
+            ];
 
             if (currentConflicts.length > 0) {
                 conflicts[mod.acronym] = currentConflicts;

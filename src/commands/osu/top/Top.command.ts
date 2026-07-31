@@ -5,7 +5,7 @@ import { AbstractTopCommand } from "./AbstractTopCommand";
 @Command({
     name: "top",
     description: "Shows top 100 plays of an osu! player.",
-    aliases: ["osutop"],
+    aliases: ["osutop", "t"],
 })
 export class TopCommand extends AbstractTopCommand {}
 

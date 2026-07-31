@@ -59,8 +59,11 @@ export class CommandParser {
                     rawValue = (ctx as SlashContext).interaction.options.getString(meta.name);
                 } else {
                     const explicitValue = prefixMap.get(meta.name.toLowerCase());
+
                     if (explicitValue !== undefined) {
                         rawValue = explicitValue;
+                    } else if (meta.inject && (injectedContent.length > 0 || prefixMap.size > 0)) {
+                        rawValue = injectedContent;
                     } else if (prefixMap.size > 0) {
                         rawValue = "";
                     } else {
@@ -241,13 +244,11 @@ export class CommandParser {
 
         if (ctx.isSlash) {
             cleanedContent = this.extractKeyValuePairs(cleanedContent, queryPrefixMap);
+        } else if (globalPrefixMap.has(meta.name.toLowerCase())) {
+            cleanedContent = this.extractKeyValuePairs(cleanedContent, queryPrefixMap);
         } else {
-            if (globalPrefixMap.has(meta.name.toLowerCase())) {
-                cleanedContent = this.extractKeyValuePairs(cleanedContent, queryPrefixMap);
-            } else {
-                queryPrefixMap = globalPrefixMap;
-                cleanedContent = "";
-            }
+            queryPrefixMap = globalPrefixMap;
+            cleanedContent = meta.inject ? stringContent : "";
         }
 
         const parsedDtoFields = await this.parseAndValidate(ctx, properties, {

@@ -5,6 +5,7 @@ export const graphStrainColors: Record<string, { border: string; bg: string }> =
     AimNoSliders: { border: "#826cfc", bg: "rgba(130, 108, 252,0.2)" },
     Speed: { border: "#6cfcca", bg: "rgba(108, 252, 202,0.2)" },
     Flashlight: { border: "#fcad6c", bg: "rgba(252, 173, 108,0.2)" },
+    Reading: { border: "#fcda6c", bg: "rgba(252, 226, 108, 0.2)" },
     // Taiko
     Color: { border: "#fc6c6c", bg: "rgba(252, 108, 108, 0.2)" },
     Rhythm: { border: "#f06cfc", bg: "rgba(240, 108, 252, 0.2)" },

@@ -41,18 +41,26 @@ export interface IBaseDifficultyAttributes {
 export interface IStandardDifficultyAttributes extends IBaseDifficultyAttributes {
     aimDifficulty: number;
     aimDifficultSliderCount: number;
+
     speedDifficulty: number;
     speedNoteCount: number;
+
     flashlightDifficulty: number;
+    readingDifficulty: number;
+
     sliderFactor: number;
+
     aimTopWeightedSliderFactor: number;
     speedTopWeightedSliderFactor: number;
+
     aimDifficultStrainCount: number;
     speedDifficultStrainCount: number;
+    readingDifficultNoteCount: number;
+
     nestedScorePerObject: number;
     legacyScoreBaseMultiplier: number;
     maximumLegacyComboScore: number;
-    drainRate: number;
+
     hitCircleCount: number;
     sliderCount: number;
     spinnerCount: number;
@@ -87,6 +95,7 @@ export interface ICalculateDifficultyOptions<M extends GameMode> {
     beatmapPath: DifficultyRequest["beatmapPath"];
     mods?: DifficultyRequest["mods"];
     passedObjects?: DifficultyRequest["passedObjects"];
+    clockRate?: DifficultyRequest["clockRate"];
     calculateStrains?: boolean;
 }
 
@@ -137,6 +146,7 @@ export interface ICalculatePerformanceOptions<M extends GameMode> {
     score: PerformanceRequest["score"];
     passedObjects?: PerformanceRequest["passedObjects"];
     mods?: PerformanceRequest["mods"];
+    clockRate?: PerformanceRequest["clockRate"];
     referenceId?: PerformanceRequest["referenceId"];
     totalScore?: PerformanceRequest["totalScore"];
     legacyTotalScore?: PerformanceRequest["legacyTotalScore"];

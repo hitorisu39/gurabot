@@ -74,7 +74,6 @@ export class ScoreViewService extends AbstractViewService<ScoresViewDto, Record<
         }
 
         const firstScore = data.scores[0];
-
         if (!firstScore || !ScoreUtils.hasMaps(firstScore)) {
             return;
         }

@@ -30,7 +30,7 @@ import { ScoreViewService } from "@/modules/osu/scores/ScoreView.service";
     Exact values: \`version\`.
 
     **Mapset Filters**
-    Exact strings: \`artist\`, \`creator\`, \`title\`.\n
+    Exact strings: \`artist\`, \`creator\`, \`title\`.
 
     **Score Filters**
     Ranges supported: \`accuracy\`, \`combo\`, \`index\`, \`misses\`, \`pp\`, \`ppfc\`.

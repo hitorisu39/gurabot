@@ -16,6 +16,8 @@ using osu.Game.Rulesets.Osu.Difficulty;
 using osu.Game.Rulesets.Taiko.Difficulty;
 using osu.Game.Rulesets.Catch.Difficulty;
 using osu.Game.Rulesets.Mania.Difficulty;
+using osu.Game.Rulesets.Difficulty.Preprocessing;
+using osu.Game.Rulesets.Difficulty.Skills;
 using System.Collections.Concurrent;
 
 namespace Calculator.Services;
@@ -73,13 +75,25 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
             result.Add(mod);
         }
 
-        if (customClockRate.HasValue && customClockRate.Value != 1.0)
+        if (customClockRate.HasValue)
         {
-            var rateMod = availableMods.OfType<ModRateAdjust>().FirstOrDefault();
-            if (rateMod != null && !result.Any(m => m is ModRateAdjust))
+            var existingRateMod = result.OfType<ModRateAdjust>().FirstOrDefault();
+
+            if (existingRateMod != null)
             {
-                rateMod.SpeedChange.Value = customClockRate.Value;
-                result.Add(rateMod);
+                existingRateMod.SpeedChange.Value = customClockRate.Value;
+            }
+            else if (Math.Abs(customClockRate.Value - 1.0) > 0.000001)
+            {
+                var targetAcronym = customClockRate.Value > 1.0 ? "DT" : "HT";
+                var rateMod = availableMods
+                    .FirstOrDefault(mod => mod.Acronym == targetAcronym) as ModRateAdjust;
+
+                if (rateMod != null)
+                {
+                    rateMod.SpeedChange.Value = customClockRate.Value;
+                    result.Add(rateMod);
+                }
             }
         }
 
@@ -103,75 +117,141 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
         return dict;
     }
 
-    private IEnumerable<SkillStrain> GetStrains(DifficultyCalculator calculator, IBeatmap playableBeatmap, Mod[] mods, double clockRate)
+    private IEnumerable<SkillStrain> GetStrains(
+        DifficultyCalculator calculator,
+        IBeatmap playableBeatmap,
+        Mod[] mods)
     {
-        var calcType = calculator.GetType();
-        
-        var createSkillsMethod = calcType.GetMethod("CreateSkills", BindingFlags.NonPublic | BindingFlags.Instance);
-        var createHitObjectsMethod = calcType.GetMethod("CreateDifficultyHitObjects", BindingFlags.NonPublic | BindingFlags.Instance);
+        Type calculatorType = calculator.GetType();
 
-        if (createSkillsMethod == null || createHitObjectsMethod == null) return Array.Empty<SkillStrain>();
+        MethodInfo createSkillsMethod = FindInstanceMethod(
+            calculatorType,
+            "CreateSkills",
+            typeof(IBeatmap),
+            typeof(Mod[])
+        ) ?? throw new MissingMethodException(
+            calculatorType.FullName,
+            "CreateSkills(IBeatmap, Mod[])"
+        );
 
-        var skills = (IEnumerable<object>)createSkillsMethod.Invoke(calculator, new object[] { playableBeatmap, mods, clockRate })!;
-        var hitObjects = (IEnumerable<object>)createHitObjectsMethod.Invoke(calculator, new object[] { playableBeatmap, clockRate })!;
+        MethodInfo createHitObjectsMethod = FindInstanceMethod(
+            calculatorType,
+            "CreateDifficultyHitObjects",
+            typeof(IBeatmap),
+            typeof(Mod[])
+        ) ?? throw new MissingMethodException(
+            calculatorType.FullName,
+            "CreateDifficultyHitObjects(IBeatmap, Mod[])"
+        );
 
-        var skillsList = skills.ToList();
-        var hitObjectsList = hitObjects.ToList();
+        MethodInfo sortObjectsMethod = FindInstanceMethod(
+            calculatorType,
+            "SortObjects",
+            typeof(IEnumerable<DifficultyHitObject>)
+        ) ?? throw new MissingMethodException(
+            calculatorType.FullName,
+            "SortObjects(IEnumerable<DifficultyHitObject>)"
+        );
 
-        if (!skillsList.Any() || !hitObjectsList.Any()) return Array.Empty<SkillStrain>();
+        var skills = createSkillsMethod.Invoke(
+            calculator,
+            new object[] { playableBeatmap, mods }
+        ) as Skill[];
 
-        var orderedHitObjects = hitObjectsList.OrderBy(h => ((dynamic)h).StartTime).ToList();
-
-        foreach (var hitObject in orderedHitObjects)
+        if (skills == null)
         {
-            foreach (var skill in skillsList)
+            throw new InvalidOperationException(
+                $"{calculatorType.Name}.CreateSkills() returned an unexpected value."
+            );
+        }
+
+        var unsortedHitObjects = createHitObjectsMethod.Invoke(
+            calculator,
+            new object[] { playableBeatmap, mods }
+        ) as IEnumerable<DifficultyHitObject>;
+
+        if (unsortedHitObjects == null)
+        {
+            throw new InvalidOperationException(
+                $"{calculatorType.Name}.CreateDifficultyHitObjects() returned an unexpected value."
+            );
+        }
+
+        var hitObjects = sortObjectsMethod.Invoke(
+            calculator,
+            new object[] { unsortedHitObjects }
+        ) as IEnumerable<DifficultyHitObject>;
+
+        if (hitObjects == null)
+        {
+            throw new InvalidOperationException(
+                $"{calculatorType.Name}.SortObjects() returned an unexpected value."
+            );
+        }
+
+        foreach (DifficultyHitObject hitObject in hitObjects)
+        {
+            foreach (Skill skill in skills)
             {
-                ((dynamic)skill).Process((dynamic)hitObject);
+                skill.Process(hitObject);
             }
         }
 
-        var strains = new List<SkillStrain>();
+        var strains = new List<SkillStrain>(skills.Length);
         var nameCounts = new Dictionary<string, int>();
 
-        foreach (var skill in skillsList)
+        foreach (Skill skill in skills)
         {
-            try
-            {
-                var peaks = ExtractPeaksFromSkill(skill);
-                if (peaks != null && peaks.Any())
-                {
-                    string name = GetSkillName(skill);
-                    
-                    if (!nameCounts.TryAdd(name, 1))
-                    {
-                        nameCounts[name]++;
-                        name += nameCounts[name].ToString();
-                    }
+            IReadOnlyList<double> values = skill.GetObjectDifficulties();
 
-                    var strain = new SkillStrain { SkillName = name };
-                    strain.Peaks.AddRange(peaks);
-                    strains.Add(strain);
-                }
+            if (values.Count == 0)
+                continue;
+
+            string name = GetSkillName(skill);
+
+            if (nameCounts.TryGetValue(name, out int duplicateCount))
+            {
+                duplicateCount++;
+                nameCounts[name] = duplicateCount;
+                name += duplicateCount;
             }
-            catch {}
+            else
+            {
+                nameCounts[name] = 1;
+            }
+
+            var strain = new SkillStrain
+            {
+                SkillName = name
+            };
+
+            strain.Peaks.AddRange(values);
+            strains.Add(strain);
         }
 
         return strains;
     }
 
-    private IEnumerable<double>? ExtractPeaksFromSkill(object skill)
+    private static MethodInfo? FindInstanceMethod(
+        Type type,
+        string methodName,
+        params Type[] parameterTypes)
     {
-        for (var t = skill.GetType(); t != null; t = t.BaseType)
+        for (Type? current = type; current != null; current = current.BaseType)
         {
-            var field = t.GetField("strainPeaks", BindingFlags.Instance | BindingFlags.NonPublic) ??
-                        t.GetField("CurrentStrainPeaks", BindingFlags.Instance | BindingFlags.NonPublic);
-            
-            if (field != null) return (IEnumerable<double>?)field.GetValue(skill);
+            MethodInfo? method = current.GetMethod(
+                methodName,
+                BindingFlags.Instance |
+                BindingFlags.Public |
+                BindingFlags.NonPublic |
+                BindingFlags.DeclaredOnly,
+                binder: null,
+                types: parameterTypes,
+                modifiers: null
+            );
 
-            var prop = t.GetProperty("CurrentStrainPeaks", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic) ??
-                       t.GetProperty("StrainPeaks", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-
-            if (prop != null) return (IEnumerable<double>?)prop.GetValue(skill);
+            if (method != null)
+                return method;
         }
 
         return null;
@@ -245,7 +325,7 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
 
         if (request.CalculateStrains)
         {
-            var strains = GetStrains(difficultyCalculator, playableBeatmap, mods, clockRate);
+            var strains = GetStrains(difficultyCalculator, playableBeatmap, mods);
             response.Strains.AddRange(strains);
         }
 
@@ -332,11 +412,17 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
                 MaxCombo = (uint)scoreInfo.MaxCombo,
                 Accuracy = accuracy,
                 Count300 = (uint)statistics.GetValueOrDefault(HitResult.Great, 0),
-                Count100 = (uint)statistics.GetValueOrDefault(HitResult.Ok, 0),
-                Count50 = (uint)statistics.GetValueOrDefault(HitResult.Meh, 0),
+                Count100 = request.RulesetId == 2
+                    ? (uint)statistics.GetValueOrDefault(HitResult.LargeTickHit, 0)
+                    : (uint)statistics.GetValueOrDefault(HitResult.Ok, 0),
+                Count50 = request.RulesetId == 2
+                    ? (uint)statistics.GetValueOrDefault(HitResult.SmallTickHit, 0)
+                    : (uint)statistics.GetValueOrDefault(HitResult.Meh, 0),
                 CountMiss = (uint)statistics.GetValueOrDefault(HitResult.Miss, 0),
                 CountGeki = (uint)statistics.GetValueOrDefault(HitResult.Perfect, 0),
-                CountKatu = (uint)statistics.GetValueOrDefault(HitResult.Good, 0),
+                CountKatu = request.RulesetId == 2
+                    ? (uint)statistics.GetValueOrDefault(HitResult.SmallTickMiss, 0)
+                    : (uint)statistics.GetValueOrDefault(HitResult.Good, 0),
                 CountLargeTickHits = (uint)statistics.GetValueOrDefault(HitResult.LargeTickHit, 0),
                 CountSliderTailHits = (uint)statistics.GetValueOrDefault(HitResult.SliderTailHit, 0)
             },

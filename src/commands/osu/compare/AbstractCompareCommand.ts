@@ -1,7 +1,6 @@
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import {
     Aliases,
-    Command,
     Examples,
     Help,
     Import,
