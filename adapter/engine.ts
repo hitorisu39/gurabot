@@ -2,16 +2,16 @@ import http from "http";
 import https from "https";
 import axios, { AxiosRequestConfig, AxiosResponse, isAxiosError } from "axios";
 import { ProviderConfig, SchemaModel } from "./builder";
-import { wait } from "./utils";
+import { AdapterConfigurationError, AdapterRequestError, AdapterRequestErrorKind } from "./error";
 import { ModUtils } from "@generated/adapter/mods";
-import { AdapterErrorKind, AdapterRequestError } from "./error";
+import { wait } from "./utils";
 
 export interface AdapterResponseContext {
     providerName: string;
     endpointName: string;
     args: unknown;
     request: AxiosRequestConfig;
-    response: AxiosResponse | null;
+    response: AxiosResponse | undefined;
     attempt: number;
     maxAttempts: number;
     durationMs: number;
@@ -30,58 +30,72 @@ export interface AdapterErrorContext {
 }
 
 export interface AdapterHook {
-    beforeRequest?: (req: AxiosRequestConfig, args: any) => Promise<AxiosRequestConfig> | AxiosRequestConfig;
-    afterRequest?: (res: any) => Promise<any> | any;
+    beforeRequest?: (request: AxiosRequestConfig, args: unknown) => Promise<AxiosRequestConfig> | AxiosRequestConfig;
+    afterRequest?: (data: unknown) => Promise<unknown> | unknown;
     onResponse?: (context: AdapterResponseContext) => Promise<void> | void;
     onError?: (context: AdapterErrorContext) => Promise<void> | void;
+    mapError?: (error: Error, context: AdapterErrorContext) => Promise<Error> | Error;
 }
 
-const httpAgent = new http.Agent({ keepAlive: true });
-const httpsAgent = new https.Agent({ keepAlive: true });
+const httpAgent = new http.Agent({
+    keepAlive: true,
+});
+
+const httpsAgent = new https.Agent({
+    keepAlive: true,
+});
 
 export class AdapterEngine {
-    private hooks: Array<AdapterHook> = [];
+    private readonly hooks: AdapterHook[] = [];
 
     private static readonly nonRetryableStatusCodes = new Set([400, 401, 403, 404, 422]);
-    private static readonly statusCodeMessages: Record<number, string> = {
-        404: "Not Found. This might be due to an incorrect username, ID, etc.",
-    };
 
-    constructor(public config: ProviderConfig) {}
+    constructor(public readonly config: ProviderConfig) {}
 
     public addHook(hook: AdapterHook): void {
         this.hooks.push(hook);
     }
 
-    public async execute(endpointName: string, args: any) {
+    public async execute(endpointName: string, args: any): Promise<any> {
         const endpoint = this.config.endpoints[endpointName];
-        if (!endpoint)
-            throw new Exception(
-                EApplicationError.INTERNAL_ERROR,
-                "An unknown endpoint was passed to the adapter engine",
-            );
 
-        const mappedArgs = { ...args };
+        if (!endpoint) {
+            throw new AdapterConfigurationError(
+                `Unknown endpoint "${endpointName}" for adapter provider "${this.config.name}".`,
+                {
+                    providerName: this.config.name,
+                    endpointName,
+                },
+            );
+        }
+
+        const mappedArgs = {
+            ...args,
+        };
+
         if (endpoint.args) {
             for (const [argName, fieldDef] of Object.entries(endpoint.args)) {
-                if (mappedArgs[argName] !== undefined) {
-                    let toPlainFn = undefined;
+                if (mappedArgs[argName] === undefined) {
+                    continue;
+                }
 
-                    const mapConfig = endpoint.mapping[argName];
-                    if (
-                        mapConfig &&
-                        typeof mapConfig === "object" &&
-                        mapConfig.transform &&
-                        typeof mapConfig.transform === "object"
-                    ) {
-                        toPlainFn = mapConfig.transform.toPlain;
-                    } else if (fieldDef.$type === "Enum" && fieldDef.$enumDef && this.config.transforms) {
-                        toPlainFn = this.config.transforms[fieldDef.$enumDef.$name]?.toPlain;
-                    }
+                let toPlainFn: ((value: any) => any) | undefined;
 
-                    if (toPlainFn) {
-                        mappedArgs[argName] = toPlainFn(mappedArgs[argName]);
-                    }
+                const mapConfig = endpoint.mapping[argName];
+
+                if (
+                    mapConfig &&
+                    typeof mapConfig === "object" &&
+                    mapConfig.transform &&
+                    typeof mapConfig.transform === "object"
+                ) {
+                    toPlainFn = mapConfig.transform.toPlain;
+                } else if (fieldDef.$type === "Enum" && fieldDef.$enumDef && this.config.transforms) {
+                    toPlainFn = this.config.transforms[fieldDef.$enumDef.$name]?.toPlain;
+                }
+
+                if (toPlainFn) {
+                    mappedArgs[argName] = toPlainFn(mappedArgs[argName]);
                 }
             }
         }
@@ -90,9 +104,11 @@ export class AdapterEngine {
             url: endpoint.path(mappedArgs),
             baseURL: this.config.base,
             method: endpoint.method,
-            headers: { "Content-Type": "application/json" },
-            httpAgent: httpAgent,
-            httpsAgent: httpsAgent,
+            headers: {
+                "Content-Type": "application/json",
+            },
+            httpAgent,
+            httpsAgent,
         };
 
         for (const hook of this.hooks) {
@@ -103,9 +119,9 @@ export class AdapterEngine {
 
         const maxRetries = 2;
         const maxAttempts = maxRetries + 1;
-        const retryDelay = 250;
+        const retryDelayMs = 250;
 
-        let response: AxiosResponse | null = null;
+        let response: AxiosResponse | undefined;
 
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
             const start = performance.now();
@@ -129,40 +145,41 @@ export class AdapterEngine {
                 const retryable = this.isRetryable(error);
                 const willRetry = retryable && attempt < maxAttempts;
 
-                const requestError = this.createRequestError(endpointName, error, attempt, maxAttempts, retryable);
+                const adapterError = this.createRequestError(endpointName, error, attempt, maxAttempts, retryable);
 
-                await this.notifyErrorHooks({
+                const context: AdapterErrorContext = {
                     providerName: this.config.name,
                     endpointName,
                     args: mappedArgs,
                     request: requestConfig,
-                    error: requestError,
+                    error: adapterError,
                     attempt,
                     maxAttempts,
                     durationMs: performance.now() - start,
                     willRetry,
-                });
+                };
+
+                await this.notifyErrorHooks(context);
 
                 if (!willRetry) {
-                    throw requestError;
+                    throw await this.mapError(adapterError, context);
                 }
 
-                await wait(retryDelay);
+                await wait(retryDelayMs);
             }
         }
 
         if (!response) {
-            throw new AdapterRequestError(`Adapter endpoint "${endpointName}" exited without a response.`, {
-                providerName: this.config.name,
-                endpointName,
-                kind: "internal",
-                retryable: false,
-                attempt: maxAttempts,
-                maxAttempts,
-            });
+            throw new AdapterConfigurationError(
+                `Adapter endpoint "${endpointName}" exited without a response or error.`,
+                {
+                    providerName: this.config.name,
+                    endpointName,
+                },
+            );
         }
 
-        let data = response.data;
+        let data: unknown = response.data;
 
         for (const hook of this.hooks) {
             if (hook.afterRequest) {
@@ -171,11 +188,8 @@ export class AdapterEngine {
         }
 
         const returnsModel = "model" in endpoint.returns ? endpoint.returns.model : endpoint.returns;
-
         const isArray = "isArray" in endpoint.returns ? endpoint.returns.isArray : false;
-
         const dataPath = "dataPath" in endpoint.returns ? endpoint.returns.dataPath : undefined;
-
         const targetData = dataPath ? this.getByPath(data, dataPath) : data;
 
         if (isArray) {
@@ -186,84 +200,11 @@ export class AdapterEngine {
             return targetData.map((item, index) => this.mapData(item, returnsModel, endpoint.mapping, index));
         }
 
-        if (!targetData) {
+        if (targetData === undefined || targetData === null) {
             return null;
         }
 
         return this.mapData(targetData, returnsModel, endpoint.mapping);
-    }
-
-    private mapData(raw: any, model: SchemaModel, mapping: Record<string, any>, arrayIndex?: number) {
-        const result: any = {};
-        for (const [fieldName, fieldDef] of Object.entries(model.fields)) {
-            const mapConfig = mapping[fieldName];
-            let value = undefined;
-
-            if (mapConfig === "$index") {
-                value = arrayIndex !== undefined ? arrayIndex + 1 : 1;
-            } else if (mapConfig) {
-                if (typeof mapConfig === "string") {
-                    value = this.getByPath(raw, mapConfig);
-                } else {
-                    value = this.getByPath(raw, mapConfig.path || fieldName);
-                    if (value === undefined && mapConfig.default !== undefined) value = mapConfig.default;
-                }
-
-                if (value !== undefined) {
-                    let toInstanceFn = undefined;
-
-                    if (typeof mapConfig === "object" && mapConfig.transform) {
-                        toInstanceFn =
-                            typeof mapConfig.transform === "function"
-                                ? mapConfig.transform
-                                : mapConfig.transform.toInstance;
-                    } else if (fieldDef.$type === "Enum" && fieldDef.$enumDef && this.config.transforms) {
-                        toInstanceFn = this.config.transforms[fieldDef.$enumDef.$name]?.toInstance;
-                    }
-
-                    if (toInstanceFn) {
-                        value = toInstanceFn(value);
-                    }
-                }
-            } else {
-                value = this.getByPath(raw, fieldName);
-
-                if (
-                    value !== undefined &&
-                    value !== null &&
-                    fieldDef.$type === "Enum" &&
-                    fieldDef.$enumDef &&
-                    this.config.transforms
-                ) {
-                    const toInstanceFn = this.config.transforms[fieldDef.$enumDef.$name]?.toInstance;
-                    if (toInstanceFn) value = toInstanceFn(value);
-                }
-            }
-
-            if (fieldDef.$type === "Mods" && value !== undefined && value !== null) {
-                value = ModUtils.parse(value);
-            }
-
-            if (fieldDef.$type === "Date" && value !== undefined && value !== null) {
-                value = new Date(value);
-            }
-
-            if (fieldDef.$type === "Model" && fieldDef.$nestedModel && value) {
-                const nestedMapping = typeof mapConfig === "object" && mapConfig.nested ? mapConfig.nested : {};
-
-                if (fieldDef.$isArray) {
-                    value = (value as any[]).map((v, idx) =>
-                        this.mapData(v, fieldDef.$nestedModel!, nestedMapping, idx),
-                    );
-                } else {
-                    value = this.mapData(value, fieldDef.$nestedModel, nestedMapping);
-                }
-            }
-
-            result[fieldName] = value;
-        }
-
-        return result;
     }
 
     private isRetryable(error: unknown): boolean {
@@ -289,7 +230,7 @@ export class AdapterEngine {
         maxAttempts: number,
         retryable: boolean,
     ): AdapterRequestError {
-        let kind: AdapterErrorKind = "internal";
+        let kind: AdapterRequestErrorKind = "internal";
         let status: number | undefined;
         let code: string | undefined;
 
@@ -297,20 +238,18 @@ export class AdapterEngine {
             status = error.response?.status;
             code = error.code;
 
-            if (error.code === "ERR_CANCELED") {
+            if (code === "ERR_CANCELED") {
                 kind = "cancelled";
-            } else if (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT") {
+            } else if (code === "ECONNABORTED" || code === "ETIMEDOUT") {
                 kind = "timeout";
-            } else if (error.response) {
+            } else if (status !== undefined) {
                 kind = "http";
             } else {
                 kind = "network";
             }
         }
 
-        const message = this.createRequestErrorMessage(endpointName, kind, status, code);
-
-        return new AdapterRequestError(message, {
+        return new AdapterRequestError(this.createRequestErrorMessage(endpointName, kind, status, code), {
             providerName: this.config.name,
             endpointName,
             kind,
@@ -325,29 +264,28 @@ export class AdapterEngine {
 
     private createRequestErrorMessage(
         endpointName: string,
-        kind: AdapterErrorKind,
+        kind: AdapterRequestErrorKind,
         status?: number,
         code?: string,
     ): string {
-        if (kind === "http") {
-            return `Adapter endpoint "${endpointName}" returned ` + `HTTP status ${status}.`;
+        switch (kind) {
+            case "http":
+                return `Adapter endpoint "${endpointName}" returned ` + `HTTP status ${status}.`;
+
+            case "timeout":
+                return `Adapter endpoint "${endpointName}" timed out.`;
+
+            case "cancelled":
+                return `Adapter endpoint "${endpointName}" was cancelled.`;
+
+            case "network":
+                return code
+                    ? `Adapter endpoint "${endpointName}" could not be reached. ` + `Error code: ${code}.`
+                    : `Adapter endpoint "${endpointName}" could not be reached.`;
+
+            case "internal":
+                return `Adapter endpoint "${endpointName}" failed with an ` + `unexpected internal error.`;
         }
-
-        if (kind === "timeout") {
-            return `Adapter endpoint "${endpointName}" timed out.`;
-        }
-
-        if (kind === "cancelled") {
-            return `Adapter endpoint "${endpointName}" was cancelled.`;
-        }
-
-        if (kind === "network") {
-            const suffix = code ? ` Error code: ${code}.` : "";
-
-            return `Adapter endpoint "${endpointName}" could not be reached.` + suffix;
-        }
-
-        return `Adapter endpoint "${endpointName}" failed with an ` + `unexpected internal error.`;
     }
 
     private async notifyResponseHooks(context: AdapterResponseContext): Promise<void> {
@@ -366,10 +304,102 @@ export class AdapterEngine {
         );
     }
 
-    private getByPath(obj: any, path: string) {
+    private async mapError(error: Error, context: AdapterErrorContext): Promise<Error> {
+        let mappedError = error;
+
+        for (const hook of this.hooks) {
+            if (hook.mapError) {
+                mappedError = await hook.mapError(mappedError, context);
+            }
+        }
+
+        return mappedError;
+    }
+
+    private mapData(raw: any, model: SchemaModel, mapping: Record<string, any>, arrayIndex?: number): any {
+        const result: any = {};
+
+        for (const [fieldName, fieldDef] of Object.entries(model.fields)) {
+            const mapConfig = mapping[fieldName];
+            let value: any;
+
+            if (mapConfig === "$index") {
+                value = arrayIndex !== undefined ? arrayIndex + 1 : 1;
+            } else if (mapConfig) {
+                if (typeof mapConfig === "string") {
+                    value = this.getByPath(raw, mapConfig);
+                } else {
+                    value = this.getByPath(raw, mapConfig.path || fieldName);
+
+                    if (value === undefined && mapConfig.default !== undefined) {
+                        value = mapConfig.default;
+                    }
+                }
+
+                if (value !== undefined) {
+                    let toInstanceFn: ((input: any) => any) | undefined;
+
+                    if (typeof mapConfig === "object" && mapConfig.transform) {
+                        toInstanceFn =
+                            typeof mapConfig.transform === "function"
+                                ? mapConfig.transform
+                                : mapConfig.transform.toInstance;
+                    } else if (fieldDef.$type === "Enum" && fieldDef.$enumDef && this.config.transforms) {
+                        toInstanceFn = this.config.transforms[fieldDef.$enumDef.$name]?.toInstance;
+                    }
+
+                    if (toInstanceFn) {
+                        value = toInstanceFn(value);
+                    }
+                }
+            } else {
+                value = this.getByPath(raw, fieldName);
+
+                if (
+                    value !== undefined &&
+                    value !== null &&
+                    fieldDef.$type === "Enum" &&
+                    fieldDef.$enumDef &&
+                    this.config.transforms
+                ) {
+                    const toInstanceFn = this.config.transforms[fieldDef.$enumDef.$name]?.toInstance;
+
+                    if (toInstanceFn) {
+                        value = toInstanceFn(value);
+                    }
+                }
+            }
+
+            if (fieldDef.$type === "Mods" && value !== undefined && value !== null) {
+                value = ModUtils.parse(value);
+            }
+
+            if (fieldDef.$type === "Date" && value !== undefined && value !== null) {
+                value = new Date(value);
+            }
+
+            if (fieldDef.$type === "Model" && fieldDef.$nestedModel && value) {
+                const nestedMapping = typeof mapConfig === "object" && mapConfig.nested ? mapConfig.nested : {};
+
+                if (fieldDef.$isArray) {
+                    value = (value as any[]).map((item, index) =>
+                        this.mapData(item, fieldDef.$nestedModel!, nestedMapping, index),
+                    );
+                } else {
+                    value = this.mapData(value, fieldDef.$nestedModel, nestedMapping);
+                }
+            }
+
+            result[fieldName] = value;
+        }
+
+        return result;
+    }
+
+    private getByPath(obj: any, path: string): any {
         return path
             .split(/[\.\[\]]/)
             .filter(Boolean)
-            .reduce((acc, part) => acc && acc[part], obj);
+            .reduce((current, part) => (current === undefined || current === null ? undefined : current[part]), obj);
     }
 }

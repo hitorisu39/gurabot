@@ -1,5 +1,5 @@
 import { Metrics } from "@/metrics";
-import { AdapterErrorContext, AdapterHook, AdapterResponseContext } from "../../adapter/engine";
+import { AdapterErrorContext, AdapterHook, AdapterResponseContext } from "@generated/adapter/types";
 
 export class AdapterMetricsMiddleware implements AdapterHook {
     constructor(private readonly metrics: Metrics) {}

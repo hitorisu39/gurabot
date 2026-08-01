@@ -159,8 +159,30 @@ async function generateProviders() {
     let outputTypeFile = `// AUTO-GENERATED - DO NOT EDIT MANUALLY, CHANGES WILL BE OVERWRITTEN
 import "reflect-metadata";
 import { Exclude, Expose, Type } from "class-transformer";
-import type { AdapterHook, AdapterErrorContext, AdapterResponseContext } from "../../adapter/engine";
-import type { ParsedMod } from "./mods";\n\n`;
+import type { AdapterHook } from "../../adapter/engine";
+import type { ParsedMod } from "./mods";
+
+export type {
+    AdapterErrorContext,
+    AdapterHook,
+    AdapterResponseContext,
+} from "../../adapter/engine";
+
+export {
+    AdapterConfigurationError,
+    AdapterEndpointNotImplementedError,
+    AdapterError,
+    AdapterRequestError,
+} from "../../adapter/error";
+
+export type {
+    AdapterConfigurationErrorOptions,
+    AdapterEndpointNotImplementedErrorOptions,
+    AdapterRequestErrorKind,
+    AdapterRequestErrorOptions,
+} from "../../adapter/error";
+
+`;
 
     enums.forEach((enumDef, name) => {
         outputTypeFile += `export enum ${name} {\n`;
@@ -249,9 +271,12 @@ import type { ParsedMod } from "./mods";\n\n`;
     });
 
     outputTypeFile += `export interface Adapter {\n`;
+    outputTypeFile += `    $use: (hook: AdapterHook) => void;\n`;
+
     providers.forEach((prov) => {
         outputTypeFile += `    ${prov.id}: ${prov.id}Client;\n`;
     });
+
     outputTypeFile += `}\n`;
 
     fs.writeFileSync(path.join(OUT_DIR, "types.ts"), outputTypeFile);
@@ -269,6 +294,7 @@ import type { Adapter } from "./types";\n`;
     outputClientFile += `import { Exception, EApplicationError } from "@domain/core/Exception";\n`;
 
     outputClientFile += `\nexport class AdapterClient implements Adapter {\n`;
+    outputClientFile += `    private readonly engines: AdapterEngine[] = [];\n\n`;
 
     providersMeta.forEach((pm) => {
         outputClientFile += `    public ${pm.id}: Adapter['${pm.id}'];\n`;
@@ -279,6 +305,8 @@ import type { Adapter } from "./types";\n`;
     providersMeta.forEach((pm) => {
         outputClientFile += `
         const ${pm.id}Engine = new AdapterEngine(${pm.exportName}.config);
+        this.engines.push(${pm.id}Engine);
+        
         this.${pm.id} = {
             $use: (hook: AdapterHook) => ${pm.id}Engine.addHook(hook),\n`;
 
@@ -298,7 +326,16 @@ import type { Adapter } from "./types";\n`;
         outputClientFile += `       };\n`;
     });
 
-    outputClientFile += `    }\n}\n`;
+    outputClientFile += `    }\n`;
+
+    outputClientFile += `
+    public $use(hook: AdapterHook): void {
+        for (const engine of this.engines) {
+            engine.addHook(hook);
+        }
+    }`;
+
+    outputClientFile += `\n}\n`;
 
     outputClientFile += `\nexport const ProviderMeta = {\n`;
     providersMeta.forEach((pm) => {

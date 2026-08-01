@@ -1,5 +1,5 @@
 import { TLogger } from "@/core";
-import { AdapterErrorContext, AdapterHook } from "../../adapter/engine";
+import { AdapterErrorContext, AdapterHook } from "@generated/adapter/types";
 
 export class AdapterLoggerMiddleware implements AdapterHook {
     constructor(private readonly logger: TLogger) {}
