@@ -27,9 +27,14 @@ export type TSkillName<M extends GameMode> = M extends GameMode.Standard
           ? TManiaSkillName
           : string;
 
+export interface ISkillStrainPoint {
+    timeMs: number;
+    value: number;
+}
+
 export interface ISkillStrain<M extends GameMode> {
     skillName: TSkillName<M> | (string & {});
-    peaks: Array<number>;
+    points: Array<ISkillStrainPoint>;
 }
 
 export interface IBaseDifficultyAttributes {

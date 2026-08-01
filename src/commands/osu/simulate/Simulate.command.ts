@@ -14,36 +14,35 @@ import { SimulateParametersParser } from "@domain/osu/utils/SimulateParametersPa
 import { SimulateQueryDto } from "@domain/osu/Simulate.dto";
 import { BeatmapUtils } from "@domain/osu/utils/BeatmapUtils";
 
-@Help(
-    [
-        "Simulates a score on a beatmap linked in the command or stored in the channel.",
-        "Available arguments:",
-        "- Accuracy: `acc=[number]` or `[number]%`",
-        "- Combo: `combo=[integer]` or `[integer]x`",
-        "- Clock rate: `clockrate=[number]`, `rate=[number]`, or `[number]*`",
-        "- BPM: `bpm=[number]` (only if clock rate is not specified)",
-        "- 300s: `n300=[integer]` or `[integer]x300`",
-        "- 100s: `n100=[integer]` or `[integer]x100`",
-        "- 50s: `n50=[integer]` or `[integer]x50`",
-        "- Misses: `miss=[integer]` or `[integer]m`",
-        "- Gekis / 320s: `gekis=[integer]` or `[integer]xgeki`",
-        "- Katus / 200s / tiny droplet misses: `katus=[integer]` or `[integer]xkatu`",
-        "- Missed slider ends: `sliderends=[integer]` or `[integer]xsliderends`",
-        "- Missed large ticks: `largeticks=[integer]` or `[integer]xlargeticks`",
-        "- Small ticks: `smallticks=[integer]` or `[integer]xsmallticks`",
-        "- Stable score: `score=[integer]`",
-        "- Mods: `mods=[mod acronyms]` or `+[mod acronyms]`",
-        "- Approach rate: `ar=[number]` or `ar[number]`",
-        "- Circle size: `cs=[number]` or `cs[number]`",
-        "- HP drain: `hp=[number]` or `hp[number]`",
-        "- Overall difficulty: `od=[number]` or `od[number]`",
-        "- Scoring mode: `lazer=[boolean]` or `stable=[boolean]`",
-        "",
-        "BPM and clock rate cannot be specified together.",
-        "Stable score can only be specified when using stable scoring.",
-        "Some hit-result arguments are only available for specific game modes.",
-    ].join("\n"),
-)
+@Help(`
+    Simulates a score on a beatmap linked in the command or stored in the channel.
+
+    Available arguments:
+    - Accuracy: \`acc=[number]\` or \`[number]%\`
+    - Combo: \`combo=[integer]\` or \`[integer]x\`
+    - Clock rate: \`clockrate=[number]\`, \`rate=[number]\`, or \`[number]*\`
+    - BPM: \`bpm=[number]\` (only if clock rate is not specified)
+    - 300s: \`n300=[integer]\` or \`[integer]x300\`
+    - 100s: \`n100=[integer]\` or \`[integer]x100\`
+    - 50s: \`n50=[integer]\` or \`[integer]x50\`
+    - Misses: \`miss=[integer]\` or \`[integer]m\`
+    - Gekis / 320s: \`gekis=[integer]\` or \`[integer]xgeki\`
+    - Katus / 200s / tiny droplet misses: \`katus=[integer]\` or \`[integer]xkatu\`
+    - Missed slider ends: \`sliderends=[integer]\` or \`[integer]xsliderends\`
+    - Missed large ticks: \`largeticks=[integer]\` or \`[integer]xlargeticks\`
+    - Small ticks: \`smallticks=[integer]\` or \`[integer]xsmallticks\`
+    - Stable score: \`score=[integer]\`
+    - Mods: \`mods=[mod acronyms]\` or \`+[mod acronyms]\`
+    - Approach rate: \`ar=[number]\` or \`ar[number]\`
+    - Circle size: \`cs=[number]\` or \`cs[number]\`
+    - HP drain: \`hp=[number]\` or \`hp[number]\`
+    - Overall difficulty: \`od=[number]\` or \`od[number]\`
+    - Scoring mode: \`lazer=[boolean]\` or \`stable=[boolean]\`
+
+    BPM and clock rate cannot be specified together.
+    Stable score can only be specified when using stable scoring.
+    Some hit-result arguments are only available for specific game modes.
+`)
 @Examples(
     "simulate 123456 98.5% 800x +HDDT",
     "simulate acc=98.5 combo=800 n100=4 miss=1",

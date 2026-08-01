@@ -33,19 +33,63 @@ public class HitResultGeneration
         };
     }
 
-    private Dictionary<HitResult, int> GenerateStandard(IBeatmap beatmap, Mod[] mods, double accuracy, int countMiss, int? countMeh, int? countGood, int? countLargeTickMisses, int? countSliderTailMisses)
+    private Dictionary<HitResult, int> GenerateStandard(
+        IBeatmap beatmap, Mod[] mods, double accuracy, int countMiss,
+        int? countMeh, int? countOk, int? countLargeTickMisses, int? countSliderTailMisses)
     {
-        int countGreat;
         int totalResultCount = beatmap.HitObjects.Count;
 
-        if (countMeh != null || countGood != null)
+        countMiss = Math.Clamp(countMiss, 0, totalResultCount);
+        accuracy = Math.Clamp(accuracy, 0, 1);
+
+        bool isClassic = mods.Any(mod => mod.Acronym == "CL");
+
+        int totalLargeTicks = 0;
+        int totalSliderEnds = 0;
+        int largeTickMisses = 0;
+        int sliderTailMisses = 0;
+
+        double objectAccuracy = accuracy;
+
+        if (!isClassic)
         {
-            countGreat = totalResultCount - (countGood ?? 0) - (countMeh ?? 0) - countMiss;
+            totalLargeTicks = beatmap.HitObjects.Sum(hitObject =>
+                hitObject.NestedHitObjects.Count(nested => nested is SliderTick || nested is SliderRepeat));
+
+            totalSliderEnds = beatmap.HitObjects.Count(hitObject => hitObject is Slider);
+
+            largeTickMisses = Math.Clamp(countLargeTickMisses ?? 0, 0, totalLargeTicks);
+            sliderTailMisses = Math.Clamp(countSliderTailMisses ?? 0, 0, totalSliderEnds);
+
+            if (countMeh == null && countOk == null)
+            {
+                double objectMaximum = 6.0 * totalResultCount;
+                double nestedMaximum = 0.6 * totalLargeTicks + 3.0 * totalSliderEnds;
+                double nestedEarned = 0.6 * (totalLargeTicks - largeTickMisses)
+                    + 3.0 * (totalSliderEnds - sliderTailMisses);
+
+                double totalMaximum = objectMaximum + nestedMaximum;
+                double targetTotalPoints = accuracy * totalMaximum;
+                double requiredObjectPoints = targetTotalPoints - nestedEarned;
+
+                objectAccuracy = objectMaximum > 0 ? Math.Clamp(requiredObjectPoints / objectMaximum, 0, 1) : 1;
+            }
+        }
+
+        int countGreat;
+
+        if (countMeh != null || countOk != null)
+        {
+            countGreat = totalResultCount - (countOk ?? 0) - (countMeh ?? 0) - countMiss;
         }
         else
         {
             int relevantResultCount = totalResultCount - countMiss;
-            double relevantAccuracy = relevantResultCount == 0 ? 0 : accuracy * totalResultCount / relevantResultCount;
+
+            double relevantAccuracy = relevantResultCount == 0
+                ? 0
+                : objectAccuracy * totalResultCount / relevantResultCount;
+
             relevantAccuracy = Math.Clamp(relevantAccuracy, 0, 1);
 
             if (relevantAccuracy >= 0.25)
@@ -54,69 +98,42 @@ public class HitResultGeneration
                 double count100Estimate = 6 * relevantResultCount * (1 - relevantAccuracy) / (5 * ratio50To100 + 4);
                 double count50Estimate = count100Estimate * ratio50To100;
 
-                countGood = (int?)Math.Round(count100Estimate);
-                countMeh = (int?)(Math.Round(count100Estimate + count50Estimate) - countGood);
+                countOk = (int)Math.Round(count100Estimate);
+                countMeh = (int)Math.Round(count100Estimate + count50Estimate) - countOk.Value;
             }
             else if (relevantAccuracy >= 1.0 / 6)
             {
                 double count100Estimate = 6 * relevantResultCount * relevantAccuracy - relevantResultCount;
                 double count50Estimate = relevantResultCount - count100Estimate;
 
-                countGood = (int?)Math.Round(count100Estimate);
-                countMeh = (int?)(Math.Round(count100Estimate + count50Estimate) - countGood);
+                countOk = (int)Math.Round(count100Estimate);
+                countMeh = (int)Math.Round(count100Estimate + count50Estimate) - countOk.Value;
             }
             else
             {
                 double count50Estimate = 6 * relevantResultCount * relevantAccuracy;
-                countGood = 0;
-                countMeh = (int?)Math.Round(count50Estimate);
-                countMiss = (int)(totalResultCount - (countMeh ?? 0));
+
+                countOk = 0;
+                countMeh = (int)Math.Round(count50Estimate);
+                countMiss = totalResultCount - countMeh.Value;
             }
 
-            countGreat = (int)(totalResultCount - (countGood ?? 0) - (countMeh ?? 0) - countMiss);
+            countGreat = totalResultCount - (countOk ?? 0) - (countMeh ?? 0) - countMiss;
         }
 
         var result = new Dictionary<HitResult, int>
         {
-            { HitResult.Great, countGreat },
-            { HitResult.Ok, countGood ?? 0 },
-            { HitResult.Meh, countMeh ?? 0 },
-            { HitResult.Miss, countMiss },
+            [HitResult.Great] = countGreat,
+            [HitResult.Ok] = countOk ?? 0,
+            [HitResult.Meh] = countMeh ?? 0,
+            [HitResult.Miss] = countMiss,
         };
-
-        bool isClassic = mods.Any(mod => mod.Acronym == "CL");
 
         if (!isClassic)
         {
-            int totalLargeTicks = beatmap.HitObjects.Sum(
-                hitObject => hitObject.NestedHitObjects.Count(
-                    nested => nested is SliderTick || nested is SliderRepeat
-                )
-            );
-
-            int largeTickMisses = Math.Clamp(
-                countLargeTickMisses ?? 0,
-                0,
-                totalLargeTicks
-            );
-
-            result[HitResult.LargeTickHit] =
-                totalLargeTicks - largeTickMisses;
-
-            result[HitResult.LargeTickMiss] =
-                largeTickMisses;
-
-            int totalSliderEnds =
-                beatmap.HitObjects.Count(hitObject => hitObject is Slider);
-
-            int sliderTailMisses = Math.Clamp(
-                countSliderTailMisses ?? 0,
-                0,
-                totalSliderEnds
-            );
-
-            result[HitResult.SliderTailHit] =
-                totalSliderEnds - sliderTailMisses;
+            result[HitResult.LargeTickHit] = totalLargeTicks - largeTickMisses;
+            result[HitResult.LargeTickMiss] = largeTickMisses;
+            result[HitResult.SliderTailHit] = totalSliderEnds - sliderTailMisses;
         }
 
         return result;
@@ -169,62 +186,147 @@ public class HitResultGeneration
         };
     }
 
-    private Dictionary<HitResult, int> GenerateMania(IBeatmap beatmap, Mod[] mods, double accuracy, int countMiss, int? countMeh, int? countOk, int? countGood, int? countGreat)
+    private Dictionary<HitResult, int> GenerateMania(
+        IBeatmap beatmap, Mod[] mods, double accuracy, int countMiss,
+        int? countMeh, int? countOk, int? countGood, int? countGreat)
     {
         int totalHits = beatmap.HitObjects.Count;
-        
-        bool isClassic = mods.Any(m => m.Acronym == "CL");
-        
+
+        bool isClassic = mods.Any(mod => mod.Acronym == "CL");
+
         if (!isClassic)
-            totalHits += beatmap.HitObjects.Count(ho => ho is HoldNote);
+        {
+            totalHits += beatmap.HitObjects.Count(hitObject => hitObject is HoldNote);
+        }
+
+        accuracy = Math.Clamp(accuracy, 0, 1);
+        countMiss = Math.Clamp(countMiss, 0, totalHits);
 
         if (countMeh != null || countOk != null || countGood != null || countGreat != null)
         {
-            int countPerfect = totalHits - (countMiss + (countMeh ?? 0) + (countOk ?? 0) + (countGood ?? 0) + (countGreat ?? 0));
+            int specifiedHits = countMiss + (countMeh ?? 0) + (countOk ?? 0) + (countGood ?? 0) + (countGreat ?? 0);
+
+            if (specifiedHits > totalHits)
+            {
+                throw new ArgumentException($"Specified mania hit results exceed the map's total hit count of {totalHits}.");
+            }
 
             return new Dictionary<HitResult, int>
             {
-                [HitResult.Perfect] = countPerfect,
+                [HitResult.Perfect] = totalHits - specifiedHits,
                 [HitResult.Great] = countGreat ?? 0,
                 [HitResult.Good] = countGood ?? 0,
                 [HitResult.Ok] = countOk ?? 0,
                 [HitResult.Meh] = countMeh ?? 0,
-                [HitResult.Miss] = countMiss
+                [HitResult.Miss] = countMiss,
             };
         }
 
-        int perfectValue = isClassic ? 60 : 61;
-        int targetTotal = (int)Math.Round(accuracy * totalHits * perfectValue);
+        int perfectValue = isClassic ? 300 : 305;
+        int nonMissCount = totalHits - countMiss;
 
-        int remainingHits = totalHits - countMiss;
-        int delta = Math.Max(targetTotal - (10 * remainingHits), 0);
+        if (nonMissCount == 0)
+        {
+            return new Dictionary<HitResult, int>
+            {
+                [HitResult.Perfect] = 0,
+                [HitResult.Great] = 0,
+                [HitResult.Good] = 0,
+                [HitResult.Ok] = 0,
+                [HitResult.Meh] = 0,
+                [HitResult.Miss] = totalHits,
+            };
+        }
 
-        int perfects = Math.Min(delta / (perfectValue - 10), remainingHits);
-        delta -= perfects * (perfectValue - 10);
-        remainingHits -= perfects;
+        int targetPoints = (int)Math.Round(accuracy * totalHits * perfectValue, MidpointRounding.AwayFromZero);
+        int minimumPointsWithRequestedMisses = 50 * nonMissCount;
 
-        int greats = Math.Min(delta / 50, remainingHits);
-        delta -= greats * 50;
-        remainingHits -= greats;
+        if (targetPoints < minimumPointsWithRequestedMisses)
+        {
+            int lowAccuracyMehs = Math.Clamp(
+                (int)Math.Round(targetPoints / 50.0, MidpointRounding.AwayFromZero), 0, nonMissCount);
 
-        countGood = Math.Min(delta / 30, remainingHits);
-        delta -= countGood.Value * 30;
-        remainingHits -= countGood.Value;
+            return new Dictionary<HitResult, int>
+            {
+                [HitResult.Perfect] = 0,
+                [HitResult.Great] = 0,
+                [HitResult.Good] = 0,
+                [HitResult.Ok] = 0,
+                [HitResult.Meh] = lowAccuracyMehs,
+                [HitResult.Miss] = totalHits - lowAccuracyMehs,
+            };
+        }
 
-        int oks = Math.Min(delta / 10, remainingHits);
-        remainingHits -= oks;
+        int maximumPoints = perfectValue * nonMissCount;
 
-        countMeh = remainingHits;
+        targetPoints = Math.Clamp(targetPoints, minimumPointsWithRequestedMisses, maximumPoints);
+
+        int generatedPerfects = 0;
+        int generatedGreats = 0;
+        int generatedGoods = 0;
+        int generatedOks = 0;
+        int generatedMehs = 0;
+
+        if (!isClassic && targetPoints >= 300 * nonMissCount)
+        {
+            generatedGreats = ResolveLowerJudgementCount(nonMissCount, targetPoints, upperValue: 305, lowerValue: 300);
+            generatedPerfects = nonMissCount - generatedGreats;
+        }
+        else if (targetPoints >= 200 * nonMissCount)
+        {
+            generatedGoods = ResolveLowerJudgementCount(nonMissCount, targetPoints, upperValue: 300, lowerValue: 200);
+            int upperCount = nonMissCount - generatedGoods;
+
+            if (isClassic)
+                generatedPerfects = upperCount;
+            else
+                generatedGreats = upperCount;
+        }
+        else if (targetPoints >= 100 * nonMissCount)
+        {
+            generatedOks = ResolveLowerJudgementCount(nonMissCount, targetPoints, upperValue: 200, lowerValue: 100);
+            generatedGoods = nonMissCount - generatedOks;
+        }
+        else
+        {
+            generatedMehs = ResolveLowerJudgementCount(nonMissCount, targetPoints, upperValue: 100, lowerValue: 50);
+            generatedOks = nonMissCount - generatedMehs;
+        }
 
         return new Dictionary<HitResult, int>
         {
-            { HitResult.Perfect, perfects },
-            { HitResult.Great, greats },
-            { HitResult.Ok, oks },
-            { HitResult.Good, countGood.Value },
-            { HitResult.Meh, countMeh.Value },
-            { HitResult.Miss, countMiss }
+            [HitResult.Perfect] = generatedPerfects,
+            [HitResult.Great] = generatedGreats,
+            [HitResult.Good] = generatedGoods,
+            [HitResult.Ok] = generatedOks,
+            [HitResult.Meh] = generatedMehs,
+            [HitResult.Miss] = countMiss,
         };
+    }
+
+    private static int ResolveLowerJudgementCount(int hitCount, int targetPoints, int upperValue, int lowerValue)
+    {
+        if (hitCount <= 0)
+            return 0;
+
+        if (upperValue <= lowerValue)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(upperValue), "The upper judgement value must be greater than the lower judgement value.");
+        }
+
+        double exactLowerCount = ((double)upperValue * hitCount - targetPoints) / (upperValue - lowerValue);
+
+        int floorCount = Math.Clamp((int)Math.Floor(exactLowerCount), 0, hitCount);
+        int ceilingCount = Math.Clamp((int)Math.Ceiling(exactLowerCount), 0, hitCount);
+
+        long floorPoints = (long)upperValue * (hitCount - floorCount) + (long)lowerValue * floorCount;
+        long ceilingPoints = (long)upperValue * (hitCount - ceilingCount) + (long)lowerValue * ceilingCount;
+
+        long floorError = Math.Abs(floorPoints - targetPoints);
+        long ceilingError = Math.Abs(ceilingPoints - targetPoints);
+
+        return ceilingError < floorError ? ceilingCount : floorCount;
     }
 
     public double GetAccuracyForRuleset(uint rulesetId, IBeatmap beatmap, Dictionary<HitResult, int> statistics, Mod[] mods)

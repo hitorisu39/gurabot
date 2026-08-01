@@ -32,7 +32,8 @@ export class MapFormatter {
     }
 
     public static stars(stars: number = 0): string {
-        return `${stars.toFixed(2)}★`;
+        const floored = Math.floor(stars * 100) / 100;
+        return `${floored.toFixed(2)}★`;
     }
 
     public static length(length: number): string {

@@ -92,9 +92,9 @@ export class MapViewService extends AbstractViewService<MapViewDto, boolean> {
             },
             columns: [
                 { header: "Acc", accessor: "label", align: "center", headerAlign: "center" },
-                { header: "95%", accessor: "pp95", align: "center", headerAlign: "center" },
-                { header: "97%", accessor: "pp97", align: "center", headerAlign: "center" },
-                { header: "99%", accessor: "pp99", align: "center", headerAlign: "center" },
+                { header: "≈95%", accessor: "pp95", align: "center", headerAlign: "center" },
+                { header: "≈97%", accessor: "pp97", align: "center", headerAlign: "center" },
+                { header: "≈99%", accessor: "pp99", align: "center", headerAlign: "center" },
                 { header: "100%", accessor: "pp100", align: "center", headerAlign: "center" },
             ],
         });

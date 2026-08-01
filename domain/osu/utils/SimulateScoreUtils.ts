@@ -36,8 +36,6 @@ export class SimulateScoreUtils {
         if (statistics.countMiss !== undefined) score.countMiss = statistics.countMiss;
 
         if (data.scoringMode === ESimulateScoringMode.Lazer && this.getMode(data) === GameMode.Standard) {
-            // Explicit zeroes make the original permissive calculator return
-            // full slider-tail and large-tick hits by default.
             score.countLargeTickMisses = statistics.countLargeTickMisses ?? 0;
             score.countSliderTailMisses = statistics.countSliderTailMisses ?? 0;
         }

@@ -117,10 +117,7 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
         return dict;
     }
 
-    private IEnumerable<SkillStrain> GetStrains(
-        DifficultyCalculator calculator,
-        IBeatmap playableBeatmap,
-        Mod[] mods)
+    private IEnumerable<SkillStrain> GetStrains(DifficultyCalculator calculator, IBeatmap playableBeatmap, Mod[] mods)
     {
         Type calculatorType = calculator.GetType();
 
@@ -177,17 +174,22 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
             );
         }
 
-        var hitObjects = sortObjectsMethod.Invoke(
+        var sortedHitObjects = sortObjectsMethod.Invoke(
             calculator,
             new object[] { unsortedHitObjects }
         ) as IEnumerable<DifficultyHitObject>;
 
-        if (hitObjects == null)
+        if (sortedHitObjects == null)
         {
             throw new InvalidOperationException(
                 $"{calculatorType.Name}.SortObjects() returned an unexpected value."
             );
         }
+
+        DifficultyHitObject[] hitObjects = sortedHitObjects.ToArray();
+
+        if (hitObjects.Length == 0)
+            return Array.Empty<SkillStrain>();
 
         foreach (DifficultyHitObject hitObject in hitObjects)
         {
@@ -197,39 +199,72 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
             }
         }
 
-        var strains = new List<SkillStrain>(skills.Length);
+        double timelineEnd = hitObjects.Max(hitObject => hitObject.EndTime);
+
+        var result = new List<SkillStrain>(skills.Length);
         var nameCounts = new Dictionary<string, int>();
 
         foreach (Skill skill in skills)
         {
             IReadOnlyList<double> values = skill.GetObjectDifficulties();
 
+            if (values.Count != hitObjects.Length)
+            {
+                throw new InvalidOperationException(
+                    $"Skill {skill.GetType().FullName} returned " +
+                    $"{values.Count} object difficulties for " +
+                    $"{hitObjects.Length} difficulty hit objects."
+                );
+            }
+
             if (values.Count == 0)
                 continue;
 
-            string name = GetSkillName(skill);
-
-            if (nameCounts.TryGetValue(name, out int duplicateCount))
-            {
-                duplicateCount++;
-                nameCounts[name] = duplicateCount;
-                name += duplicateCount;
-            }
-            else
-            {
-                nameCounts[name] = 1;
-            }
+            string name = GetUniqueSkillName(skill, nameCounts);
 
             var strain = new SkillStrain
             {
                 SkillName = name
             };
 
-            strain.Peaks.AddRange(values);
-            strains.Add(strain);
+            if (hitObjects[0].StartTime > 0)
+            {
+                strain.Points.Add(new SkillStrainPoint
+                {
+                    TimeMs = 0,
+                    Value = 0
+                });
+            }
+
+            for (int i = 0; i < values.Count; i++)
+            {
+                double value = values[i];
+
+                if (!double.IsFinite(value))
+                    value = 0;
+
+                strain.Points.Add(new SkillStrainPoint
+                {
+                    TimeMs = Math.Max(0, hitObjects[i].StartTime),
+                    Value = Math.Max(0, value)
+                });
+            }
+
+            double lastPointTime = strain.Points[^1].TimeMs;
+
+            if (timelineEnd > lastPointTime)
+            {
+                strain.Points.Add(new SkillStrainPoint
+                {
+                    TimeMs = timelineEnd,
+                    Value = 0
+                });
+            }
+
+            result.Add(strain);
         }
 
-        return strains;
+        return result;
     }
 
     private static MethodInfo? FindInstanceMethod(
@@ -268,6 +303,24 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
         }
         
         return name;
+    }
+
+    private string GetUniqueSkillName(
+        Skill skill,
+        Dictionary<string, int> nameCounts)
+    {
+        string name = GetSkillName(skill);
+
+        if (!nameCounts.TryGetValue(name, out int count))
+        {
+            nameCounts[name] = 1;
+            return name;
+        }
+
+        count++;
+        nameCounts[name] = count;
+
+        return $"{name}{count}";
     }
 
     private BeatmapAttributes CalculateAdjustedAttributes(IBeatmap beatmap, double clockRate)
