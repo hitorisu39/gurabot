@@ -159,7 +159,7 @@ async function generateProviders() {
     let outputTypeFile = `// AUTO-GENERATED - DO NOT EDIT MANUALLY, CHANGES WILL BE OVERWRITTEN
 import "reflect-metadata";
 import { Exclude, Expose, Type } from "class-transformer";
-import type { AdapterHook } from "../../adapter/engine";
+import type { AdapterHook, AdapterErrorContext, AdapterResponseContext } from "../../adapter/engine";
 import type { ParsedMod } from "./mods";\n\n`;
 
     enums.forEach((enumDef, name) => {
@@ -268,19 +268,17 @@ import type { Adapter } from "./types";\n`;
 
     outputClientFile += `import { Exception, EApplicationError } from "@domain/core/Exception";\n`;
 
-    outputClientFile += `import type { Metrics } from "@/metrics";\n`;
-
     outputClientFile += `\nexport class AdapterClient implements Adapter {\n`;
 
     providersMeta.forEach((pm) => {
         outputClientFile += `    public ${pm.id}: Adapter['${pm.id}'];\n`;
     });
 
-    outputClientFile += `\n    constructor(metrics?: Metrics) {\n`;
+    outputClientFile += `\n    constructor() {\n`;
 
     providersMeta.forEach((pm) => {
         outputClientFile += `
-        const ${pm.id}Engine = new AdapterEngine(${pm.exportName}.config, metrics);
+        const ${pm.id}Engine = new AdapterEngine(${pm.exportName}.config);
         this.${pm.id} = {
             $use: (hook: AdapterHook) => ${pm.id}Engine.addHook(hook),\n`;
 

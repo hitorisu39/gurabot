@@ -4,12 +4,17 @@ import { TLogger } from "./core";
 import { TConfig } from "./env";
 import { Metrics } from "./metrics";
 import { EApplicationError, Exception } from "@domain/core/Exception";
+import { AdapterMetricsMiddleware } from "./adapter/AdapterMetricsMiddleware";
+import { AdapterLoggerMiddleware } from "./adapter/AdapterLoggerMiddleware";
 
 export class ExtendedAdapterClient {
     private adapter: AdapterClient | null;
 
     constructor(config: TConfig, logger: TLogger, metrics?: Metrics) {
-        this.adapter = new AdapterClient(metrics);
+        this.adapter = new AdapterClient();
+
+        this.adapter.osu.$use(new AdapterLoggerMiddleware(logger));
+        if (metrics) this.adapter.osu.$use(new AdapterMetricsMiddleware(metrics));
 
         /**
          * osu! Auth Middleware.
