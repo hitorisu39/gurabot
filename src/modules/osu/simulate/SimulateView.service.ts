@@ -143,7 +143,7 @@ export class SimulateViewService extends AbstractViewService<SimulateViewDto> {
         const description =
             `${MapFormatter.difficultyEmote(map.mode, attributes.starRating)} ` +
             `**[${map.version}](${MapFormatter.link(map.id)})**` +
-            `${DiscordFormatter.space(1)}\`${DiscordFormatter.fixed(attributes.starRating)}★\`` +
+            `${DiscordFormatter.space(1)}\`${MapFormatter.stars(attributes.starRating)}\`` +
             `${DiscordFormatter.space(1)}\`${mods}\`` +
             rateSuffix;
 
