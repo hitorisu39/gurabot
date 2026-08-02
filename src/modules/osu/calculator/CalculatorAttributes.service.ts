@@ -68,53 +68,118 @@ export class CalculatorAttributesService extends AbstractService {
     }
 
     public async getMany<M extends GameMode>(
-        requests: Array<{ beatmapID: number; mode: M; mods: Array<ParsedMod> }>
+        requests: Array<{
+            beatmapID: number;
+            mode: M;
+            mods: Array<ParsedMod>;
+        }>,
     ): Promise<Map<string, TDifficultyAttributes<M>>> {
         const resultMap = new Map<string, TDifficultyAttributes<M>>();
-        const uniqueRequests = new Map<string, { beatmapID: number; mode: M; mods: Array<ParsedMod>; cacheString: string; custom: boolean }>();
 
-        for (const req of requests) {
-            const { cacheString, custom } = this.getModCacheString(req.mods);
-            const dedupKey = `${req.beatmapID}_${cacheString}`;
-            
-            if (!uniqueRequests.has(dedupKey)) {
-                uniqueRequests.set(dedupKey, { ...req, cacheString, custom });
+        const uniqueRequests = new Map<
+            string,
+            {
+                beatmapID: number;
+                mode: M;
+                mods: Array<ParsedMod>;
+                cacheString: string;
+                custom: boolean;
+            }
+        >();
+
+        for (const request of requests) {
+            const { cacheString, custom } = this.identity(request.mods);
+            const key = this.key(
+                request.beatmapID,
+                request.mode,
+                request.mods,
+            );
+
+            if (!uniqueRequests.has(key)) {
+                uniqueRequests.set(key, {
+                    ...request,
+                    cacheString,
+                    custom,
+                });
             }
         }
 
-        const fetchPromises = Array.from(uniqueRequests.values()).map(async (req) => {
-            const cached = await this.getFromDatabase(req.beatmapID, req.mode, req.cacheString);
-            return { req, cached: cached as TDifficultyAttributes<M> | null };
-        });
+        const fetched = await Promise.all(
+            [...uniqueRequests.entries()].map(async ([key, request]) => {
+                const cached = await this.getFromDatabase(
+                    request.beatmapID,
+                    request.mode,
+                    request.cacheString,
+                );
 
-        const fetchResults = await Promise.all(fetchPromises);
+                return {
+                    key,
+                    request,
+                    cached: cached as TDifficultyAttributes<M> | null,
+                };
+            }),
+        );
 
-        const calculatePromises = fetchResults.map(async ({ req, cached }) => {
-            const key = `${req.beatmapID}_${req.cacheString}`;
+        await Promise.all(
+            fetched.map(async ({ key, request, cached }) => {
+                if (cached) {
+                    resultMap.set(key, cached);
+                    return;
+                }
 
-            if (cached) {
-                resultMap.set(key, cached);
-                return;
-            }
+                const protoMods = request.mods.map((mod) => ({
+                    acronym: mod.acronym,
+                    settings: mod.settings
+                        ? Object.fromEntries(
+                            Object.entries(mod.settings).map(
+                                ([setting, value]) => [
+                                    setting,
+                                    String(value),
+                                ],
+                            ),
+                        )
+                        : {},
+                }));
 
-            const protoMods = req.mods.map(m => ({
-                acronym: m.acronym,
-                settings: m.settings ? Object.fromEntries(Object.entries(m.settings).map(([k, v]) => [k, String(v)])) : {}
-            }));
+                const response = await this.calculator.difficulty({
+                    mode: request.mode,
+                    beatmapPath: this.calculatorMapService.getPath(
+                        request.beatmapID,
+                    ),
+                    mods: protoMods,
+                });
 
-            const response = await this.calculator.difficulty({
-                mode: req.mode,
-                beatmapPath: this.calculatorMapService.getPath(req.beatmapID),
-                mods: protoMods
-            });
+                await this.saveToDatabase(
+                    request.beatmapID,
+                    request.mode,
+                    request.cacheString,
+                    response.attributes,
+                    request.custom,
+                );
 
-            await this.saveToDatabase(req.beatmapID, req.mode, req.cacheString, response.attributes, req.custom);
+                resultMap.set(key, response.attributes);
+            }),
+        );
 
-            resultMap.set(key, response.attributes);
-        });
-
-        await Promise.all(calculatePromises);
         return resultMap;
+    }
+
+    public identity(
+        mods: ReadonlyArray<ParsedMod>,
+        clockRate?: number,
+    ): { cacheString: string; custom: boolean } {
+        return this.getModCacheString([...mods], clockRate);
+    }
+
+    public key(
+        beatmapID: number,
+        mode: GameMode,
+        mods: ReadonlyArray<ParsedMod>,
+        clockRate?: number,
+    ): string {
+        const { cacheString } = this.identity(mods, clockRate);
+
+        return `${beatmapID}:${mode}:${cacheString}`;
     }
 
     //#endregion

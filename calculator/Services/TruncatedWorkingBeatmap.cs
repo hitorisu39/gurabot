@@ -7,22 +7,40 @@ namespace Calculator.Services;
 
 public class TruncatedWorkingBeatmap : WorkingBeatmap
 {
-    private readonly IBeatmap _beatmap;
+    private readonly IBeatmap beatmap;
 
-    public TruncatedWorkingBeatmap(IBeatmap sourceBeatmap, int passedObjects) 
+    public TruncatedWorkingBeatmap(
+        IBeatmap sourceBeatmap,
+        int passedObjects)
         : base((BeatmapInfo)sourceBeatmap.BeatmapInfo, null)
     {
-        _beatmap = sourceBeatmap.Clone();
-        if (_beatmap is Beatmap concreteBeatmap)
+        beatmap = sourceBeatmap.Clone();
+
+        if (beatmap is not Beatmap concreteBeatmap)
         {
-            concreteBeatmap.HitObjects = concreteBeatmap.HitObjects.Take(passedObjects).ToList();
+            throw new InvalidOperationException(
+                $"Cannot truncate beatmap type {beatmap.GetType().Name}."
+            );
         }
+
+        int objectCount = Math.Clamp(
+            passedObjects,
+            0,
+            concreteBeatmap.HitObjects.Count
+        );
+
+        concreteBeatmap.HitObjects = concreteBeatmap.HitObjects
+            .Take(objectCount)
+            .ToList();
     }
 
-    protected override IBeatmap GetBeatmap() => _beatmap;
+    protected override IBeatmap GetBeatmap() => beatmap;
 
     public override Texture GetBackground() => null!;
+
     protected override Track GetBeatmapTrack() => null!;
+
     protected override ISkin GetSkin() => null!;
+
     public override Stream GetStream(string storagePath) => null!;
 }

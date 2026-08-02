@@ -65,7 +65,20 @@ export class CalculatorMapService extends AbstractService {
                     if (!data || !data.includes("osu file format"))
                         throw new Exception(EApplicationError.INTERNAL_ERROR, "Downloaded data is not a valid file.");
 
-                    fs.writeFileSync(this.getPath(beatmapID), data, { encoding: "utf8" });
+                    const destination = this.getPath(beatmapID);
+                    const temporary = `${destination}.${process.pid}.${Date.now()}.tmp`;
+
+                    try {
+                        fs.writeFileSync(temporary, data, {
+                            encoding: "utf8",
+                        });
+
+                        fs.renameSync(temporary, destination);
+                    } finally {
+                        if (fs.existsSync(temporary)) {
+                            fs.unlinkSync(temporary);
+                        }
+                    }
                     return;
                 } catch (error) {
                     this.logger.warn(error, `Attempt ${attempt}/${this.maxRetries} failed for map ${beatmapID}`);

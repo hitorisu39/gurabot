@@ -7,7 +7,7 @@ export class ScoreUtils {
     }
 
     public static isPopulated(score: Score): score is PopulatedScore {
-        return "calculated" in score;
+        return !!(score as Partial<PopulatedScore>).calculated;
     }
 
     public static isFullyPopulated(score: Score): score is PopulatedScore {

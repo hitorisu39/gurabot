@@ -14,6 +14,16 @@ service Calculator {
     rpc CalculatePerformanceStream (stream PerformanceRequest) returns (stream PerformanceResponse);
 }
 
+enum ScoreStateKind {
+    UNSPECIFIED = 0;
+
+    // Statistics came from a real score and must not be regenerated.
+    ACTUAL = 1;
+
+    // Missing statistics may be generated for PP/FC simulations.
+    SIMULATION = 2;
+}
+
 message ModMessage {
     string acronym = 1;
     map<string, string> settings = 2;
@@ -22,27 +32,48 @@ message ModMessage {
 message ScoreState {
     optional uint32 max_combo = 1;
     optional double accuracy = 2;
+
     optional uint32 count_300 = 3;
     optional uint32 count_100 = 4;
     optional uint32 count_50 = 5;
     optional uint32 count_miss = 6;
     optional uint32 count_geki = 7;
     optional uint32 count_katu = 8;
+
     optional uint32 count_large_tick_misses = 9;
     optional uint32 count_slider_tail_misses = 10;
+
+    optional uint32 count_ignore_hit = 11;
+    optional uint32 count_ignore_miss = 12;
+
+    optional uint32 count_small_tick_hits = 13;
+    optional uint32 count_small_tick_misses = 14;
+    optional uint32 count_large_tick_hits = 15;
+
+    optional uint32 count_slider_tail_hits = 16;
+
+    optional uint32 count_small_bonus = 17;
+    optional uint32 count_large_bonus = 18;
+
+    ScoreStateKind kind = 19;
 }
 
 message HitResultResponse {
     uint32 max_combo = 1;
     double accuracy = 2;
+
     uint32 count_300 = 3;
     uint32 count_100 = 4;
     uint32 count_50 = 5;
     uint32 count_miss = 6;
     uint32 count_geki = 7;
     uint32 count_katu = 8;
+
     uint32 count_large_tick_hits = 9;
     uint32 count_slider_tail_hits = 10;
+
+    uint32 count_large_tick_misses = 11;
+    uint32 count_slider_tail_misses = 12;
 }
 
 message BeatmapAttributes {

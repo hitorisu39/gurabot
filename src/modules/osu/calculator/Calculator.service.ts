@@ -7,6 +7,8 @@ import { ICalculatePerformanceOptions, IDifficultyCalculationResponse, IPerforma
 import { ScoreWithMaps, PopulatedScore } from "@domain/osu/Score.dto";
 import { BeatmapAttributesCalculator } from "@domain/osu/utils/BeatmapAttributesCalculator";
 import { ModUtils, ParsedMod } from "@generated/adapter/mods";
+import { ScoreCalculationUtils } from "@domain/osu/utils/ScoreCalculationUtils";
+import { ScoreStateKind } from "@generated/calculator/calculator";
 
 export class CalculatorService extends AbstractService {
     @Import() declare private readonly calculatorAttributesService: CalculatorAttributesService;
@@ -59,104 +61,198 @@ export class CalculatorService extends AbstractService {
     }
 
     public async scores<M extends GameMode>(
-        scores: Array<ScoreWithMaps>, 
+        scores: Array<ScoreWithMaps>,
         mode: M,
-        includeFC: boolean = false
+        includeFC: boolean = false,
     ): Promise<Array<PopulatedScore<M>>> {
-        if (!scores.length) return [];
+        if (!scores.length) {
+            return [];
+        }
 
-        const uniqueMapIDs = [...new Set(scores.map(s => s.beatmapID))];
+        const uniqueMapIDs = [
+            ...new Set(scores.map((score) => score.beatmapID)),
+        ];
+
         await this.calculatorMapService.downloadMany(uniqueMapIDs);
 
-        const diffRequests = scores.map(s => ({ beatmapID: s.beatmapID, mode, mods: s.mods }));
-        const diffMap = await this.calculatorAttributesService.getMany(diffRequests);
+        const diffRequests = scores.map((score) => ({
+            beatmapID: score.beatmapID,
+            mode,
+            mods: score.mods,
+        }));
+
+        const diffMap =
+            await this.calculatorAttributesService.getMany(diffRequests);
 
         const streamRequests: Array<ICalculatePerformanceOptions<M>> = [];
-        const localResults = new Map<number, IPerformanceCalculationResponse<M>>();
+        const localResults = new Map<
+            number,
+            IPerformanceCalculationResponse<M>
+        >();
 
         scores.forEach((score, index) => {
-            const perfMods = ModUtils.difficultyAffecting(score.mods);
-            const hasSettings = perfMods.some((m) => m.settings && Object.keys(m.settings).length > 0);
-            const cacheString = hasSettings ? null : (perfMods.length > 0 ? perfMods.map(m => m.acronym).sort().join("") : "NM");
-            const diffKey = hasSettings ? `${score.beatmapID}_CUSTOM` : `${score.beatmapID}_${cacheString}`;
+            const diffKey = this.calculatorAttributesService.key(
+                score.beatmapID,
+                mode,
+                score.mods,
+            );
 
-            const precalculatedDifficulty = diffMap.get(diffKey);
+            const fullDifficulty = diffMap.get(diffKey);
 
-            const isFC = score.statistics.miss < 1 &&
-                (precalculatedDifficulty && score.maxCombo >= (precalculatedDifficulty.maxCombo * 0.995));
+            if (!fullDifficulty) {
+                throw new Error(
+                    `Missing difficulty attributes for ${diffKey}`,
+                );
+            }
 
-            const beatmapAttributes = BeatmapAttributesCalculator.calculate(score.beatmap, score.mods);
+            const passedObjects =
+                ScoreCalculationUtils.passedObjects(score, mode);
 
-            const protoMods = score.mods.map(m => ({
-                acronym: m.acronym,
-                settings: m.settings ? Object.fromEntries(Object.entries(m.settings).map(([k, v]) => [k, String(v)])) : {}
+            const isPartial = passedObjects !== undefined;
+
+            const isFC =
+                score.statistics.miss < 1 &&
+                score.maxCombo >= fullDifficulty.maxCombo * 0.995;
+
+            const beatmapAttributes =
+                BeatmapAttributesCalculator.calculate(
+                    score.beatmap,
+                    score.mods,
+                );
+
+            const protoMods = score.mods.map((mod) => ({
+                acronym: mod.acronym,
+                settings: mod.settings
+                    ? Object.fromEntries(
+                        Object.entries(mod.settings).map(
+                            ([setting, value]) => [
+                                setting,
+                                String(value),
+                            ],
+                        ),
+                    )
+                    : {},
             }));
 
-            if (score.pp !== undefined && score.pp !== null && precalculatedDifficulty) {
-                localResults.set(index * 2, {
-                    attributes: { total: score.pp } as TPerformanceAttributes<M>,
+            const actualReferenceID = index * 2;
+            const fcReferenceID = actualReferenceID + 1;
+
+            if (score.pp !== undefined && score.pp !== null) {
+                localResults.set(actualReferenceID, {
+                    attributes: {
+                        total: score.pp,
+                    } as TPerformanceAttributes<M>,
+
                     difficulty: {
-                        attributes: precalculatedDifficulty,
-                        beatmap: beatmapAttributes
+                        attributes: fullDifficulty,
+                        beatmap: beatmapAttributes,
+                    },
+                });
+            } else if (passedObjects === 0) {
+                localResults.set(actualReferenceID, {
+                    attributes: {
+                        total: 0,
+                    } as TPerformanceAttributes<M>,
+
+                    difficulty: {
+                        attributes: fullDifficulty,
+                        beatmap: beatmapAttributes,
                     },
                 });
             } else {
                 streamRequests.push({
                     mode,
-                    beatmapPath: this.calculatorMapService.getPath(score.beatmapID),
-                    precalculatedDifficulty,
-                    referenceId: index * 2,
+                    beatmapPath: this.calculatorMapService.getPath(
+                        score.beatmapID,
+                    ),
+
+                    precalculatedDifficulty: isPartial
+                        ? undefined
+                        : fullDifficulty,
+
+                    passedObjects,
+                    referenceId: actualReferenceID,
                     mods: protoMods,
+
                     totalScore: score.totalScore,
                     legacyTotalScore: score.legacyTotalScore,
-                    score: {
-                        maxCombo: score.maxCombo,
-                        accuracy: score.accuracy,
-                        count300: score.statistics.great,
-                        count100: score.statistics.ok,
-                        count50: score.statistics.meh,
-                        countMiss: score.statistics.miss,
-                        countGeki: score.statistics.perfect,
-                        countKatu: score.statistics.good,
-                    }
+
+                    score: ScoreCalculationUtils.actualScoreState(
+                        score,
+                        mode,
+                    ),
                 });
             }
 
-            if (includeFC && precalculatedDifficulty) {
-                if (isFC && score.pp !== undefined && score.pp !== null) {
-                    localResults.set((index * 2) + 1, localResults.get(index * 2)!);
-                } else {
-                    streamRequests.push({
-                        mode,
-                        beatmapPath: this.calculatorMapService.getPath(score.beatmapID),
-                        precalculatedDifficulty,
-                        referenceId: (index * 2) + 1, 
-                        mods: protoMods,
-                        score: {
-                            countMiss: 0, 
-                            count300: (score.statistics.great || 0) + (score.statistics.miss || 0),
-                            maxCombo: precalculatedDifficulty.maxCombo
-                        }
-                    });
-                }
+            if (!includeFC) {
+                return;
             }
+
+            if (
+                isFC &&
+                score.pp !== undefined &&
+                score.pp !== null &&
+                localResults.has(actualReferenceID)
+            ) {
+                localResults.set(
+                    fcReferenceID,
+                    localResults.get(actualReferenceID)!,
+                );
+
+                return;
+            }
+
+            streamRequests.push({
+                mode,
+                beatmapPath: this.calculatorMapService.getPath(
+                    score.beatmapID,
+                ),
+                precalculatedDifficulty: fullDifficulty,
+                referenceId: fcReferenceID,
+                mods: protoMods,
+
+                score: {
+                    kind: ScoreStateKind.SIMULATION,
+                    countMiss: 0,
+                    count300:
+                        (score.statistics.great || 0) +
+                        (score.statistics.miss || 0),
+
+                    maxCombo: fullDifficulty.maxCombo,
+                },
+            });
         });
 
-        let streamResults: Array<IPerformanceCalculationResponse<M>> = [];
         if (streamRequests.length > 0) {
-            streamResults = await this.calculator.performanceStream(streamRequests);
-        }
+            const streamResults =
+                await this.calculator.performanceStream(streamRequests);
 
-        for (const res of streamResults) {
-            if (res.attributes && res.referenceId !== undefined) {
-                localResults.set(res.referenceId, res);
+            for (const result of streamResults) {
+                if (
+                    result.attributes &&
+                    result.referenceId !== undefined
+                ) {
+                    localResults.set(result.referenceId, result);
+                }
             }
         }
 
-        return scores.map((score, index) => ({
-            ...score,
-            calculated: localResults.get(index * 2)!,
-            calculatedFC: includeFC ? localResults.get((index * 2) + 1) : undefined
-        }));
+        return scores.map((score, index) => {
+            const calculated = localResults.get(index * 2);
+
+            if (!calculated) {
+                throw new Error(
+                    `Missing performance result for score index ${index}`,
+                );
+            }
+
+            return {
+                ...score,
+                calculated,
+                calculatedFC: includeFC
+                    ? localResults.get(index * 2 + 1)
+                    : undefined,
+            };
+        });
     }
 }

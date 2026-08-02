@@ -3,22 +3,56 @@ using osu.Game.Beatmaps;
 
 namespace Calculator.Services;
 
+public sealed record CachedWorkingBeatmap(
+    IWorkingBeatmap WorkingBeatmap,
+    string Identity
+);
+
 public class BeatmapCache
 {
-    private readonly IMemoryCache _cache;
+    private readonly IMemoryCache cache;
 
     public BeatmapCache(IMemoryCache cache)
     {
-        _cache = cache;
+        this.cache = cache;
     }
 
-    public IWorkingBeatmap GetBeatmap(string path)
+    public CachedWorkingBeatmap GetBeatmap(string path)
     {
-        return _cache.GetOrCreate(path, entry =>
+        var file = new FileInfo(path);
+        file.Refresh();
+
+        if (!file.Exists)
         {
-            entry.SlidingExpiration = TimeSpan.FromMinutes(30);
-            entry.Size = 1; 
-            return new FlatWorkingBeatmap(path);
-        })!;
+            throw new FileNotFoundException(
+                "The requested beatmap file was not found.",
+                path
+            );
+        }
+
+        string fullPath = Path.GetFullPath(path);
+
+        string identity = string.Join(
+            ":",
+            fullPath,
+            file.Length,
+            file.LastWriteTimeUtc.Ticks
+        );
+
+        IWorkingBeatmap workingBeatmap =
+            cache.GetOrCreate(identity, entry =>
+            {
+                entry.SlidingExpiration =
+                    TimeSpan.FromMinutes(30);
+
+                entry.Size = 1;
+
+                return new FlatWorkingBeatmap(fullPath);
+            })!;
+
+        return new CachedWorkingBeatmap(
+            workingBeatmap,
+            identity
+        );
     }
 }

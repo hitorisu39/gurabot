@@ -1,4 +1,4 @@
-import { HitResultResponse, PerformanceRequest } from "@generated/calculator/calculator";
+import { HitResultResponse, PerformanceRequest, ScoreState, ScoreStateKind } from "@generated/calculator/calculator";
 import { ModUtils, ParsedMod } from "@generated/adapter/mods";
 import { GameMode } from "@generated/adapter/types";
 import { ESimulateScoringMode } from "../enums/Simulate.enum";
@@ -19,8 +19,9 @@ export class SimulateScoreUtils {
         return mods;
     }
 
-    public static buildScoreState(data: SimulateViewDto, combo: number): PerformanceRequest["score"] {
-        const score: PerformanceRequest["score"] = {
+    public static buildScoreState(data: SimulateViewDto, combo: number): ScoreState {
+        const score: ScoreState = {
+            kind: ScoreStateKind.SIMULATION,
             maxCombo: combo,
         };
 
@@ -43,12 +44,9 @@ export class SimulateScoreUtils {
         return score;
     }
 
-    public static buildFullComboScore(
-        hitResults: HitResultResponse,
-        mode: GameMode,
-        maxCombo: number,
-    ): PerformanceRequest["score"] {
-        const score: PerformanceRequest["score"] = {
+    public static buildFullComboScore(hitResults: HitResultResponse, mode: GameMode, maxCombo: number): ScoreState {
+        const score: ScoreState = {
+            kind: ScoreStateKind.SIMULATION,
             maxCombo,
             countMiss: 0,
         };

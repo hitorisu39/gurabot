@@ -16,6 +16,7 @@ import { IDifficultyCalculationResponse } from "@domain/core/Calculator";
 import { GraphService } from "../Graph.service";
 import { AttachmentBuilder } from "discord.js";
 import { AbstractViewService } from "@/modules/AbstractViewService";
+import { ScoreStateKind } from "@generated/calculator/calculator";
 
 export class MapViewService extends AbstractViewService<MapViewDto, boolean> {
     @Import() declare private readonly graphService: GraphService;
@@ -67,10 +68,30 @@ export class MapViewService extends AbstractViewService<MapViewDto, boolean> {
         const beatmapAttributes = difficulty.beatmap;
 
         const [pp100, pp99, pp97, pp95] = await Promise.all([
-            this.calculatorService.performance(map.id, map.mode, { score: { accuracy: 1 } }, data.mods),
-            this.calculatorService.performance(map.id, map.mode, { score: { accuracy: 0.99 } }, data.mods),
-            this.calculatorService.performance(map.id, map.mode, { score: { accuracy: 0.97 } }, data.mods),
-            this.calculatorService.performance(map.id, map.mode, { score: { accuracy: 0.95 } }, data.mods),
+            this.calculatorService.performance(
+                map.id,
+                map.mode,
+                { score: { kind: ScoreStateKind.SIMULATION, accuracy: 1 } },
+                data.mods,
+            ),
+            this.calculatorService.performance(
+                map.id,
+                map.mode,
+                { score: { kind: ScoreStateKind.SIMULATION, accuracy: 0.99 } },
+                data.mods,
+            ),
+            this.calculatorService.performance(
+                map.id,
+                map.mode,
+                { score: { kind: ScoreStateKind.SIMULATION, accuracy: 0.97 } },
+                data.mods,
+            ),
+            this.calculatorService.performance(
+                map.id,
+                map.mode,
+                { score: { kind: ScoreStateKind.SIMULATION, accuracy: 0.95 } },
+                data.mods,
+            ),
         ]);
 
         const liveBpm = BeatmapAttributesCalculator.bpm(map.bpm, beatmapAttributes.clockRate);
