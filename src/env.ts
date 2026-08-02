@@ -244,6 +244,20 @@ export const config = convict({
             env: "WEB_AUTH_PORT",
         },
     },
+    ordr: {
+        defaultSkin: {
+            doc: "Default o!rdr skin.",
+            format: String,
+            default: "- a t m o s p h e r e -",
+            env: "ORDR_DEFAULT_SKIN",
+        },
+        verificationKey: {
+            doc: "o!rdr bot verification key.",
+            format: String,
+            default: "devmode_success",
+            env: "ORDR_VERIFICATION_KEY",
+        },
+    },
 });
 
 config.validate({ allowed: "strict" });

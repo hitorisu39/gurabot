@@ -2,7 +2,7 @@ import { EOptionType, IOptionMetadata } from "@/core/decorators";
 import { CommandContext } from "../context/CommandContext";
 import { MessageContext } from "../context/MessageContext";
 import { SlashContext } from "../context/SlashContext";
-import { ApplicationCommandOptionType, User } from "discord.js";
+import { ApplicationCommandOptionType, Attachment, User } from "discord.js";
 import { METAKEY_COMMAND_PROPERTIES } from "@/core/metakeys";
 import {
     CommandOption,
@@ -53,6 +53,12 @@ export class CommandParser {
                     rawValue = (ctx as SlashContext).interaction.options.getString(meta.name);
                 } else {
                     rawValue = extractedMods || prefixMap.get(meta.name.toLowerCase());
+                }
+            } else if (meta.type === EOptionType.Attachment) {
+                if (ctx.isSlash) {
+                    rawValue = (ctx as SlashContext).interaction.options.getAttachment(meta.name);
+                } else {
+                    rawValue = (ctx as MessageContext).message.attachments.first() ?? null;
                 }
             } else if (meta.type === EOptionType.Query) {
                 if (ctx.isSlash) {
@@ -111,6 +117,22 @@ export class CommandParser {
         ctx: CommandContext,
         prefixMap: Map<string, string>,
     ): Promise<any> {
+        if (meta.type === EOptionType.Attachment) {
+            if (
+                !value ||
+                typeof value.name !== "string" ||
+                typeof value.url !== "string" ||
+                typeof value.size !== "number"
+            ) {
+                throw new Exception(
+                    EApplicationError.INPUT_ERROR,
+                    `Option \`${meta.name}\` must be a valid attachment.`,
+                );
+            }
+
+            return value as Attachment;
+        }
+
         const strVal = String(value).trim();
 
         if (meta.type === EOptionType.Mods) {
@@ -401,6 +423,9 @@ export class CommandParser {
         }
         if (meta.type === EOptionType.Boolean) {
             return { ...base, type: ApplicationCommandOptionType.Boolean };
+        }
+        if (meta.type === EOptionType.Attachment) {
+            return { ...base, type: ApplicationCommandOptionType.Attachment };
         }
         return { ...base, type: ApplicationCommandOptionType.String };
     }

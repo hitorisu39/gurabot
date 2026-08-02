@@ -6,6 +6,8 @@ import {
     MessageFlags,
     ModalBuilder,
     APIModalInteractionResponseCallbackData,
+    MessageEditOptions,
+    MessageCreateOptions,
 } from "discord.js";
 import { TMessagePayload, IMessageOptions } from "./CommandContext";
 import { EApplicationError, Exception } from "@domain/core/Exception";
@@ -115,5 +117,35 @@ export class ComponentContext {
             return this.interaction.fields.getTextInputValue(customId) || null;
         }
         return null;
+    }
+
+    public async editSourceMessage(payload: TMessagePayload): Promise<void> {
+        const message = this.interaction.message;
+
+        if (!message) {
+            throw new Exception(EApplicationError.INTERNAL_ERROR, "This component does not have a source message.");
+        }
+
+        await message.edit(payload as MessageEditOptions);
+    }
+
+    public async deleteSourceMessage(): Promise<void> {
+        const message = this.interaction.message;
+
+        if (!message) {
+            throw new Exception(EApplicationError.INTERNAL_ERROR, "This component does not have a source message.");
+        }
+
+        await message.delete();
+    }
+
+    public async sendChannelMessage(payload: MessageCreateOptions): Promise<void> {
+        const channel = this.interaction.channel;
+
+        if (!channel?.isSendable()) {
+            throw new Exception(EApplicationError.INTERNAL_ERROR, "The component channel is not sendable.");
+        }
+
+        await channel.send(payload);
     }
 }

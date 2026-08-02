@@ -79,4 +79,12 @@ export class HttpClient {
         const response = await this.client.post<T>(url, data, config);
         return response.data;
     }
+
+    public async getResponse<T>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+        return this.client.get<T>(url, config);
+    }
+
+    public async postResponse<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+        return this.client.post<T>(url, data, config);
+    }
 }

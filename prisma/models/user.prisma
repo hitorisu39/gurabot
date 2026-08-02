@@ -1,6 +1,8 @@
 model User {
     id              String      @id
     linked          UserToOsu[]
+    ordrConfig      OrdrConfig?
+    ordrRenders     OrdrRender[]
 
     server          String?     // AdapterProvider
     mode            String?     // GameMode

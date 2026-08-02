@@ -137,6 +137,7 @@ export enum EOptionType {
     Enum = "Enum",
     Boolean = "Boolean",
     User = "User",
+    Attachment = "Attachment",
     Mods = "Mods",
     Query = "Query",
     Date = "Date",
@@ -259,6 +260,12 @@ export function IsBoolean() {
 export function IsUser() {
     return function (target: any, propertyKey: string | symbol) {
         updateProperty(target, propertyKey, { type: EOptionType.User });
+    };
+}
+
+export function IsAttachment() {
+    return function (target: any, propertyKey: string | symbol) {
+        updateProperty(target, propertyKey, { type: EOptionType.Attachment });
     };
 }
 

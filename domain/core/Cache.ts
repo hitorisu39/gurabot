@@ -1,5 +1,7 @@
 import { AuthOsuStateDto } from "@domain/auth/Auth.dto";
 import { GuildDto } from "@domain/guild/Guild.dto";
+import { OrdrConfigViewDto } from "@domain/ordr/views/OrdrConfig.view";
+import { OrdrRenderViewDto } from "@domain/ordr/views/OrdrRender.view";
 import { PopulatedUser } from "@domain/osu/Profile.dto";
 import { MapViewDto } from "@domain/osu/views/Map.view";
 import { ProfileViewDto } from "@domain/osu/views/Profile.view";
@@ -16,6 +18,9 @@ export interface ICacheSchema {
     osu_scores_view: ScoresViewDto;
     osu_map_view: MapViewDto;
     osu_simulate_view: SimulateViewDto;
+
+    ordr_config_view: OrdrConfigViewDto;
+    ordr_render_view: OrdrRenderViewDto;
 
     // Osu
     osu_user_profile: PopulatedUser;

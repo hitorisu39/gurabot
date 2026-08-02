@@ -1,0 +1,29 @@
+model OrdrConfig {
+    userID          String       @id @map("user_id")
+    user            User         @relation(fields: [userID], references: [id], onDelete: Cascade)
+
+    source          String       @default("Bot")
+    settings        Json
+
+    createdAt       DateTime     @map("created_at") @default(now())
+    updatedAt       DateTime     @map("updated_at") @updatedAt @default(now())
+
+    @@map("ordr_configs")
+}
+
+model OrdrRender {
+    id              String      @id @default(cuid())
+
+    userID          String      @map("user_id")
+    user            User        @relation(fields: [userID], references: [id], onDelete: Cascade)
+
+    renderID        Int         @map("render_id")
+    source          String
+    skin            String?
+    customSkin      Boolean?    @map("custom_skin")
+
+    createdAt       DateTime    @map("created_at") @default(now())
+
+    @@index([userID, createdAt])
+    @@map("ordr_renders")
+}
