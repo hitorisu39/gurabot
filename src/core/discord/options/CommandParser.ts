@@ -2,7 +2,7 @@ import { EOptionType, IOptionMetadata } from "@/core/decorators";
 import { CommandContext } from "../context/CommandContext";
 import { MessageContext } from "../context/MessageContext";
 import { SlashContext } from "../context/SlashContext";
-import { ApplicationCommandOptionType, Attachment, User } from "discord.js";
+import { ApplicationCommandOptionType, Attachment } from "discord.js";
 import { METAKEY_COMMAND_PROPERTIES } from "@/core/metakeys";
 import {
     CommandOption,
@@ -21,12 +21,16 @@ export class CommandParser {
     public static async parseAndValidate(
         ctx: CommandContext,
         optionsMeta: Array<IOptionMetadata>,
-        internalState?: { prefixMap: Map<string, string>; rawContent: string },
+        internalState?: {
+            prefixMap: Map<string, string>;
+            rawContent: string;
+        },
     ): Promise<Record<string, CommandOption<any>>> {
         const parsedData: Record<string, CommandOption<any>> = {};
 
-        let prefixMap = internalState?.prefixMap || new Map<string, string>();
-        let injectedContent = internalState?.rawContent || "";
+        const prefixMap = internalState?.prefixMap ?? new Map<string, string>();
+
+        let injectedContent = internalState?.rawContent ?? "";
         let extractedMods: string | null = null;
 
         if (!internalState && !ctx.isSlash) {
@@ -35,6 +39,7 @@ export class CommandParser {
 
             const modsRegex = /(?:^|\s)([+-][a-zA-Z]{2,}!?)(?=\s|$)/;
             const modMatch = content.match(modsRegex);
+
             if (modMatch) {
                 extractedMods = modMatch[1]!;
                 content = content.replace(modsRegex, " ").trim();
@@ -52,7 +57,7 @@ export class CommandParser {
                 if (ctx.isSlash) {
                     rawValue = (ctx as SlashContext).interaction.options.getString(meta.name);
                 } else {
-                    rawValue = extractedMods || prefixMap.get(meta.name.toLowerCase());
+                    rawValue = extractedMods ?? this.getOptionValue(meta, prefixMap);
                 }
             } else if (meta.type === EOptionType.Attachment) {
                 if (ctx.isSlash) {
@@ -64,13 +69,19 @@ export class CommandParser {
                 if (ctx.isSlash) {
                     rawValue = (ctx as SlashContext).interaction.options.getString(meta.name);
                 } else {
-                    const explicitValue = prefixMap.get(meta.name.toLowerCase());
+                    const explicitValue = this.getOptionValue(meta, prefixMap);
 
                     if (explicitValue !== undefined) {
                         rawValue = explicitValue;
                     } else if (meta.inject && (injectedContent.length > 0 || prefixMap.size > 0)) {
                         rawValue = injectedContent;
                     } else if (prefixMap.size > 0) {
+                        /*
+                         * An empty query still needs to be parsed when there are
+                         * top-level key/value filters, such as:
+                         *
+                         * top cs>=4 ar=10
+                         */
                         rawValue = "";
                     } else {
                         rawValue = null;
@@ -80,19 +91,14 @@ export class CommandParser {
                 rawValue = injectedContent || null;
             } else if (ctx.isSlash && !internalState) {
                 const slashCtx = ctx as SlashContext;
+
                 if (meta.type === EOptionType.User) {
                     rawValue = slashCtx.interaction.options.getUser(meta.name);
                 } else {
                     rawValue = slashCtx.interaction.options.get(meta.name)?.value;
                 }
             } else {
-                rawValue = prefixMap.get(meta.name.toLowerCase());
-                if (rawValue === undefined && meta.aliases) {
-                    for (const alias of meta.aliases) {
-                        rawValue = prefixMap.get(alias);
-                        if (rawValue !== undefined) break;
-                    }
-                }
+                rawValue = this.getOptionValue(meta, prefixMap);
             }
 
             if ((rawValue === null || rawValue === undefined || rawValue === "") && meta.required) {
@@ -105,10 +111,31 @@ export class CommandParser {
             }
 
             const finalValue = await this.validateType(meta, rawValue, ctx, prefixMap);
+
             parsedData[meta.propertyKey] = new CommandOption(finalValue);
         }
 
         return parsedData;
+    }
+
+    private static getOptionKeys(meta: IOptionMetadata): string[] {
+        return [meta.name.toLowerCase(), ...(meta.aliases ?? []).map((alias) => alias.toLowerCase())];
+    }
+
+    private static getOptionValue(meta: IOptionMetadata, prefixMap: Map<string, string>): string | undefined {
+        for (const key of this.getOptionKeys(meta)) {
+            const value = prefixMap.get(key);
+
+            if (value !== undefined) {
+                return value;
+            }
+        }
+
+        return undefined;
+    }
+
+    private static hasOptionValue(meta: IOptionMetadata, prefixMap: Map<string, string>): boolean {
+        return this.getOptionKeys(meta).some((key) => prefixMap.has(key));
     }
 
     private static async validateType(
@@ -140,12 +167,13 @@ export class CommandParser {
         }
 
         if (meta.type === EOptionType.Query) {
-            return await this.parseQueryDto(meta, strVal, ctx, prefixMap);
+            return this.parseQueryDto(meta, strVal, ctx, prefixMap);
         }
 
         switch (meta.type) {
             case EOptionType.User: {
                 const match = strVal.match(/^<@!?(\d+)>$/) || strVal.match(/^(\d+)$/);
+
                 if (!match) {
                     throw new Exception(
                         EApplicationError.INPUT_ERROR,
@@ -153,10 +181,11 @@ export class CommandParser {
                     );
                 }
 
-                const userID = match[1];
+                const userID = match[1]!;
+
                 try {
-                    return await ctx.author.client.users.fetch(userID!);
-                } catch (error) {
+                    return await ctx.author.client.users.fetch(userID);
+                } catch {
                     throw new Exception(
                         EApplicationError.INPUT_ERROR,
                         `Could not find a user with the ID \`${userID}\` for option \`${meta.name}\`.`,
@@ -170,46 +199,64 @@ export class CommandParser {
             case EOptionType.DateRange:
                 return this.parseDateRange(meta.name, strVal);
 
-            case EOptionType.String:
-                if (meta.min !== undefined && strVal.length < meta.min)
+            case EOptionType.String: {
+                if (meta.min !== undefined && strVal.length < meta.min) {
                     throw new Exception(
                         EApplicationError.INPUT_ERROR,
                         `Option \`${meta.name}\` must be at least ${meta.min} characters.`,
                     );
-                if (meta.max !== undefined && strVal.length > meta.max)
+                }
+
+                if (meta.max !== undefined && strVal.length > meta.max) {
                     throw new Exception(
                         EApplicationError.INPUT_ERROR,
                         `Option \`${meta.name}\` must be at most ${meta.max} characters.`,
                     );
+                }
+
                 return strVal;
+            }
 
             case EOptionType.Number:
-            case EOptionType.Integer:
+            case EOptionType.Integer: {
                 const numVal = Number(value);
-                if (isNaN(numVal))
+
+                if (Number.isNaN(numVal)) {
                     throw new Exception(
                         EApplicationError.INPUT_ERROR,
                         `Option \`${meta.name}\` must be a valid number.`,
                     );
-                if (meta.type === EOptionType.Integer && !Number.isInteger(numVal))
+                }
+
+                if (meta.type === EOptionType.Integer && !Number.isInteger(numVal)) {
                     throw new Exception(EApplicationError.INPUT_ERROR, `Option \`${meta.name}\` must be an integer.`);
-                if (meta.min !== undefined && numVal < meta.min)
+                }
+
+                if (meta.min !== undefined && numVal < meta.min) {
                     throw new Exception(
                         EApplicationError.INPUT_ERROR,
                         `Option \`${meta.name}\` must be at least ${meta.min}.`,
                     );
-                if (meta.max !== undefined && numVal > meta.max)
+                }
+
+                if (meta.max !== undefined && numVal > meta.max) {
                     throw new Exception(
                         EApplicationError.INPUT_ERROR,
                         `Option \`${meta.name}\` must be at most ${meta.max}.`,
                     );
+                }
+
                 return numVal;
+            }
 
-            case EOptionType.Enum:
+            case EOptionType.Enum: {
                 const validValues = Object.values(meta.enumData);
-                const matchedValue = validValues.find((v: any) => v.toLowerCase() === strVal.toLowerCase());
 
-                if (!matchedValue) {
+                const matchedValue = validValues.find(
+                    (enumValue: any) => String(enumValue).toLowerCase() === strVal.toLowerCase(),
+                );
+
+                if (matchedValue === undefined) {
                     throw new Exception(
                         EApplicationError.INPUT_ERROR,
                         `Option \`${meta.name}\` must be one of: ${validValues.join(", ")}`,
@@ -217,18 +264,30 @@ export class CommandParser {
                 }
 
                 return matchedValue;
+            }
 
             case EOptionType.Range:
                 return this.parseRange(meta.name, strVal);
 
-            case EOptionType.Boolean:
+            case EOptionType.Boolean: {
                 const lowerVal = strVal.toLowerCase();
-                if (["true", "yes", "1", "y", "t"].includes(lowerVal)) return true;
-                if (["false", "no", "0", "n", "f"].includes(lowerVal)) return false;
+
+                if (["true", "yes", "1", "y", "t"].includes(lowerVal)) {
+                    return true;
+                }
+
+                if (["false", "no", "0", "n", "f"].includes(lowerVal)) {
+                    return false;
+                }
+
                 throw new Exception(
                     EApplicationError.INPUT_ERROR,
                     `Option \`${meta.name}\` must be a boolean (true/false).`,
                 );
+            }
+
+            default:
+                return strVal;
         }
     }
 
@@ -236,14 +295,19 @@ export class CommandParser {
         input = input.toUpperCase();
 
         let type = EModMatchType.Include;
-        if (input.startsWith("+") && input.endsWith("!")) type = EModMatchType.Match;
-        else if (input.startsWith("-") && input.endsWith("!")) type = EModMatchType.Exclude;
-        else if (input.startsWith("+")) type = EModMatchType.Include;
-        else {
+
+        if (input.startsWith("+") && input.endsWith("!")) {
+            type = EModMatchType.Match;
+        } else if (input.startsWith("-") && input.endsWith("!")) {
+            type = EModMatchType.Exclude;
+        } else if (input.startsWith("+")) {
+            type = EModMatchType.Include;
+        } else {
             type = input.endsWith("!") ? EModMatchType.Match : EModMatchType.Include;
         }
 
         const mods = input.replace(/[+!-]/g, "");
+
         if (!mods || mods.length % 2 !== 0) {
             throw new Exception(EApplicationError.INPUT_ERROR, `Invalid mod combination: \`${input}\``);
         }
@@ -258,15 +322,18 @@ export class CommandParser {
         globalPrefixMap: Map<string, string>,
     ): Promise<ICommandQueryData<any>> {
         const dtoClass = meta.queryDto;
+
         const properties: Array<IOptionMetadata> =
-            Reflect.getMetadata(METAKEY_COMMAND_PROPERTIES, dtoClass.prototype) || [];
+            Reflect.getMetadata(METAKEY_COMMAND_PROPERTIES, dtoClass.prototype) ?? [];
 
         let queryPrefixMap = new Map<string, string>();
         let cleanedContent = stringContent;
 
+        const hasExplicitQuery = this.hasOptionValue(meta, globalPrefixMap);
+
         if (ctx.isSlash) {
             cleanedContent = this.extractKeyValuePairs(cleanedContent, queryPrefixMap);
-        } else if (globalPrefixMap.has(meta.name.toLowerCase())) {
+        } else if (hasExplicitQuery) {
             cleanedContent = this.extractKeyValuePairs(cleanedContent, queryPrefixMap);
         } else {
             queryPrefixMap = globalPrefixMap;
@@ -279,34 +346,48 @@ export class CommandParser {
         });
 
         const dtoInstance = new dtoClass();
-        for (const [key, val] of Object.entries(parsedDtoFields)) {
-            dtoInstance[key] = val;
+
+        for (const [key, value] of Object.entries(parsedDtoFields)) {
+            dtoInstance[key] = value;
         }
 
         return {
             data: dtoInstance,
-            cleanedContent: cleanedContent,
+            cleanedContent,
         };
     }
 
     private static parseDate(name: string, input: string): Date {
         const date = new Date(input);
-        if (isNaN(date.getTime())) {
+
+        if (Number.isNaN(date.getTime())) {
             throw new Exception(
                 EApplicationError.INPUT_ERROR,
                 `Option \`${name}\` must be a valid date (e.g., YYYY-MM-DD).`,
             );
         }
+
         return date;
     }
 
     private static parseDateRange(name: string, input: string): ICommandDateRange {
-        const rangeObj: ICommandDateRange = { minInclusive: false, maxInclusive: false };
+        const rangeObj: ICommandDateRange = {
+            minInclusive: false,
+            maxInclusive: false,
+        };
 
-        // Match Operators: >YYYY-MM-DD, <YYYY-MM-DD, >=YYYY-MM-DD, <=YYYY-MM-DD
+        /*
+         * Operators:
+         *
+         * >2023-01-01
+         * >=2023-01-01
+         * <2023-01-01
+         * <=2023-01-01
+         */
         const operatorMatch = input.match(/^([<>]=?)(.+)$/);
+
         if (operatorMatch) {
-            const operator = operatorMatch[1];
+            const operator = operatorMatch[1]!;
             const dateVal = this.parseDate(name, operatorMatch[2]!.trim());
 
             if (operator === ">") {
@@ -320,21 +401,30 @@ export class CommandParser {
                 rangeObj.max = dateVal;
                 rangeObj.maxInclusive = true;
             }
+
             return rangeObj;
         }
 
-        // Match Split ranges e.g. "2023-01-01..2023-12-31", "2023-01-01 / 2023-12-31", "2023-01-01 to 2023-12-31"
+        /*
+         * Split ranges:
+         *
+         * 2023-01-01..2023-12-31
+         * 2023-01-01 / 2023-12-31
+         * 2023-01-01 to 2023-12-31
+         */
         const splitMatch = input.split(/(?:\.\.|\/|\s+to\s+)/i);
+
         if (splitMatch.length === 2) {
             rangeObj.min = this.parseDate(name, splitMatch[0]!.trim());
             rangeObj.max = this.parseDate(name, splitMatch[1]!.trim());
             rangeObj.minInclusive = true;
             rangeObj.maxInclusive = true;
+
             return rangeObj;
         }
 
-        // Exact match fallback (e.g., "2023-01-01")
         const exactDate = this.parseDate(name, input);
+
         return {
             min: exactDate,
             max: exactDate,
@@ -345,41 +435,74 @@ export class CommandParser {
     }
 
     private static parseRange(name: string, input: string): ICommandRange {
-        const rangeObj: ICommandRange = { min: -Infinity, max: Infinity, minInclusive: false, maxInclusive: false };
+        const rangeObj: ICommandRange = {
+            min: -Infinity,
+            max: Infinity,
+            minInclusive: false,
+            maxInclusive: false,
+        };
 
-        // Exact exact e.g., "5"
+        /*
+         * Exact value:
+         *
+         * 5
+         * 5.5
+         */
         if (/^\d+(?:\.\d+)?$/.test(input)) {
-            const val = Number(input);
-            return { min: val, max: val, minInclusive: true, maxInclusive: true, exact: val };
+            const value = Number(input);
+
+            return {
+                min: value,
+                max: value,
+                minInclusive: true,
+                maxInclusive: true,
+                exact: value,
+            };
         }
 
-        // Match X-Y e.g., "1-6" or "1.5-6.5"
+        /*
+         * Dash range:
+         *
+         * 1-6
+         * 1.5-6.5
+         */
         const dashMatch = input.match(/^(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)$/);
+
         if (dashMatch) {
             rangeObj.min = Number(dashMatch[1]);
             rangeObj.max = Number(dashMatch[2]);
             rangeObj.minInclusive = true;
             rangeObj.maxInclusive = true;
+
             return rangeObj;
         }
 
-        // Match >X, <X, >=X, <=X
+        /*
+         * Operator range:
+         *
+         * >5
+         * >=5
+         * <10
+         * <=10
+         */
         const operatorMatch = input.match(/^([<>]=?)(\d+(?:\.\d+)?)$/);
+
         if (operatorMatch) {
-            const operator = operatorMatch[1];
-            const val = Number(operatorMatch[2]);
+            const operator = operatorMatch[1]!;
+            const value = Number(operatorMatch[2]);
 
             if (operator === ">") {
-                rangeObj.min = val;
+                rangeObj.min = value;
             } else if (operator === ">=") {
-                rangeObj.min = val;
+                rangeObj.min = value;
                 rangeObj.minInclusive = true;
             } else if (operator === "<") {
-                rangeObj.max = val;
+                rangeObj.max = value;
             } else if (operator === "<=") {
-                rangeObj.max = val;
+                rangeObj.max = value;
                 rangeObj.maxInclusive = true;
             }
+
             return rangeObj;
         }
 
@@ -397,8 +520,12 @@ export class CommandParser {
         };
 
         if (meta.type === EOptionType.User) {
-            return { ...base, type: ApplicationCommandOptionType.User };
+            return {
+                ...base,
+                type: ApplicationCommandOptionType.User,
+            };
         }
+
         if (
             meta.type === EOptionType.String ||
             meta.type === EOptionType.Range ||
@@ -406,44 +533,76 @@ export class CommandParser {
             meta.type === EOptionType.DateRange ||
             meta.inject
         ) {
-            return { ...base, type: ApplicationCommandOptionType.String };
+            return {
+                ...base,
+                type: ApplicationCommandOptionType.String,
+            };
         }
+
         if (meta.type === EOptionType.Integer) {
-            return { ...base, type: ApplicationCommandOptionType.Integer, minValue: meta.min, maxValue: meta.max };
+            return {
+                ...base,
+                type: ApplicationCommandOptionType.Integer,
+                minValue: meta.min,
+                maxValue: meta.max,
+            };
         }
+
         if (meta.type === EOptionType.Number) {
-            return { ...base, type: ApplicationCommandOptionType.Number, minValue: meta.min, maxValue: meta.max };
+            return {
+                ...base,
+                type: ApplicationCommandOptionType.Number,
+                minValue: meta.min,
+                maxValue: meta.max,
+            };
         }
+
         if (meta.type === EOptionType.Enum) {
             return {
                 ...base,
                 type: ApplicationCommandOptionType.String,
-                choices: Object.entries(meta.enumData).map(([name, value]) => ({ name, value: String(value) })),
+                choices: Object.entries(meta.enumData).map(([name, value]) => ({
+                    name,
+                    value: String(value),
+                })),
             };
         }
+
         if (meta.type === EOptionType.Boolean) {
-            return { ...base, type: ApplicationCommandOptionType.Boolean };
+            return {
+                ...base,
+                type: ApplicationCommandOptionType.Boolean,
+            };
         }
+
         if (meta.type === EOptionType.Attachment) {
-            return { ...base, type: ApplicationCommandOptionType.Attachment };
+            return {
+                ...base,
+                type: ApplicationCommandOptionType.Attachment,
+            };
         }
-        return { ...base, type: ApplicationCommandOptionType.String };
+
+        return {
+            ...base,
+            type: ApplicationCommandOptionType.String,
+        };
     }
 
     private static extractKeyValuePairs(content: string, prefixMap: Map<string, string>): string {
         const kvRegex = /([a-zA-Z0-9_]+)([=><:]+)(?:"([^"]+)"|([^\s]+))/g;
-        let match;
+
+        let match: RegExpExecArray | null;
 
         while ((match = kvRegex.exec(content)) !== null) {
             const key = match[1]!.toLowerCase();
             const operator = match[2]!;
-            let value = match[3] !== undefined ? match[3] : match[4];
+            let value = match[3] !== undefined ? match[3] : match[4]!;
 
             if (!["=", ":", "=="].includes(operator)) {
                 value = operator + value;
             }
 
-            prefixMap.set(key, value!);
+            prefixMap.set(key, value);
         }
 
         return content.replace(kvRegex, "").replace(/\s+/g, " ").trim();

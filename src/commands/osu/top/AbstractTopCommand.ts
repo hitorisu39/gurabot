@@ -51,8 +51,8 @@ export abstract class AbstractTopCommand extends AbstractOsuCommand {
     @Import() declare private readonly scoreViewService: ScoreViewService;
 
     @Option("query", "Filter scores (e.g. pp range, cs, ar, artist, etc.)")
-    @Aliases("search", "s", "q")
     @IsQuery(PopulatedScoresQueryDto)
+    @Aliases("search", "s", "q")
     declare private readonly query: CommandOption<ICommandQueryData<PopulatedScoresQueryDto>>;
 
     @Option("sort", "Specify sorting. For order refer to 'order' option")
