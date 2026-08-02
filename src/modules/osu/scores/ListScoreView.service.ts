@@ -42,10 +42,8 @@ export class ListScoreView extends AbstractScoreView {
         for (const score of pageScores.values()) {
             if (!score || !ScoreUtils.isFullyPopulated(score)) continue;
 
-            const displayCalculation = score.calculatedFC ?? score.calculated;
-
             const index = score.index;
-            const stars = MapFormatter.stars(displayCalculation.difficulty.attributes.starRating);
+            const stars = MapFormatter.stars(score.fullDifficulty.starRating);
             const mods = ScoreFormatter.mods(score.mods);
 
             const prefixLength = `${index}. `.length;
@@ -86,9 +84,7 @@ export class ListScoreView extends AbstractScoreView {
                     .join(scoreStatsDelimiter);
 
                 const statsSecondRow = [
-                    isMania
-                        ? null
-                        : ScoreFormatter.combo(score.maxCombo, displayCalculation.difficulty.attributes.maxCombo, true),
+                    isMania ? null : ScoreFormatter.combo(score.maxCombo, score.fullDifficulty.maxCombo, true),
                     `\`${statistics}\``,
                     DateFormatter.discord(score.endedAt, "R"),
                 ]
@@ -103,9 +99,7 @@ export class ListScoreView extends AbstractScoreView {
                         score.pp ?? score.calculated.attributes.total,
                         score.calculatedFC?.attributes.total,
                     ),
-                    isMania
-                        ? scoreDisplay
-                        : ScoreFormatter.combo(score.maxCombo, displayCalculation.difficulty.attributes.maxCombo),
+                    isMania ? scoreDisplay : ScoreFormatter.combo(score.maxCombo, score.fullDifficulty.maxCombo),
                     ScoreFormatter.miss(score.statistics.miss),
                     DateFormatter.discord(score.endedAt, "R"),
                 ]

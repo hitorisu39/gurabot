@@ -4,6 +4,7 @@ import { Beatmap, GameMode, Grade, Score, ScoreStatistics } from "@generated/ada
 import { osuBaseDomain } from "../configs/Osu.config";
 import { PersonalBestPlacementDto, ScoreWithPlacement } from "../Score.dto";
 import { EPersonalBestCase } from "../enums/Score.enum";
+import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";
 
 export class ScoreFormatter {
     public static completion(statistics: ScoreStatistics, beatmap: Beatmap, mode: GameMode): number | null {
@@ -62,8 +63,8 @@ export class ScoreFormatter {
     }
 
     public static mods(mods: Array<ParsedMod>): string {
-        if (!mods || mods.length === 0) return "";
-        return `+${mods.map((m) => m.acronym).join("")}`;
+        if (!mods.length) return "";
+        return `+${mods.map((mod) => this.mod(mod)).join("")}`;
     }
 
     public static accuracy(acc: number): string {
@@ -157,6 +158,21 @@ export class ScoreFormatter {
                 return `${placement} (if ranked)`;
             default:
                 return "";
+        }
+    }
+
+    private static mod(mod: ParsedMod): string {
+        switch (mod.acronym) {
+            case "DT":
+            case "NC":
+            case "HT":
+            case "DC":
+                if (!mod.settings?.speed_change)
+                    return mod.acronym
+
+                return `${mod.acronym}(${DiscordFormatter.fixed(mod.settings.speed_change)}x)`;
+            default:
+                return mod.acronym;
         }
     }
 }

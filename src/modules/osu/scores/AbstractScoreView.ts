@@ -41,8 +41,7 @@ export abstract class AbstractScoreView extends AbstractService {
         const description = new DescriptionBuilder();
         const isMania = data.profile.mode === GameMode.Mania;
 
-        const displayCalculation = score.calculatedFC ?? score.calculated;
-        const stars = MapFormatter.stars(displayCalculation.difficulty.attributes.starRating);
+        const stars = MapFormatter.stars(score.fullDifficulty.starRating);
         const mods = ScoreFormatter.mods(score.mods);
 
         const scoreNum = DiscordFormatter.number(score.legacyTotalScore || score.totalScore);
@@ -73,11 +72,7 @@ export abstract class AbstractScoreView extends AbstractService {
             const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect.toString();
             comboRatioString = `${score.maxCombo}x / **${ratio}**`;
         } else {
-            comboRatioString = ScoreFormatter.combo(
-                score.maxCombo,
-                displayCalculation.difficulty.attributes.maxCombo,
-                true,
-            );
+            comboRatioString = ScoreFormatter.combo(score.maxCombo, score.fullDifficulty.maxCombo, true);
         }
 
         const hitsString = `${ScoreFormatter.statistics(score.statistics, data.profile.mode, "/")}`;

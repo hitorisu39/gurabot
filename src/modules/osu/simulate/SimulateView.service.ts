@@ -24,7 +24,7 @@ import { scoreStatsCompactDelimiter, scoreStatsDelimiter } from "@domain/osu/con
 export class SimulateViewService extends AbstractViewService<SimulateViewDto> {
     @Import() declare private readonly calculatorService: CalculatorService;
 
-    protected readonly ttl: number = 300;
+    protected readonly ttl: number = 180;
 
     public async build(sessionID: string, data: SimulateViewDto): Promise<TMessagePayload> {
         const map = data.beatmapset.beatmaps?.find((candidate) => candidate.id === data.beatmapID);

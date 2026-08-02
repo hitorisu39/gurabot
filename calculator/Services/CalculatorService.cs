@@ -27,7 +27,7 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
 {
     private readonly BeatmapCache _cache;
     private readonly HitResultGeneration _hitResultGeneration;
-    private readonly PartialDifficultyCache _partialDifficultyCache;
+    private readonly PartialDifficultyService _partialDifficultyService;
     private readonly CalculationConcurrencyLimiter _calculationLimiter;
 
     private static readonly ConcurrentDictionary<Type, PropertyInfo[]> ObjectPropertiesCache = new();
@@ -36,12 +36,12 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
     public CalculatorService(
         BeatmapCache cache,
         HitResultGeneration hitResultGeneration,
-        PartialDifficultyCache partialDifficultyCache,
+        PartialDifficultyService partialDifficultyService,
         CalculationConcurrencyLimiter calculationLimiter)
     {
         _cache = cache;
         _hitResultGeneration = hitResultGeneration;
-        _partialDifficultyCache = partialDifficultyCache;
+        _partialDifficultyService = partialDifficultyService;
         _calculationLimiter = calculationLimiter;
     }
 
@@ -363,33 +363,105 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
         return rate;
     }
 
-    public override Task<DifficultyResponse> CalculateDifficulty(DifficultyRequest request, ServerCallContext context)
+    public override Task<DifficultyResponse> CalculateDifficulty(
+        DifficultyRequest request,
+        ServerCallContext context)
     {
-        var ruleset = GetRuleset(request.RulesetId);
-        var mods = ParseMods(ruleset, request.Mods, request.HasClockRate ? request.ClockRate : null);
+        Ruleset ruleset = GetRuleset(request.RulesetId);
 
-        var cachedBeatmap = _cache.GetBeatmap(request.BeatmapPath);
-        IWorkingBeatmap beatmap = cachedBeatmap.WorkingBeatmap;
+        Mod[] mods = ParseMods(
+            ruleset,
+            request.Mods,
+            request.HasClockRate
+                ? request.ClockRate
+                : null
+        );
+
+        CachedWorkingBeatmap cachedBeatmap =
+            _cache.GetBeatmap(request.BeatmapPath);
+
+        DifficultyAttributes difficultyAttributes;
+        IBeatmap playableBeatmap;
+        DifficultyCalculator? difficultyCalculator = null;
 
         if (request.HasPassedObjects)
-            beatmap = new TruncatedWorkingBeatmap(cachedBeatmap.WorkingBeatmap.Beatmap, (int)request.PassedObjects);
+        {
+            if (request.PassedObjects == 0)
+            {
+                throw new RpcException(
+                    new Status(
+                        StatusCode.InvalidArgument,
+                        "passed_objects must be greater than zero."
+                    )
+                );
+            }
 
-        var difficultyCalculator = ruleset.CreateDifficultyCalculator(beatmap);
-        var difficultyAttributes = difficultyCalculator.Calculate(mods);
+            if (request.CalculateStrains)
+            {
+                throw new RpcException(
+                    new Status(
+                        StatusCode.Unimplemented,
+                        "Strain calculation for partial difficulty is not supported."
+                    )
+                );
+            }
 
-        var playableBeatmap = beatmap.GetPlayableBeatmap(ruleset.RulesetInfo, mods);
-        var clockRate = CalculateClockRate(mods);
+            PartialDifficultyResult partial =
+                _partialDifficultyService.Calculate(
+                    cachedBeatmap,
+                    ruleset,
+                    request.RulesetId,
+                    mods,
+                    request.Mods,
+                    request.HasClockRate
+                        ? request.ClockRate
+                        : null,
+                    request.PassedObjects,
+                    context.CancellationToken
+                );
+
+            difficultyAttributes = partial.Attributes;
+            playableBeatmap = partial.PlayableBeatmap;
+        }
+        else
+        {
+            difficultyCalculator =
+                ruleset.CreateDifficultyCalculator(
+                    cachedBeatmap.WorkingBeatmap
+                );
+
+            difficultyAttributes =
+                difficultyCalculator.Calculate(mods);
+
+            playableBeatmap =
+                cachedBeatmap.WorkingBeatmap.GetPlayableBeatmap(
+                    ruleset.RulesetInfo,
+                    mods
+                );
+        }
+
+        double clockRate = CalculateClockRate(mods);
 
         var response = new DifficultyResponse
         {
-            Beatmap = CalculateAdjustedAttributes(playableBeatmap, clockRate)
+            Beatmap = CalculateAdjustedAttributes(
+                playableBeatmap,
+                clockRate
+            )
         };
 
-        response.Attributes.Add(ExtractAttributes(difficultyAttributes));
+        response.Attributes.Add(
+            ExtractAttributes(difficultyAttributes)
+        );
 
         if (request.CalculateStrains)
         {
-            var strains = GetStrains(difficultyCalculator, playableBeatmap, mods);
+            var strains = GetStrains(
+                difficultyCalculator!,
+                playableBeatmap,
+                mods
+            );
+
             response.Strains.AddRange(strains);
         }
 
@@ -421,7 +493,10 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
             {
                 PerformanceResponse response =
                     await _calculationLimiter.RunAsync(
-                        () => CalculatePerformanceCore(request),
+                        () => CalculatePerformanceCore(
+                            request,
+                            context.CancellationToken
+                        ),
                         context.CancellationToken
                     );
 
@@ -464,13 +539,17 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
         ServerCallContext context)
     {
         return _calculationLimiter.RunAsync(
-            () => CalculatePerformanceCore(request),
+            () => CalculatePerformanceCore(
+                request,
+                context.CancellationToken
+            ),
             context.CancellationToken
         );
     }
 
     private PerformanceResponse CalculatePerformanceCore(
-        PerformanceRequest request)
+        PerformanceRequest request,
+        CancellationToken cancellationToken)
     {
         Ruleset ruleset = GetRuleset(request.RulesetId);
 
@@ -482,114 +561,89 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
                 : null
         );
 
-        CachedWorkingBeatmap source =
+        CachedWorkingBeatmap cachedBeatmap =
             _cache.GetBeatmap(request.BeatmapPath);
 
-        IWorkingBeatmap effectiveBeatmap =
-            source.WorkingBeatmap;
+        bool isActual =
+            request.Score.Kind == ScoreStateKind.Actual;
+
+        if (request.HasPassedObjects && !isActual)
+        {
+            throw new RpcException(
+                new Status(
+                    StatusCode.InvalidArgument,
+                    "Partial performance calculation requires an actual score state."
+                )
+            );
+        }
+
+        DifficultyAttributes difficultyAttributes;
+        IBeatmap playableBeatmap;
 
         if (request.HasPassedObjects)
         {
-            int sourceObjectCount =
-                source.WorkingBeatmap.Beatmap.HitObjects.Count;
-
-            if (
-                request.PassedObjects == 0 ||
-                request.PassedObjects > sourceObjectCount
-            )
+            if (request.PassedObjects == 0)
             {
                 throw new RpcException(
                     new Status(
                         StatusCode.InvalidArgument,
-                        $"passed_objects must be between 1 and " +
-                        $"{sourceObjectCount}."
+                        "passed_objects must be greater than zero."
                     )
                 );
             }
 
-            effectiveBeatmap = new TruncatedWorkingBeatmap(
-                source.WorkingBeatmap.Beatmap,
-                checked((int)request.PassedObjects)
-            );
-        }
-
-        DifficultyCalculator difficultyCalculator =
-            ruleset.CreateDifficultyCalculator(effectiveBeatmap);
-
-        DifficultyAttributes difficultyAttributes;
-
-        if (
-            !request.HasPassedObjects &&
-            request.PrecalculatedDifficulty.Count > 0
-        )
-        {
-            difficultyAttributes =
-                CreateDifficultyAttributes(
+            PartialDifficultyResult partial =
+                _partialDifficultyService.Calculate(
+                    cachedBeatmap,
+                    ruleset,
                     request.RulesetId,
                     mods,
-                    request.PrecalculatedDifficulty
-                );
-        }
-        else if (request.HasPassedObjects)
-        {
-            var cacheKey = new PartialDifficultyCacheKey(
-                source.Identity,
-                request.RulesetId,
-                BuildModsKey(
                     request.Mods,
                     request.HasClockRate
                         ? request.ClockRate
-                        : null
-                ),
-                request.PassedObjects,
-                difficultyCalculator.Version
-            );
-
-            IReadOnlyDictionary<string, double> cachedAttributes =
-                _partialDifficultyCache.GetOrCreate(
-                    cacheKey,
-                    () =>
-                    {
-                        DifficultyAttributes calculated =
-                            difficultyCalculator.Calculate(mods);
-
-                        return ExtractAttributes(calculated);
-                    }
+                        : null,
+                    request.PassedObjects,
+                    cancellationToken
                 );
 
-            difficultyAttributes =
-                CreateDifficultyAttributes(
-                    request.RulesetId,
-                    mods,
-                    cachedAttributes
-                );
+            difficultyAttributes = partial.Attributes;
+            playableBeatmap = partial.PlayableBeatmap;
         }
         else
         {
-            difficultyAttributes =
-                difficultyCalculator.Calculate(mods);
+            playableBeatmap =
+                cachedBeatmap.WorkingBeatmap.GetPlayableBeatmap(
+                    ruleset.RulesetInfo,
+                    mods
+                );
+
+            if (request.PrecalculatedDifficulty.Count > 0)
+            {
+                difficultyAttributes =
+                    CreateDifficultyAttributes(
+                        request.RulesetId,
+                        mods,
+                        request.PrecalculatedDifficulty
+                    );
+            }
+            else
+            {
+                DifficultyCalculator difficultyCalculator =
+                    ruleset.CreateDifficultyCalculator(
+                        cachedBeatmap.WorkingBeatmap
+                    );
+
+                difficultyAttributes =
+                    difficultyCalculator.Calculate(mods);
+            }
         }
-
-        IBeatmap playableBeatmap =
-            effectiveBeatmap.GetPlayableBeatmap(
-                ruleset.RulesetInfo,
-                mods
-            );
-
-        bool isActual =
-            request.Score.Kind == ScoreStateKind.Actual;
 
         Dictionary<HitResult, int> statistics;
 
         if (isActual)
         {
             statistics = BuildExactStatistics(request.Score);
-
-            ValidateActualScore(
-                request,
-                playableBeatmap,
-                statistics
-            );
+            ValidateActualScore(request);
         }
         else
         {
@@ -808,17 +862,23 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
             HitResult.IgnoreMiss
         );
 
-        add(
-            score.HasCountIgnoreHit,
-            score.CountIgnoreHit,
-            HitResult.IgnoreHit
-        );
+        if (!score.HasCountSliderTailHits)
+        {
+            add(
+                score.HasCountIgnoreHit,
+                score.CountIgnoreHit,
+                HitResult.IgnoreHit
+            );
+        }
 
-        add(
-            score.HasCountIgnoreMiss,
-            score.CountIgnoreMiss,
-            HitResult.IgnoreMiss
-        );
+        if (!score.HasCountSliderTailMisses)
+        {
+            add(
+                score.HasCountIgnoreMiss,
+                score.CountIgnoreMiss,
+                HitResult.IgnoreMiss
+            );
+        }
 
         add(
             score.HasCountSmallBonus,
@@ -836,47 +896,82 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
     }
 
     private static void ValidateActualScore(
-        PerformanceRequest request,
-        IBeatmap playableBeatmap,
-        IReadOnlyDictionary<HitResult, int> statistics)
+        PerformanceRequest request)
     {
-        if (
-            request.RulesetId != 0 ||
-            !request.HasPassedObjects
-        )
+        if (!request.HasPassedObjects)
         {
             return;
         }
 
-        int primaryJudgements =
-            statistics.GetValueOrDefault(HitResult.Great) +
-            statistics.GetValueOrDefault(HitResult.Ok) +
-            statistics.GetValueOrDefault(HitResult.Meh) +
-            statistics.GetValueOrDefault(HitResult.Miss);
+        int playedEvents = GetPlayedEventCount(
+            request.RulesetId,
+            request.Score
+        );
 
-        if (primaryJudgements != request.PassedObjects)
+        if (playedEvents != request.PassedObjects)
         {
             throw new RpcException(
                 new Status(
                     StatusCode.InvalidArgument,
-                    $"The score contains {primaryJudgements} basic " +
-                    $"judgements but passed_objects is " +
+                    $"The score contains {playedEvents} played " +
+                    $"events but passed_objects is " +
                     $"{request.PassedObjects}."
                 )
             );
         }
+    }
 
-        if (playableBeatmap.HitObjects.Count != request.PassedObjects)
+    private static int GetPlayedEventCount(
+        uint rulesetId,
+        ScoreState score)
+    {
+        static int get(bool present, uint value) =>
+            present ? checked((int)value) : 0;
+
+        return rulesetId switch
         {
-            throw new RpcException(
+            0 =>
+                get(score.HasCount300, score.Count300) +
+                get(score.HasCount100, score.Count100) +
+                get(score.HasCount50, score.Count50) +
+                get(score.HasCountMiss, score.CountMiss),
+
+            1 =>
+                get(score.HasCount300, score.Count300) +
+                get(score.HasCount100, score.Count100) +
+                get(score.HasCountMiss, score.CountMiss),
+
+            2 =>
+                get(score.HasCount300, score.Count300) +
+                get(
+                    score.HasCountLargeTickHits,
+                    score.CountLargeTickHits
+                ) +
+                get(
+                    score.HasCountSmallTickHits,
+                    score.CountSmallTickHits
+                ) +
+                get(
+                    score.HasCountSmallTickMisses,
+                    score.CountSmallTickMisses
+                ) +
+                get(score.HasCountMiss, score.CountMiss),
+
+            3 =>
+                get(score.HasCountGeki, score.CountGeki) +
+                get(score.HasCount300, score.Count300) +
+                get(score.HasCountKatu, score.CountKatu) +
+                get(score.HasCount100, score.Count100) +
+                get(score.HasCount50, score.Count50) +
+                get(score.HasCountMiss, score.CountMiss),
+
+            _ => throw new RpcException(
                 new Status(
                     StatusCode.InvalidArgument,
-                    $"The truncated beatmap contains " +
-                    $"{playableBeatmap.HitObjects.Count} objects but " +
-                    $"passed_objects is {request.PassedObjects}."
+                    "Invalid ruleset ID."
                 )
-            );
-        }
+            )
+        };
     }
 
     private DifficultyAttributes CreateDifficultyAttributes(
@@ -943,36 +1038,5 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
         }
 
         return attributes;
-    }
-
-    private static string BuildModsKey(
-        IEnumerable<ModMessage> mods,
-        double? clockRate)
-    {
-        string modsKey = string.Join(
-            ",",
-            mods
-                .OrderBy(mod => mod.Acronym)
-                .Select(mod =>
-                {
-                    string settings = string.Join(
-                        ";",
-                        mod.Settings
-                            .OrderBy(setting => setting.Key)
-                            .Select(setting =>
-                                $"{setting.Key}={setting.Value}"
-                            )
-                    );
-
-                    return $"{mod.Acronym}[{settings}]";
-                })
-        );
-
-        string rate = clockRate?.ToString(
-            "R",
-            CultureInfo.InvariantCulture
-        ) ?? "default";
-
-        return $"{modsKey}@{rate}";
     }
 }

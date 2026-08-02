@@ -34,8 +34,7 @@ export class CompareScoreView extends AbstractScoreView {
             const placement = ScoreFormatter.placement(firstScore);
             if (placement) description.add(placement);
 
-            const displayCalculation = firstScore.calculatedFC ?? firstScore.calculated;
-            const stars = MapFormatter.stars(displayCalculation.difficulty.attributes.starRating);
+            const stars = MapFormatter.stars(firstScore.fullDifficulty.starRating);
             const mods = ScoreFormatter.mods(firstScore.mods);
 
             const scoreNum = DiscordFormatter.number(firstScore.legacyTotalScore || firstScore.totalScore);
@@ -60,11 +59,7 @@ export class CompareScoreView extends AbstractScoreView {
                 const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect.toString();
                 comboRatioString = `${firstScore.maxCombo}x / **${ratio}**`;
             } else {
-                comboRatioString = ScoreFormatter.combo(
-                    firstScore.maxCombo,
-                    displayCalculation.difficulty.attributes.maxCombo,
-                    true,
-                );
+                comboRatioString = ScoreFormatter.combo(firstScore.maxCombo, firstScore.fullDifficulty.maxCombo, true);
             }
 
             const hitsString = `${ScoreFormatter.statistics(firstScore.statistics, data.profile.mode, "/")}`;
@@ -104,8 +99,7 @@ export class CompareScoreView extends AbstractScoreView {
             for (const score of remainingScores) {
                 if (!score || !ScoreUtils.isFullyPopulated(score)) continue;
 
-                const displayCalculation = score.calculatedFC ?? score.calculated;
-                const stars = MapFormatter.stars(displayCalculation.difficulty.attributes.starRating);
+                const stars = MapFormatter.stars(score.fullDifficulty.starRating);
                 const mods = ScoreFormatter.mods(score.mods);
 
                 const grade = ScoreFormatter.grade(score.grade, score.passed, score.id);

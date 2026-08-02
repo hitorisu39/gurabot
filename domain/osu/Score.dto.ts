@@ -1,5 +1,5 @@
 import { IsDateRange, IsRange, IsString, Option } from "@/core/decorators";
-import type { IPerformanceCalculationResponse } from "@domain/core/Calculator";
+import type { IPerformanceCalculationResponse, TDifficultyAttributes } from "@domain/core/Calculator";
 import { CommandOption, ICommandDateRange, ICommandRange } from "@domain/core/Command";
 import { Beatmap, Beatmapset, GameMode, Score } from "@generated/adapter/types";
 import { Exclude, Expose, Type } from "class-transformer";
@@ -48,6 +48,9 @@ export class PopulatedScore<M extends GameMode = GameMode> extends ScoreWithMaps
 
     @Expose()
     declare calculatedFC?: IPerformanceCalculationResponse<M>;
+
+    @Expose()
+    declare fullDifficulty: TDifficultyAttributes<M>;
 }
 
 @Exclude()

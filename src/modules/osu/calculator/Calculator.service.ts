@@ -6,9 +6,10 @@ import { GameMode } from "@generated/adapter/types";
 import { ICalculatePerformanceOptions, IDifficultyCalculationResponse, IPerformanceCalculationResponse, TDifficultyAttributes, TPerformanceAttributes } from "@domain/core/Calculator";
 import { ScoreWithMaps, PopulatedScore } from "@domain/osu/Score.dto";
 import { BeatmapAttributesCalculator } from "@domain/osu/utils/BeatmapAttributesCalculator";
-import { ModUtils, ParsedMod } from "@generated/adapter/mods";
+import { ParsedMod } from "@generated/adapter/mods";
 import { ScoreCalculationUtils } from "@domain/osu/utils/ScoreCalculationUtils";
 import { ScoreStateKind } from "@generated/calculator/calculator";
+import { EApplicationError, Exception } from "@domain/core/Exception";
 
 export class CalculatorService extends AbstractService {
     @Import() declare private readonly calculatorAttributesService: CalculatorAttributesService;
@@ -100,14 +101,13 @@ export class CalculatorService extends AbstractService {
             const fullDifficulty = diffMap.get(diffKey);
 
             if (!fullDifficulty) {
-                throw new Error(
+                throw new Exception(
+                    EApplicationError.INTERNAL_ERROR,
                     `Missing difficulty attributes for ${diffKey}`,
                 );
             }
 
-            const passedObjects =
-                ScoreCalculationUtils.passedObjects(score, mode);
-
+            const passedObjects = ScoreCalculationUtils.passedObjects(score, mode);
             const isPartial = passedObjects !== undefined;
 
             const isFC =
@@ -177,7 +177,7 @@ export class CalculatorService extends AbstractService {
                     totalScore: score.totalScore,
                     legacyTotalScore: score.legacyTotalScore,
 
-                    score: ScoreCalculationUtils.actualScoreState(
+                    score: ScoreCalculationUtils.scoreState(
                         score,
                         mode,
                     ),
@@ -241,13 +241,30 @@ export class CalculatorService extends AbstractService {
             const calculated = localResults.get(index * 2);
 
             if (!calculated) {
-                throw new Error(
+                throw new Exception(
+                    EApplicationError.INTERNAL_ERROR,
                     `Missing performance result for score index ${index}`,
+                );
+            }
+
+            const difficultyKey =
+                this.calculatorAttributesService.key(
+                    score.beatmapID,
+                    mode,
+                    score.mods,
+                );
+
+            const fullDifficulty = diffMap.get(difficultyKey);
+            if (!fullDifficulty) {
+                throw new Exception(
+                    EApplicationError.INTERNAL_ERROR,
+                    `Missing full difficulty for ${difficultyKey}`,
                 );
             }
 
             return {
                 ...score,
+                fullDifficulty,
                 calculated,
                 calculatedFC: includeFC
                     ? localResults.get(index * 2 + 1)

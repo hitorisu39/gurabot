@@ -16,6 +16,7 @@ builder.Services.AddMemoryCache(options =>
 builder.Services.AddSingleton<BeatmapCache>();
 builder.Services.AddSingleton<HitResultGeneration>();
 builder.Services.AddSingleton<PartialDifficultyCache>();
+builder.Services.AddSingleton<PartialDifficultyService>();
 builder.Services.AddSingleton<CalculationConcurrencyLimiter>();
 
 var app = builder.Build();
