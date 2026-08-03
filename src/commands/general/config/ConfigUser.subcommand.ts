@@ -12,6 +12,7 @@ import { AdapterProvider, GameMode } from "@generated/adapter/types";
     root: "config",
     name: "user",
     description: "Configuration for your user defaults.",
+    ephemeral: true,
 })
 export class ConfigUserSubcommand extends AbstractCommand {
     @Import() declare private readonly userService: UserService;

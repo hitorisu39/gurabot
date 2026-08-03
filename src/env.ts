@@ -41,6 +41,12 @@ export const config = convict({
             default: "cache",
             env: "APP_CACHE",
         },
+        resources: {
+            doc: "Application folder for resources.",
+            format: String,
+            default: "resources",
+            env: "APP_RESOURCES",
+        },
         domain: {
             doc: "Application domain",
             format: String,

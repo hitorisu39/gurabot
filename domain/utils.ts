@@ -31,6 +31,17 @@ export function clamp(v: number, min: number, max: number): number {
     return Math.max(min, Math.min(max, v));
 }
 
+export function smoothstep(edge0: number, edge1: number, value: number): number {
+    if (edge0 === edge1) return value < edge0 ? 0 : 1;
+
+    const normalized = clamp((value - edge0) / (edge1 - edge0), 0, 1);
+    return normalized * normalized * (3 - 2 * normalized);
+}
+
+export function isValidNumber(value: number | undefined): value is number {
+    return typeof value === "number" && Number.isFinite(value);
+}
+
 export function rangeContains(range: ICommandRange, value: number): boolean {
     if (range.exact !== undefined) return value === range.exact;
 

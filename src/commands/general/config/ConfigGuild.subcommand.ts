@@ -14,6 +14,7 @@ import { GuildConfigUpdateDto } from "@domain/guild/Guild.dto";
     root: "config",
     name: "guild",
     description: "Configuration for your guild.",
+    ephemeral: true,
 })
 @GuildOnly()
 @UserPermissions(PermissionFlagsBits.ManageChannels)

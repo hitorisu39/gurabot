@@ -87,37 +87,6 @@ export class ScoreFormatter {
         return `[${stats.join(delimiter)}]`;
     }
 
-    public static header(artist: string, title: string, version: string, limit: number = 65): string {
-        const fullOption = `${artist} - ${title} [${version}]`;
-        if (fullOption.length <= limit) return fullOption;
-
-        const noArtistOption = `${title} [${version}]`;
-        if (noArtistOption.length <= limit) return noArtistOption;
-
-        const availableChars = limit - 3;
-        if (availableChars <= 0) return "";
-
-        let finalTitle = title;
-        let finalVersion = version;
-
-        if (finalTitle.length + finalVersion.length > availableChars) {
-            const halfLimit = Math.floor(availableChars / 2);
-
-            if (finalTitle.length <= halfLimit) {
-                const remainingSpace = availableChars - finalTitle.length;
-                finalVersion = finalVersion.slice(0, Math.max(0, remainingSpace - 2)).trim() + "..";
-            } else if (finalVersion.length <= halfLimit) {
-                const remainingSpace = availableChars - finalVersion.length;
-                finalTitle = finalTitle.slice(0, Math.max(0, remainingSpace - 2)).trim() + "..";
-            } else {
-                finalTitle = finalTitle.slice(0, halfLimit - 2).trim() + "..";
-                finalVersion = finalVersion.slice(0, availableChars - finalTitle.length - 2).trim() + "..";
-            }
-        }
-
-        return `${finalTitle} [${finalVersion}]`;
-    }
-
     public static placement(score: Score, compact: boolean = false): string {
         const placedScore = score as ScoreWithPlacement;
 

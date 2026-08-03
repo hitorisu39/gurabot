@@ -50,7 +50,7 @@ export class ListScoreView extends AbstractScoreView {
             const suffixLength = mods ? `[${stars}] ${mods}`.length : `[${stars}]`.length;
             const headerLimit = Math.max(20, discordMaxVisualLineLength - prefixLength - suffixLength);
 
-            const header = ScoreFormatter.header(
+            const header = MapFormatter.header(
                 score.beatmapset.artist,
                 score.beatmapset.title,
                 score.beatmap.version,

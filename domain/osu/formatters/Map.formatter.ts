@@ -3,6 +3,39 @@ import { GameMode } from "@generated/adapter/types";
 import { osuBaseUrl } from "../configs/Osu.config";
 
 export class MapFormatter {
+    public static header(artist: string, title: string, version: string, limit: number = 65): string {
+        const fullOption = `${artist} - ${title} [${version}]`;
+        if (fullOption.length <= limit) return fullOption;
+
+        const noArtistOption = `${title} [${version}]`;
+        if (noArtistOption.length <= limit) return noArtistOption;
+
+        const availableChars = limit - 3;
+        if (availableChars <= 0) return "";
+
+        let finalTitle = title;
+        let finalVersion = version;
+
+        if (finalTitle.length + finalVersion.length > availableChars) {
+            const halfLimit = Math.floor(availableChars / 2);
+
+            if (finalTitle.length <= halfLimit) {
+                const remainingSpace = availableChars - finalTitle.length;
+                finalVersion = `${finalVersion.slice(0, Math.max(0, remainingSpace - 2)).trim()}..`;
+            } else if (finalVersion.length <= halfLimit) {
+                const remainingSpace = availableChars - finalVersion.length;
+                finalTitle = `${finalTitle.slice(0, Math.max(0, remainingSpace - 2)).trim()}..`;
+            } else {
+                finalTitle = `${finalTitle.slice(0, Math.max(0, halfLimit - 2)).trim()}..`;
+
+                const versionLimit = availableChars - finalTitle.length - 2;
+                finalVersion = `${finalVersion.slice(0, Math.max(0, versionLimit)).trim()}..`;
+            }
+        }
+
+        return `${finalTitle} [${finalVersion}]`;
+    }
+
     public static difficultyEmote(mode: GameMode, stars: number): string {
         const modeKey = modeEmoteKeys[mode] ?? "std";
         let level = 0;
