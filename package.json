@@ -18,8 +18,12 @@
         "lint:fix": "eslint . --fix",
         "format": "prettier --write .",
         "format:check": "prettier --check .",
+        "docker:prod": "docker compose --profile prod pull && docker compose --profile prod up -d --no-build --remove-orphans --wait",
+        "docker:prod:up": "docker compose --profile prod up -d --no-build --remove-orphans --wait",
+        "docker:prod:down": "docker compose --profile prod down",
+        "docker:prod:logs": "docker compose --profile prod logs -f --tail 100",
+        "docker:prod:status": "docker compose --profile prod ps",
         "docker:dev": "docker compose -p gurabot-dev -f docker-compose.dev.yml --profile dev up -d",
-        "docker:prod": "docker compose -p gurabot-production -f docker-compose.yml --profile prod build --no-cache && docker compose --profile prod up -d",
         "docker:down": "docker compose --profile prod down",
         "docker:logs": "docker compose --profile prod logs -f",
         "docker:db-wipe": "docker compose down -v"
