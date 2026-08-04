@@ -119,8 +119,7 @@ export class Client {
     }
 
     private startPresenceInterval(): void {
-        if (!this.config.discord.status || !this.config.discord.status.length)
-            return;
+        if (!this.config.discord.status || !this.config.discord.status.length) return;
 
         if (this.presenceInterval) {
             clearInterval(this.presenceInterval);

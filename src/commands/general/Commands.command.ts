@@ -37,10 +37,7 @@ export class CommandsCommand extends AbstractCommand {
                 });
             }
 
-            if (ctx.guild)
-                await ctx.respond(
-                    Embed.general("Check your DMs for the command list."),
-                );
+            if (ctx.guild) await ctx.respond(Embed.general("Check your DMs for the command list."));
         } catch {
             await ctx.respond(
                 Embed.error(
