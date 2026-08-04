@@ -10,6 +10,7 @@ import { CalculatorMapService } from "./calculator/CalculatorMap.service";
 import type { TRepository } from "@/core";
 import { ScorePlacementEvaluator } from "@domain/osu/utils/ScorePlacementEvaluator";
 import { BeatmapUtils } from "@domain/osu/utils/BeatmapUtils";
+import { ParsedMod } from "@generated/adapter/mods";
 
 interface IUserWithScoresInput {
     nameOrID: string | number;
@@ -290,7 +291,7 @@ export class OsuService extends AbstractService {
         provider: AdapterProvider = AdapterProvider.Bancho,
     ): Promise<IUserBeatmapScoreContext> {
         const globalScoresPromise = BeatmapUtils.hasLeaderboard(beatmap)
-            ? this.beatmapScores(beatmap.id, mode, provider)
+            ? this.beatmapScores(beatmap.id, mode, null, null, provider)
             : Promise.resolve<Array<Score>>([]);
 
         const [scores, personalScores, globalScores] = await Promise.all([
@@ -310,9 +311,16 @@ export class OsuService extends AbstractService {
     public async beatmapScores(
         beatmapID: number,
         mode: GameMode,
+        mods?: ReadonlyArray<ParsedMod> | null,
+        legacyOnly?: boolean | null,
         provider: AdapterProvider = AdapterProvider.Bancho,
     ): Promise<Array<Score>> {
-        return await this.adapter[provider].beatmap_scores({ beatmapID, mode });
+        return await this.adapter[provider].beatmap_scores({
+            beatmapID,
+            mode,
+            mods: mods ? [...mods] : undefined,
+            legacyOnly: legacyOnly ?? false,
+        });
     }
 
     @Trace("osu_populate_maps")
@@ -381,7 +389,7 @@ export class OsuService extends AbstractService {
             data.globalScores !== undefined
                 ? Promise.resolve(data.globalScores)
                 : BeatmapUtils.hasLeaderboard(data.beatmap)
-                  ? this.beatmapScores(data.beatmap.id, data.mode, provider)
+                  ? this.beatmapScores(data.beatmap.id, data.mode, null, null, provider)
                   : Promise.resolve<Array<Score>>([]);
 
         const [personalScores, globalScores] = await Promise.all([personalScoresPromise, globalScoresPromise]);

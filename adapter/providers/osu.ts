@@ -471,7 +471,7 @@ export const OsuProvider = SchemaProvider.define("osu", {
             path: (args) => {
                 let options = `mode=${args.mode}&limit=${args.limit}`;
                 if (args.offset) options += `&offset=${args.offset}`;
-                if (args.legacy) options += `&legacy_only=1`;
+                if (args.legacyOnly) options += `&legacy_only=1`;
                 return `/users/${args.id}/scores/best?${options}`;
             },
             method: "GET",
@@ -541,15 +541,30 @@ export const OsuProvider = SchemaProvider.define("osu", {
             args: {
                 beatmapID: Field.Int(),
                 mode: Field.Enum(GameMode),
+                mods: Field.Mods().Optional(),
                 legacyOnly: Field.Boolean().Optional(),
             },
             path: (args) => {
-                let options = `mode=${args.mode}`;
-                if (args.legacyOnly) options += `&legacy_only=1`;
-                return `/beatmaps/${args.beatmapID}/scores`;
+                const params = new URLSearchParams({
+                    mode: args.mode,
+                });
+
+                for (const acronym of args.mods ?? []) {
+                    params.append("mods[]", acronym);
+                }
+
+                if (args.legacyOnly) {
+                    params.set("legacy_only", "1");
+                }
+
+                return `/beatmaps/${args.beatmapID}/scores?${params.toString()}`;
             },
             method: "GET",
-            returns: { model: Score, isArray: true, dataPath: "scores" },
+            returns: {
+                model: Score,
+                isArray: true,
+                dataPath: "scores",
+            },
             mapping: ScoreMapping,
         },
     },

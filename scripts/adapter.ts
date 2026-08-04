@@ -282,16 +282,29 @@ export type {
     fs.writeFileSync(path.join(OUT_DIR, "types.ts"), outputTypeFile);
 
     let outputClientFile = `// AUTO-GENERATED - DO NOT EDIT MANUALLY, CHANGES WILL BE OVERWRITTEN
-import { plainToInstance } from "class-transformer";
-import { AdapterEngine, AdapterHook } from "../../adapter/engine";
-import * as Models from "./types";
-import type { Adapter } from "./types";\n`;
+import {
+    AdapterEngine,
+    AdapterFieldCodecs,
+    AdapterHook,
+} from "../../adapter/engine";
+import type { Adapter } from "./types";
+import { ModUtils } from "./mods";
+`;
+
+    outputClientFile += `
+const adapterFieldCodecs: AdapterFieldCodecs = {
+    Mods: {
+        toPlain: (value) => ModUtils.toPlain(value as Parameters<typeof ModUtils.toPlain>[0]),
+        toInstance: (value) => ModUtils.toInstance(value),
+    },
+};
+`;
 
     providersMeta.forEach((pm) => {
         outputClientFile += `import { ${pm.exportName} } from "../../adapter/providers/${pm.file}";\n`;
     });
 
-    outputClientFile += `import { Exception, EApplicationError } from "@domain/core/Exception";\n`;
+    // outputClientFile += `import { Exception, EApplicationError } from "@domain/core/Exception";\n`;
 
     outputClientFile += `\nexport class AdapterClient implements Adapter {\n`;
     outputClientFile += `    private readonly engines: AdapterEngine[] = [];\n\n`;
@@ -304,7 +317,7 @@ import type { Adapter } from "./types";\n`;
 
     providersMeta.forEach((pm) => {
         outputClientFile += `
-        const ${pm.id}Engine = new AdapterEngine(${pm.exportName}.config);
+        const ${pm.id}Engine = new AdapterEngine(${pm.exportName}.config, adapterFieldCodecs);
         this.engines.push(${pm.id}Engine);
         
         this.${pm.id} = {
@@ -434,21 +447,40 @@ async function generateMods() {
 };\n\n`;
 
     modsFile += `export class ModUtils {
-    static parse(data: any): Array<ParsedMod> {
-        if (!data || !Array.isArray(data)) return [];
-        
-        return data.map((m: any) => {
-            const acronym = typeof m === "string" ? m : m.acronym;
-            const settings = typeof m === "string" ? undefined : m.settings;
-            const meta = MOD_METADATA[acronym] || { name: "Unknown", type: "Unknown" };
-            
+    static toInstance(data: unknown): Array<ParsedMod> {
+        if (!Array.isArray(data)) {
+            return [];
+        }
+
+        return data.map((value: unknown) => {
+            const raw = typeof value === "string" ? { acronym: value } : value;
+
+            if (!raw || typeof raw !== "object" || !("acronym" in raw)) {
+                return {
+                    acronym: String(value),
+                    name: "Unknown",
+                    type: "Unknown",
+                } as ParsedMod;
+            }
+
+            const acronym = String(raw.acronym);
+            const settings = "settings" in raw ? raw.settings : undefined;
+            const meta = MOD_METADATA[acronym] ?? {
+                name: "Unknown",
+                type: "Unknown",
+            };
+
             return {
                 acronym,
                 name: meta.name,
                 type: meta.type,
-                settings
+                settings,
             } as ParsedMod;
         });
+    }
+
+    static parse(data: unknown): Array<ParsedMod> {
+        return this.toInstance(data);
     }
 
     static fromString(str: string): Array<ParsedMod> {
@@ -549,6 +581,14 @@ async function generateMods() {
         }
 
         return conflicts;
+    }
+
+    static toPlain(mods: ReadonlyArray<ParsedMod> | undefined): Array<string> {
+        if (!mods?.length) {
+            return [];
+        }
+
+        return mods.map((mod) => mod.acronym);
     }
 }\n`;
 

@@ -1,6 +1,7 @@
 import { Field, SchemaModel } from "../builder";
 import { Beatmap, Beatmapset } from "./beatmap";
 import { GameMode, Grade } from "./common";
+import { User } from "./user";
 
 export const ScoreStatistics = SchemaModel.define("ScoreStatistics", {
     ignoreMiss: Field.Int(),
@@ -59,4 +60,5 @@ export const Score = SchemaModel.define("Score", {
     weight: Field.Model(ScoreWeight),
     beatmap: Field.Model(Beatmap).Optional(),
     beatmapset: Field.Model(Beatmapset).Optional(),
+    user: Field.Model(User).Optional(),
 });

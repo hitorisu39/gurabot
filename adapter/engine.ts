@@ -3,7 +3,6 @@ import https from "https";
 import axios, { AxiosRequestConfig, AxiosResponse, isAxiosError } from "axios";
 import { ProviderConfig, SchemaModel } from "./builder";
 import { AdapterConfigurationError, AdapterRequestError, AdapterRequestErrorKind } from "./error";
-import { ModUtils } from "@generated/adapter/mods";
 import { wait } from "./utils";
 
 export interface AdapterResponseContext {
@@ -29,6 +28,15 @@ export interface AdapterErrorContext {
     willRetry: boolean;
 }
 
+export interface AdapterFieldCodec {
+    toPlain(value: unknown): unknown;
+    toInstance(value: unknown): unknown;
+}
+
+export interface AdapterFieldCodecs {
+    Mods: AdapterFieldCodec;
+}
+
 export interface AdapterHook {
     beforeRequest?: (request: AxiosRequestConfig, args: unknown) => Promise<AxiosRequestConfig> | AxiosRequestConfig;
     afterRequest?: (data: unknown) => Promise<unknown> | unknown;
@@ -50,7 +58,10 @@ export class AdapterEngine {
 
     private static readonly nonRetryableStatusCodes = new Set([400, 401, 403, 404, 422]);
 
-    constructor(public readonly config: ProviderConfig) {}
+    constructor(
+        public readonly config: ProviderConfig,
+        private readonly codecs: AdapterFieldCodecs,
+    ) {}
 
     public addHook(hook: AdapterHook): void {
         this.hooks.push(hook);
@@ -76,6 +87,11 @@ export class AdapterEngine {
         if (endpoint.args) {
             for (const [argName, fieldDef] of Object.entries(endpoint.args)) {
                 if (mappedArgs[argName] === undefined) {
+                    continue;
+                }
+
+                if (fieldDef.$type === "Mods") {
+                    mappedArgs[argName] = this.codecs.Mods.toPlain(mappedArgs[argName]);
                     continue;
                 }
 
@@ -127,6 +143,7 @@ export class AdapterEngine {
             const start = performance.now();
 
             try {
+                console.log(requestConfig.baseURL! + requestConfig.url);
                 response = await axios.request(requestConfig);
 
                 await this.notifyResponseHooks({
@@ -371,7 +388,7 @@ export class AdapterEngine {
             }
 
             if (fieldDef.$type === "Mods" && value !== undefined && value !== null) {
-                value = ModUtils.parse(value);
+                value = this.codecs.Mods.toInstance(value);
             }
 
             if (fieldDef.$type === "Date" && value !== undefined && value !== null) {

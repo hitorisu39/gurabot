@@ -3,6 +3,7 @@ import { GuildDto } from "@domain/guild/Guild.dto";
 import { OrdrConfigViewDto } from "@domain/ordr/views/OrdrConfig.view";
 import { OrdrRenderViewDto } from "@domain/ordr/views/OrdrRender.view";
 import { PopulatedUser } from "@domain/osu/Profile.dto";
+import { LeaderboardViewDto } from "@domain/osu/views/Leaderboard.view";
 import { MapViewDto } from "@domain/osu/views/Map.view";
 import { ProfileViewDto } from "@domain/osu/views/Profile.view";
 import { ScoresViewDto } from "@domain/osu/views/Scores.view";
@@ -18,6 +19,7 @@ export interface ICacheSchema {
     osu_scores_view: ScoresViewDto;
     osu_map_view: MapViewDto;
     osu_simulate_view: SimulateViewDto;
+    osu_leaderboard_view: LeaderboardViewDto;
 
     ordr_config_view: OrdrConfigViewDto;
     ordr_render_view: OrdrRenderViewDto;
