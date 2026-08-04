@@ -24,8 +24,6 @@
         "docker:prod:logs": "docker compose --profile prod logs -f --tail 100",
         "docker:prod:status": "docker compose --profile prod ps",
         "docker:dev": "docker compose -p gurabot-dev -f docker-compose.dev.yml --profile dev up -d",
-        "docker:down": "docker compose --profile prod down",
-        "docker:logs": "docker compose --profile prod logs -f",
         "docker:db-wipe": "docker compose down -v"
     },
     "author": "hitorisu",
