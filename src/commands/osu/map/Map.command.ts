@@ -28,10 +28,7 @@ import { AbstractSessionCommand } from "@/commands/AbstractSessionCommand";
     Mods affect difficulty attributes, star rating, map statistics, strains,
     and the displayed performance values.
 `)
-@Examples(
-    "map https://osu.ppy.sh/beatmaps/123456",
-    "map 123456 +hddt",
-)
+@Examples("map https://osu.ppy.sh/beatmaps/123456", "map 123456 +hddt")
 @Command({
     name: "map",
     description: "Shows beatmap(set) stats from map url / id.",

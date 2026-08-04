@@ -6,6 +6,8 @@ type WaitForOptions = {
     timeout?: number; // max time before rejecting
 };
 
+const decimalNumberRegex = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/;
+
 export function wait(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -40,6 +42,17 @@ export function smoothstep(edge0: number, edge1: number, value: number): number 
 
 export function isValidNumber(value: number | undefined): value is number {
     return typeof value === "number" && Number.isFinite(value);
+}
+
+export function parseNumericString(value: string): number | null {
+    const normalized = value.trim();
+
+    if (!normalized || !decimalNumberRegex.test(normalized)) {
+        return null;
+    }
+
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
 }
 
 export function rangeContains(range: ICommandRange, value: number): boolean {

@@ -172,8 +172,6 @@ export class OrdrService extends AbstractService {
         }
 
         const result = await this.officialSkins(input, Math.max(20, suggestionLimit));
-        console.log("input off skins:", input, result);
-
         let match = this.matchOfficialSkin(result.skins, input);
 
         if (!match && /^\d+$/.test(input)) {

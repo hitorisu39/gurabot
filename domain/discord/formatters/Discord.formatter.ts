@@ -8,9 +8,7 @@ export class DiscordFormatter {
 
     public static fixed(num?: number, decimals: number = 2, round: boolean = true): number {
         if (!num || isNaN(num)) return 0;
-
         const factor = Math.pow(10, decimals);
-
         return round ? Math.round(num * factor) / factor : Math.trunc(num * factor) / factor;
     }
 

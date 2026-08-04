@@ -143,7 +143,6 @@ export class AdapterEngine {
             const start = performance.now();
 
             try {
-                console.log(requestConfig.baseURL! + requestConfig.url);
                 response = await axios.request(requestConfig);
 
                 await this.notifyResponseHooks({

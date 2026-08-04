@@ -36,10 +36,7 @@ import { ModUtils } from "@generated/adapter/mods";
     Mods: \`mods=<mods>\`, or shorthand: \`+<mods>\`.
     Legacy scores only: \`legacy_only=true\`.
 `)
-@Examples(
-    "leaderboard https://osu.ppy.sh/beatmaps/123456",
-    "leaderboard 123456 +hddt",
-)
+@Examples("leaderboard https://osu.ppy.sh/beatmaps/123456", "leaderboard 123456 +hddt")
 @Command({
     name: "leaderboard",
     description: "Shows the global leaderboard for an osu! beatmap.",

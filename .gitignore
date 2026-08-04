@@ -5,4 +5,4 @@ node_modules
 /adapter/cache
 /calculator/bin
 /calculator/obj
-cache
+/cache/

@@ -27,7 +27,6 @@ export class CommandParser {
         },
     ): Promise<Record<string, CommandOption<any>>> {
         const parsedData: Record<string, CommandOption<any>> = {};
-
         const prefixMap = internalState?.prefixMap ?? new Map<string, string>();
 
         let injectedContent = internalState?.rawContent ?? "";
@@ -47,6 +46,10 @@ export class CommandParser {
 
             injectedContent = this.extractKeyValuePairs(content, prefixMap);
         }
+
+        const injectedValues = ctx.isSlash
+            ? new Map<string, string>()
+            : this.distributeInjectedContent(optionsMeta, injectedContent, prefixMap);
 
         for (const meta of optionsMeta) {
             let rawValue: any = null;
@@ -88,7 +91,8 @@ export class CommandParser {
                     }
                 }
             } else if (meta.inject && !ctx.isSlash) {
-                rawValue = injectedContent || null;
+                const explicitValue = this.getOptionValue(meta, prefixMap);
+                rawValue = explicitValue ?? injectedValues.get(meta.propertyKey) ?? null;
             } else if (ctx.isSlash && !internalState) {
                 const slashCtx = ctx as SlashContext;
 
@@ -116,6 +120,97 @@ export class CommandParser {
         }
 
         return parsedData;
+    }
+
+    private static distributeInjectedContent(
+        optionsMeta: Array<IOptionMetadata>,
+        content: string,
+        prefixMap: Map<string, string>,
+    ): Map<string, string> {
+        const result = new Map<string, string>();
+
+        if (!content) {
+            return result;
+        }
+
+        const injected = optionsMeta.filter(
+            (meta) => meta.inject && meta.type !== EOptionType.Query && !this.hasOptionValue(meta, prefixMap),
+        );
+
+        if (!injected.length) {
+            return result;
+        }
+
+        if (injected.length === 1) {
+            result.set(injected[0]!.propertyKey, content);
+            return result;
+        }
+
+        const tokens = content.split(/\s+/).filter(Boolean);
+
+        const tokenOptions = injected.filter(
+            (meta) => meta.type === EOptionType.Number || meta.type === EOptionType.Integer,
+        );
+
+        for (const meta of tokenOptions) {
+            const tokenIndex = tokens.findIndex((token) => this.matchesInjectedToken(meta, token));
+
+            if (tokenIndex === -1) {
+                continue;
+            }
+
+            const [token] = tokens.splice(tokenIndex, 1);
+            result.set(meta.propertyKey, token!);
+        }
+
+        const stringOptions = injected.filter((meta) => meta.type === EOptionType.String);
+
+        if (stringOptions.length > 1) {
+            throw new Exception(
+                EApplicationError.INTERNAL_ERROR,
+                "A command cannot have multiple unresolved injected string options.",
+            );
+        }
+
+        const stringOption = stringOptions[0];
+
+        if (stringOption && tokens.length) {
+            result.set(stringOption.propertyKey, tokens.join(" "));
+        }
+
+        const supported = new Set([EOptionType.String, EOptionType.Number, EOptionType.Integer]);
+        const unsupported = injected.filter((meta) => !supported.has(meta.type));
+
+        if (unsupported.length) {
+            throw new Exception(
+                EApplicationError.INTERNAL_ERROR,
+                `Unsupported injected option type for \`${unsupported[0]!.name}\`.`,
+            );
+        }
+
+        return result;
+    }
+
+    private static matchesInjectedToken(meta: IOptionMetadata, token: string): boolean {
+        const value = Number(token);
+
+        if (!Number.isFinite(value)) {
+            return false;
+        }
+
+        if (meta.type === EOptionType.Integer && !Number.isInteger(value)) {
+            return false;
+        }
+
+        if (meta.min !== undefined && value < meta.min) {
+            return false;
+        }
+
+        if (meta.max !== undefined && value > meta.max) {
+            return false;
+        }
+
+        return true;
     }
 
     private static getOptionKeys(meta: IOptionMetadata): string[] {
@@ -530,8 +625,7 @@ export class CommandParser {
             meta.type === EOptionType.String ||
             meta.type === EOptionType.Range ||
             meta.type === EOptionType.Date ||
-            meta.type === EOptionType.DateRange ||
-            meta.inject
+            meta.type === EOptionType.DateRange
         ) {
             return {
                 ...base,
