@@ -13,9 +13,14 @@ function run(command: string, args: string[], cwd?: string): Promise<void> {
         });
 
         proc.on("close", (code) => {
-            if (code === 0) resolve();
-            else reject(new Error(`${command} exited with code ${code}`));
+            if (code === 0) {
+                resolve();
+            } else {
+                reject(new Error(`${command} exited with code ${code}`));
+            }
         });
+
+        proc.on("error", reject);
     });
 }
 
@@ -32,9 +37,8 @@ function getRuntime(): string {
     }
 }
 
-async function generate() {
+async function buildNativeCalculator(): Promise<void> {
     const calculatorDir = path.join(root, "calculator");
-    const generatedDir = path.join(root, "generated", "calculator");
     const runtime = getRuntime();
 
     console.log("Building C# calculator...");
@@ -54,10 +58,17 @@ async function generate() {
         ],
         calculatorDir,
     );
+}
 
-    console.log("Generating TypeScript from proto...");
+async function generateCalculatorTypes(): Promise<void> {
+    const generatedDir = path.join(root, "generated", "calculator");
+
+    fs.mkdirSync(generatedDir, { recursive: true });
+
+    console.log("Generating TypeScript calculator types...");
 
     const extension = process.platform === "win32" ? ".cmd" : "";
+
     await run(
         "npx",
         [
@@ -71,14 +82,22 @@ async function generate() {
         ],
         root,
     );
-
-    console.log("Build finished.");
 }
 
-async function execute() {
+async function build(): Promise<void> {
+    await buildNativeCalculator();
+    await generateCalculatorTypes();
+
+    console.log("Calculator build finished.");
+}
+
+async function execute(): Promise<void> {
     const releaseDir = path.join(root, "calculator", "bin", "Release");
-    const netDir = fs.readdirSync(releaseDir).find((d) => d.startsWith("net"));
-    if (!netDir) throw new Error("Could not find calculator executable. Please build it first.");
+    const netDir = fs.readdirSync(releaseDir).find((directory) => directory.startsWith("net"));
+
+    if (!netDir) {
+        throw new Error("Could not find calculator executable. Please build it first.");
+    }
 
     const runtime = getRuntime();
     const name = process.platform === "win32" ? "Calculator.exe" : "Calculator";
@@ -86,20 +105,47 @@ async function execute() {
     const publishDir = path.join(releaseDir, netDir, runtime, "publish");
     const bin = path.join(publishDir, name);
 
-    if (!fs.existsSync(bin)) throw new Error("Could not find calculator executable. Please build it first.");
+    if (!fs.existsSync(bin)) {
+        throw new Error("Could not find calculator executable. Please build it first.");
+    }
 
-    const child = spawn(bin, { stdio: "inherit", cwd: publishDir });
-    child.on("exit", (code) => process.exit(code));
+    const child = spawn(bin, {
+        stdio: "inherit",
+        cwd: publishDir,
+    });
+
+    child.on("exit", (code) => {
+        process.exit(code ?? 1);
+    });
+
+    child.on("error", (error) => {
+        console.error(error);
+        process.exit(1);
+    });
 }
 
-if (process.argv.includes("build")) {
-    generate().catch((err) => {
-        console.error(err);
+const command = process.argv[2];
+
+switch (command) {
+    case "build":
+        build().catch(handleError);
+        break;
+
+    case "types":
+        generateCalculatorTypes().catch(handleError);
+        break;
+
+    case "run":
+    case undefined:
+        execute().catch(handleError);
+        break;
+
+    default:
+        console.error(`Unknown calculator command: ${command}`);
         process.exit(1);
-    });
-} else {
-    execute().catch((err) => {
-        console.error(err);
-        process.exit(1);
-    });
+}
+
+function handleError(error: unknown): void {
+    console.error(error);
+    process.exit(1);
 }
