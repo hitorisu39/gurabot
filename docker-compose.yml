@@ -1,14 +1,17 @@
+name: gurabot
+
 networks:
     gurabot_network:
         name: gurabot_network
 
 services:
     gurabot:
-        build: .
-        image: gurabot:prod
+        image: ${APP_IMAGE:?APP_IMAGE must be set}:${APP_IMAGE_TAG:?APP_IMAGE_TAG must be set}
+        pull_policy: always
         container_name: ${APP_NAME:-gurabot}-app
         restart: unless-stopped
-        env_file: .env
+        env_file:
+            - .env
         profiles: ["prod"]
         networks:
             - gurabot_network
@@ -29,16 +32,15 @@ services:
             LOKI_HOST: http://loki:3100
 
     calculator:
-        build:
-            context: .
-            dockerfile: calculator/Dockerfile
+        image: ${APP_IMAGE:?APP_IMAGE must be set}-calculator:${APP_IMAGE_TAG:?APP_IMAGE_TAG must be set}
+        pull_policy: always
         container_name: ${APP_NAME:-gurabot}-calculator
         restart: unless-stopped
         profiles: ["prod"]
         networks:
             - gurabot_network
         environment:
-            - ASPNETCORE_URLS=http://+:5000
+            ASPNETCORE_URLS: http://+:5000
 
     postgres:
         image: postgres:17.6
@@ -51,7 +53,9 @@ services:
             POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-postgres}
             POSTGRES_DB: ${DATABASE_NAME:-gurabot}
         healthcheck:
-            test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USERNAME:-postgres}"]
+            test:
+                - CMD-SHELL
+                - pg_isready -U ${DATABASE_USERNAME:-postgres}
             interval: 5s
             timeout: 5s
             retries: 5
@@ -66,7 +70,10 @@ services:
             - gurabot_network
         volumes:
             - redis_data:/data
-        command: redis-server --appendonly yes
+        command:
+            - redis-server
+            - --appendonly
+            - "yes"
 
 volumes:
     postgres_data:
