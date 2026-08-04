@@ -12,7 +12,6 @@ import { EOrdrConfigSource, OrdrConfigDto } from "@domain/ordr/OrdrConfig.dto";
 import { EOrdrRenderStage, OrdrRenderViewDto, OrdrSkinChoiceDto } from "@domain/ordr/views/OrdrRender.view";
 import { Attachment } from "discord.js";
 import { plainToInstance } from "class-transformer";
-import { ordrDataDelimiter } from "@domain/ordr/configs/Ordr.config";
 
 @Command({
     name: "render",

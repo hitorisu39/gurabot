@@ -245,7 +245,6 @@ export class OrdrService extends AbstractService {
 
         return new Promise<TOrdrRenderTerminalEvent>((resolve, reject) => {
             let settled = false;
-            let timer: NodeJS.Timeout;
 
             const cleanup = (): void => {
                 const listeners = this.listeners.get(renderID);
@@ -272,7 +271,7 @@ export class OrdrService extends AbstractService {
                 }
             };
 
-            timer = setTimeout(() => {
+            const timer = setTimeout(() => {
                 if (settled) return;
 
                 settled = true;

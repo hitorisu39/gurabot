@@ -1,4 +1,4 @@
-import { HitResultResponse, PerformanceRequest, ScoreState, ScoreStateKind } from "@generated/calculator/calculator";
+import { HitResultResponse, ScoreState, ScoreStateKind } from "@generated/calculator/calculator";
 import { ModUtils, ParsedMod } from "@generated/adapter/mods";
 import { GameMode } from "@generated/adapter/types";
 import { ESimulateScoringMode } from "../enums/Simulate.enum";

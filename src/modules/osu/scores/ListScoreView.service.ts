@@ -30,7 +30,7 @@ export class ListScoreView extends AbstractScoreView {
         return hasActiveAttributes ? Math.ceil(basePageSize / 2) : basePageSize;
     }
 
-    public render(data: ScoresViewDto, pageScores: Array<Score>, _meta?: Record<string, unknown>): Embed {
+    public render(data: ScoresViewDto, pageScores: Array<Score>): Embed {
         const detailed = data.pageSize === EScoreListSize.Detailed;
         const embed = this.profileViewService.createBaseEmbed(data.profile, data.timestamp, false);
 

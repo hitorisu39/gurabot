@@ -1,5 +1,4 @@
 import { Import, Inject, IsEnum, IsString, IsUser, Option } from "@/core/decorators";
-import { AbstractCommand } from "@/core/discord/AbstractCommand";
 import { User } from "discord.js";
 import { AdapterProvider, GameMode } from "@generated/adapter/types";
 import { CommandContext } from "@/core/discord/context/CommandContext";

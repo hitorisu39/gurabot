@@ -2,7 +2,6 @@ import { AbstractScoreView } from "./AbstractScoreView";
 import { Embed } from "@/core/discord/ui/Embed";
 import { ScoresViewDto } from "@domain/osu/views/Scores.view";
 import { Score } from "@generated/adapter/types";
-import { EScoreListSize } from "@domain/osu/enums/Score.enum";
 import { ScoreUtils } from "@domain/osu/utils/ScoreUtils";
 import { GameMode } from "../../../../adapter/models/common";
 import { DescriptionBuilder } from "@/core/discord/ui/DescriptionBuilder";
@@ -15,11 +14,11 @@ import { ProfileFormatter } from "@domain/osu/formatters/Profile.formatter";
 import { DateFormatter } from "@domain/discord/formatters/Date.formatter";
 
 export class CompareScoreView extends AbstractScoreView {
-    public getPageSize(_size: EScoreListSize, _activeAttributes?: Array<string>): number {
+    public getPageSize(): number {
         return 10;
     }
 
-    public render(data: ScoresViewDto, pageScores: Array<Score>, _meta?: Record<string, unknown>): Embed {
+    public render(data: ScoresViewDto, pageScores: Array<Score>): Embed {
         const embed = this.profileViewService.createBaseEmbed(data.profile, data.timestamp, false);
 
         if (!pageScores.length) return embed.setDescription("No scores.");

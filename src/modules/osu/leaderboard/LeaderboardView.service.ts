@@ -24,7 +24,7 @@ export class LeaderboardViewService extends AbstractViewService<LeaderboardViewD
     protected readonly ttl: number = 180;
     private readonly pageSize: number = 10;
 
-    public build(sessionID: string, data: LeaderboardViewDto, _meta?: Record<string, unknown>): TMessagePayload {
+    public build(sessionID: string, data: LeaderboardViewDto): TMessagePayload {
         const totalPages = this.getTotalPages(data);
         const pageScores = this.getPageScores(data);
 

@@ -1,5 +1,5 @@
 import { Beatmap, Score } from "@generated/adapter/types";
-import { PersonalBestPlacementDto, PopulatedScore, ScoreWithMaps, ScoreWithPlacement } from "../Score.dto";
+import { PersonalBestPlacementDto, ScoreWithPlacement } from "../Score.dto";
 import { ScoreUtils } from "./ScoreUtils";
 import { plainToInstance } from "class-transformer";
 import { EPersonalBestCase } from "../enums/Score.enum";

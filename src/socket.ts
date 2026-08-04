@@ -17,7 +17,7 @@ export class SocketClient<TListenEvents = Record<string, never>, TEmitEvents = R
     constructor(logger: TLogger, options: ISocketClientOptions) {
         this.logger = logger.child({ name: `SocketClient:${options.name || "Default"}` });
 
-        const { name: _, url, ...socketOptions } = options;
+        const { url, ...socketOptions } = options;
 
         this.socket = io(url, {
             autoConnect: false,
@@ -35,8 +35,6 @@ export class SocketClient<TListenEvents = Record<string, never>, TEmitEvents = R
         if (this.connecting) return this.connecting;
 
         const connection = new Promise<void>((resolve, reject) => {
-            let timer: NodeJS.Timeout;
-
             const cleanup = (): void => {
                 clearTimeout(timer);
                 this.socket.off("connect", onConnect);
@@ -53,7 +51,7 @@ export class SocketClient<TListenEvents = Record<string, never>, TEmitEvents = R
                 reject(error);
             };
 
-            timer = setTimeout(() => {
+            const timer = setTimeout(() => {
                 cleanup();
                 reject(new Error(`Socket connection timed out after ${timeout}ms.`));
             }, timeout);

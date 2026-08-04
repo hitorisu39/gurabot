@@ -37,14 +37,6 @@ interface ISkillCardThemeAssets {
     filledBar: ICachedImageAsset;
 }
 
-interface IProfileRankData {
-    countryCode?: string | null;
-    statistics?: {
-        globalRank?: number | null;
-        countryRank?: number | null;
-    };
-}
-
 export class SkillCardViewService extends AbstractService {
     private static readonly maximumAvatarBytes = 10 * 1024 * 1024;
 
