@@ -1,0 +1,35 @@
+name: Prettier
+
+on:
+    push:
+    pull_request:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: prettier-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    prettier:
+        name: Check formatting
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v7
+
+            - name: Set up Node.js
+              uses: actions/setup-node@v7
+              with:
+                  node-version: 22.21.1
+                  cache: yarn
+                  cache-dependency-path: yarn.lock
+
+            - name: Install dependencies
+              run: yarn install --frozen-lockfile
+
+            - name: Check formatting
+              run: yarn format:check
