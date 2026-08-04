@@ -182,6 +182,12 @@ export const config = convict({
             default: "0",
             env: "DISCORD_DEV_ID",
         },
+        status: {
+            doc: "Discord bot status.",
+            format: String,
+            default: "!help",
+            env: "DISCORD_STATUS"
+        }
     },
     api: {
         host: {

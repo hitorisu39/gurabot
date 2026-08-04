@@ -1,4 +1,5 @@
 import {
+    ActivityType,
     ApplicationCommandDataResolvable,
     Awaitable,
     ClientEvents,
@@ -33,6 +34,7 @@ export class Client {
      */
     public readonly cluster: ClusterClient<DiscordClient> | null;
     private pingInterval: NodeJS.Timeout | null = null;
+    private presenceInterval: NodeJS.Timeout | null = null;
 
     /**
      * Routers for Discord interaction events.
@@ -103,6 +105,7 @@ export class Client {
     public clientReady(): void {
         if (this.cluster) this.cluster.triggerReady();
         this.startMetricsInterval();
+        this.startPresenceInterval();
     }
 
     private startMetricsInterval(): void {
@@ -115,11 +118,28 @@ export class Client {
         }, 15000);
     }
 
+    private startPresenceInterval(): void {
+        if (!this.config.discord.status || !this.config.discord.status.length)
+            return;
+
+        if (this.presenceInterval) {
+            clearInterval(this.presenceInterval);
+        }
+
+        this.setPresence();
+        this.presenceInterval = setInterval(() => this.setPresence(), 5 * 60 * 1000); // Update every 5 mins
+    }
+
     /**
      * Destroy the Discord client instance.
      */
     public async destroy(): Promise<void> {
         if (this.pingInterval) clearInterval(this.pingInterval);
+        if (this.presenceInterval) clearInterval(this.presenceInterval);
+
+        this.pingInterval = null;
+        this.presenceInterval = null;
+
         await this.client.destroy();
     }
 
@@ -190,6 +210,23 @@ export class Client {
 
         const results: Array<number> = await this.cluster.broadcastEval((c) => c.guilds.cache.size);
         return results.reduce((acc, guildCount) => acc + guildCount, 0);
+    }
+
+    /**
+     * Set the bot's presence status.
+     */
+    private setPresence(): void {
+        if (!this.client.user) return;
+
+        this.client.user.setPresence({
+            status: "online",
+            activities: [
+                {
+                    name: this.config.discord.status,
+                    type: ActivityType.Playing,
+                },
+            ],
+        });
     }
 
     /**
