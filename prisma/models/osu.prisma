@@ -1,6 +1,7 @@
 model UserCache {
     id          Int
     username    String      @id
+    server      String      // AdapterProvider
     updatedAt   DateTime    @map("updated_at") @updatedAt @default(now())
 
     @@map("user_cache")

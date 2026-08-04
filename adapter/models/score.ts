@@ -1,6 +1,6 @@
 import { Field, SchemaModel } from "../builder";
 import { Beatmap, Beatmapset } from "./beatmap";
-import { GameMode, Grade } from "./common";
+import { Grade } from "./common";
 import { User } from "./user";
 
 export const ScoreStatistics = SchemaModel.define("ScoreStatistics", {
