@@ -3,7 +3,7 @@ import { Embed } from "@/core/discord/ui/Embed";
 import { DateFormatter } from "@domain/discord/formatters/Date.formatter";
 import { ProfileFormatter } from "@domain/osu/formatters/Profile.formatter";
 import { ScoresViewDto } from "@domain/osu/views/Scores.view";
-import { GameMode, Score } from "@generated/adapter/types";
+import { AdapterProvider, GameMode, Score } from "@generated/adapter/types";
 import { DescriptionBuilder } from "@/core/discord/ui/DescriptionBuilder";
 import { ScoreFormatter } from "@domain/osu/formatters/Score.formatter";
 import { discordMaxVisualLineLength } from "@domain/discord/configs/Discord.config";
@@ -18,6 +18,7 @@ import { BeatmapAttributesCalculator } from "@domain/osu/utils/BeatmapAttributes
 import { EScoreListSize } from "@domain/osu/enums/Score.enum";
 import { MapFormatter } from "@domain/osu/formatters/Map.formatter";
 import { ScoreUtils } from "@domain/osu/utils/ScoreUtils";
+import { ProviderMeta } from "@generated/adapter";
 
 export class ListScoreView extends AbstractScoreView {
     public getPageSize(size: EScoreListSize, activeAttributes?: Array<string>): number {
@@ -145,9 +146,14 @@ export class ListScoreView extends AbstractScoreView {
             }
         }
 
+        const footer =
+            data.profile.provider === AdapterProvider.Bancho
+                ? "Tip: click the grade to view the score"
+                : ProviderMeta[data.profile.provider].name;
+
         return embed
             .setFooter({
-                text: "Tip: click the grade to view the score",
+                text: footer,
                 iconURL: ProfileFormatter.modeIcon(data.profile.mode),
             })
             .setDescription(description.buildOr("No scores."));

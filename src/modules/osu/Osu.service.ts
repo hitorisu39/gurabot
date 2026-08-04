@@ -75,7 +75,7 @@ export class OsuService extends AbstractService {
 
         if (isApiCacheable) {
             setImmediate(() => {
-                this.updateUserCache(user.id, user.username, user.previousUsernames);
+                this.updateUserCache(user.id, user.username, user.previousUsernames, provider);
 
                 const idCacheKey = `${user.id}:${mode}`;
                 const usernameCacheKey = `${user.username.toLowerCase()}:${mode}`;
@@ -112,10 +112,7 @@ export class OsuService extends AbstractService {
         let cachedID: number | null = null;
 
         if (isCacheable) {
-            const cachedUser = await this.repository.userCache.findUnique({
-                where: { username },
-            });
-            cachedID = cachedUser?.id || null;
+            cachedID = await this.resolveCachedID(username);
         }
 
         if (cachedID) {
@@ -172,6 +169,9 @@ export class OsuService extends AbstractService {
         provider: AdapterProvider = AdapterProvider.Bancho,
         bypassCache: boolean = false,
     ): Promise<Beatmap | null> {
+        // Force osu! for beatmaps retrieval.
+        provider = AdapterProvider.Bancho;
+
         if (!bypassCache) {
             const cached = await this.repository.beatmap.findUnique({
                 where: { id },
@@ -196,6 +196,9 @@ export class OsuService extends AbstractService {
         ids: Array<number>,
         provider: AdapterProvider = AdapterProvider.Bancho,
     ): Promise<Array<Beatmap>> {
+        // Force osu! for beatmaps retrieval.
+        provider = AdapterProvider.Bancho;
+
         const cached = await this.repository.beatmap.findMany({
             where: { id: { in: ids } },
             include: {
@@ -232,6 +235,9 @@ export class OsuService extends AbstractService {
         provider: AdapterProvider = AdapterProvider.Bancho,
         bypassCache: boolean = false,
     ): Promise<Beatmapset | null> {
+        // Force osu! for beatmaps retrieval.
+        provider = AdapterProvider.Bancho;
+
         if (!bypassCache) {
             const cached = await this.repository.beatmapset.findUnique({
                 where: { id },
@@ -546,14 +552,19 @@ export class OsuService extends AbstractService {
         }
     }
 
-    private updateUserCache(id: number, username: string, previous: Array<string> = []): void {
+    private updateUserCache(
+        id: number,
+        username: string,
+        previous: Array<string> = [],
+        provider: AdapterProvider = AdapterProvider.Bancho,
+    ): void {
         const namesToCache = [username, ...previous].map((n) => n.toLowerCase());
 
         Promise.all(
             namesToCache.map((name) =>
                 this.repository.userCache.upsert({
-                    where: { username: name },
-                    create: { id, username: name },
+                    where: { username: name, server: provider },
+                    create: { id, username: name, server: provider },
                     update: { id },
                 }),
             ),

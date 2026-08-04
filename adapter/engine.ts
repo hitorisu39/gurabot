@@ -203,6 +203,10 @@ export class AdapterEngine {
             }
         }
 
+        if (endpoint.transformResponse) {
+            data = await endpoint.transformResponse(data, mappedArgs);
+        }
+
         const returnsModel = "model" in endpoint.returns ? endpoint.returns.model : endpoint.returns;
         const isArray = "isArray" in endpoint.returns ? endpoint.returns.isArray : false;
         const dataPath = "dataPath" in endpoint.returns ? endpoint.returns.dataPath : undefined;

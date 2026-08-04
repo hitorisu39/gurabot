@@ -20,7 +20,6 @@ export class ScoreFormatter {
 
         const totalObjects = beatmap.countCircles + beatmap.countSliders + beatmap.countSpinners;
         if (totalObjects === 0) return null;
-
         return (hits / totalObjects) * 100;
     }
 

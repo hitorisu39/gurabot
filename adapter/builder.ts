@@ -69,6 +69,8 @@ export type TransformConfig = {
     toPlain?: (val: any) => any;
 };
 
+export type EndpointResponseTransform = (data: unknown, args: Record<string, any>) => Promise<unknown> | unknown;
+
 export type MappingConfig =
     | string
     | { path?: string; default?: any; nested?: Mapping; transform?: ((value: any) => any) | TransformConfig };
@@ -81,10 +83,11 @@ export interface EndpointConfig {
     returns: SchemaModel | { model: SchemaModel; isArray?: boolean; dataPath?: string };
     args?: Record<string, SchemaField>;
     mapping: Mapping;
+    transformResponse?: EndpointResponseTransform;
 }
 
 export interface ProviderFormatters {
-    userProfile: (id: number | string, mode?: string) => string;
+    userProfile: (id: number | string, mode?: string, rx?: number) => string;
     userAvatar: (id: number | string, timestamp?: number) => string;
 }
 
@@ -94,6 +97,8 @@ export interface ProviderConfig {
     domain: string;
     cache: boolean;
     display: boolean;
+    accountProvider?: string;
+    linkable?: boolean;
     transforms?: Record<string, TransformConfig>;
     endpoints: Record<string, EndpointConfig>;
     formatters: ProviderFormatters;

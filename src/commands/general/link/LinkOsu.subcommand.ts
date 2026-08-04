@@ -3,11 +3,14 @@ import { AbstractCommand } from "@/core/discord/AbstractCommand";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { Embed } from "@/core/discord/ui/Embed";
 import { UserService } from "@/modules/user/User.service";
-import { AdapterProvider } from "@generated/adapter/types";
+import { AdapterProvider, GameMode } from "@generated/adapter/types";
 import { OsuService } from "@/modules/osu/Osu.service";
 import { CommandOption } from "@domain/core/Command";
 import { randomBytes } from "crypto";
 import { osuBaseUrl } from "@domain/osu/configs/Osu.config";
+import { EApplicationError, Exception } from "@domain/core/Exception";
+import { ProviderMeta } from "@generated/adapter";
+import { LinkableAdapterProvider } from "@domain/osu/Profile.dto";
 
 @Subcommand({
     root: "link",
@@ -24,29 +27,33 @@ export class LinkOsuSubcommand extends AbstractCommand {
     declare private readonly name: CommandOption<string>;
 
     @Option("server", "Specify a server to link to")
-    @IsEnum(AdapterProvider)
-    declare private readonly server: CommandOption<AdapterProvider>;
+    @IsEnum(LinkableAdapterProvider)
+    declare private readonly server: CommandOption<LinkableAdapterProvider>;
 
     public async execute(ctx: CommandContext): Promise<void> {
-        const provider = this.server.unwrapOr(AdapterProvider.Bancho);
-        const state = randomBytes(16).toString("hex");
-        await this.cache.set("auth_osu_state", { discord: ctx.author.id, provider: provider }, 300, state);
+        const provider = this.server.unwrapOr(LinkableAdapterProvider.Bancho);
+        const accountProvider = ProviderMeta[provider].accountProvider;
 
-        const clientID = this.config.adapter.osu.client_id;
-        const redirectUri = this.config.adapter.osu.redirect_uri;
-        const oauthUrl = `${osuBaseUrl}/oauth/authorize?client_id=${clientID}&redirect_uri=${redirectUri}&response_type=code&scope=public&state=${state}`;
+        if (accountProvider === AdapterProvider.Bancho) {
+            const state = randomBytes(16).toString("hex");
+            await this.cache.set("auth_osu_state", { discord: ctx.author.id, provider: accountProvider }, 300, state);
 
-        await ctx.respond(Embed.general(`Please [click here](${oauthUrl}) to authenticate yourself through osu!`));
-        return;
+            const clientID = this.config.adapter.osu.client_id;
+            const redirectUri = this.config.adapter.osu.redirect_uri;
+            const oauthUrl = `${osuBaseUrl}/oauth/authorize?client_id=${clientID}&redirect_uri=${redirectUri}&response_type=code&scope=public&state=${state}`;
 
-        // const profile = await this.osuService.user(this.name.unwrap(), GameMode.Standard, provider);
-        // if (!profile)
-        //     throw new Exception(
-        //         EApplicationError.INPUT_ERROR,
-        //         `${ProviderMeta[provider].name} profile with that name was not found.`,
-        //     );
+            await ctx.respond(Embed.general(`Please [click here](${oauthUrl}) to authenticate yourself through osu!`));
+            return;
+        }
 
-        // await this.userService.link(ctx.author.id, profile.id, provider);
-        // await ctx.respond(Embed.success(`\`${profile.username}\` was successfully linked to your Discord.`));
+        const profile = await this.osuService.user(this.name.unwrap(), GameMode.Standard, accountProvider);
+        if (!profile)
+            throw new Exception(
+                EApplicationError.INPUT_ERROR,
+                `${ProviderMeta[provider].name} profile with that name was not found.`,
+            );
+
+        await this.userService.link(ctx.author.id, profile.id, accountProvider);
+        await ctx.respond(Embed.success(`\`${profile.username}\` was successfully linked to your Discord.`));
     }
 }
