@@ -1,4 +1,3 @@
-// Help.command.ts
 import { Command, Help, Examples, Import, Inject, IsString, Option } from "@/core/decorators";
 import { AbstractCommand } from "@/core/discord/AbstractCommand";
 import { CommandContext } from "@/core/discord/context/CommandContext";
@@ -36,7 +35,30 @@ export class HelpCommand extends AbstractCommand {
         const prefix = ctx.isSlash ? "/" : await this.guildService.getPrefix(ctx.guild?.id ?? null);
 
         if (!this.commandName.some()) {
-            await ctx.respond(Embed.error(`To get help for a specific command, type \`${prefix}help <command>\`.`));
+            const embed = new Embed().addFields(
+                {
+                    name: "Command List",
+                    value: `${prefix}commands`,
+                    inline: true,
+                },
+                {
+                    name: "Discord Server",
+                    value: `[Join](${this.config.app.supportServer})`,
+                    inline: true,
+                },
+                {
+                    name: "Bot Invite",
+                    value: `[Click](${this.config.app.invite})`,
+                    inline: true,
+                },
+                {
+                    name: "Tips",
+                    value: `To get more information about a certain command, type \`${prefix}help [command]\`.`,
+                    inline: false,
+                },
+            );
+
+            await ctx.respond(embed);
             return;
         }
 

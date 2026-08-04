@@ -4,7 +4,6 @@ import { ActionRow } from "@/core/discord/ui/ActionRow";
 import { DescriptionBuilder } from "@/core/discord/ui/DescriptionBuilder";
 import { Embed } from "@/core/discord/ui/Embed";
 import { SelectMenu } from "@/core/discord/ui/SelectMenu";
-import { AbstractService } from "@/core/framework/AbstractService";
 import { AmeobeaPeakDto } from "@domain/ameobea/Ameobea.dto";
 import { discordEmoteGrades } from "@domain/discord/configs/Emotes.config";
 import { DateFormatter } from "@domain/discord/formatters/Date.formatter";

@@ -174,6 +174,18 @@ export class CommandRouter {
         return Array.from(names);
     }
 
+    public getPrefixCommandEntries(): Array<{ name: string; command: AbstractCommand }> {
+        return Array.from(this.prefixCommands.entries())
+            .filter(([name, command]) => {
+                const aliases = this.getCommandOptions(command)?.aliases ?? [];
+                return !aliases.some((alias) => alias.toLowerCase() === name);
+            })
+            .map(([name, command]) => ({
+                name,
+                command,
+            }));
+    }
+
     public getCommandOptions(command: AbstractCommand): ICommandOptions | ISubcommandOptions | undefined {
         const options: ICommandOptions | ISubcommandOptions | undefined =
             Reflect.getMetadata(METAKEY_SUBCOMMAND_OPTIONS, command.constructor) ||

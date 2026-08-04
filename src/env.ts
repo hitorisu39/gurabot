@@ -65,6 +65,19 @@ export const config = convict({
             default: "https://discord.gg/Ed4yeNgWxj",
             env: "APP_SUPPORT_SERVER",
         },
+        donate: {
+            doc: "Application donate link.",
+            format: String,
+            default: "https://ko-fi.com/cornosu",
+            env: "APP_DONATE",
+        },
+        invite: {
+            doc: "Application invite link.",
+            format: String,
+            default:
+                "https://discord.com/api/oauth2/authorize?client_id=777206490280755211&permissions=309238025216&scope=bot%20applications.commands",
+            env: "APP_INVITE",
+        },
     },
     database: {
         host: {
