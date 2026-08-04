@@ -41,7 +41,7 @@ import { ProviderMeta } from "@generated/adapter";
     Index: \`index=<index>\` (or shorthand \`i=<index>\`) to view a specific placement.
 `)
 @Examples("compare", "c v=Insane", "c sort=score +hd!", "c grade=S order=asc i=1-5")
-export class AbstractCompareCommand extends AbstractOsuCommand {
+export abstract class AbstractCompareCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
     @Import() declare private readonly graphService: GraphService;
     @Import() declare private readonly mapViewService: MapViewService;

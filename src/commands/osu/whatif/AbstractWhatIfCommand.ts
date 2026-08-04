@@ -16,7 +16,7 @@ import { WhatIfViewDataDto } from "@domain/osu/views/WhatIf.view";
     Global rank changes are approximate and are only available on Bancho.
 `)
 @Examples("whatif 500", "whatif 500 WhiteCat", "mwi 750 drusserf")
-export class AbstractWhatIfCommand extends AbstractOsuCommand {
+export abstract class AbstractWhatIfCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
     @Import() declare private readonly osuDailyService: OsuDailyService;
     @Import() declare private readonly whatIfViewService: WhatIfViewService;
