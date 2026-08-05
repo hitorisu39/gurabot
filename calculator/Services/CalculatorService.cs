@@ -29,6 +29,7 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
     private readonly HitResultGeneration _hitResultGeneration;
     private readonly PartialDifficultyService _partialDifficultyService;
     private readonly CalculationConcurrencyLimiter _calculationLimiter;
+    private readonly ILogger<CalculatorService> _logger;
 
     private static readonly ConcurrentDictionary<Type, PropertyInfo[]> ObjectPropertiesCache = new();
     private static readonly ConcurrentDictionary<Type, Dictionary<string, PropertyInfo>> ModPropertiesCache = new();
@@ -37,12 +38,14 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
         BeatmapCache cache,
         HitResultGeneration hitResultGeneration,
         PartialDifficultyService partialDifficultyService,
-        CalculationConcurrencyLimiter calculationLimiter)
+        CalculationConcurrencyLimiter calculationLimiter,
+        ILogger<CalculatorService> logger)
     {
         _cache = cache;
         _hitResultGeneration = hitResultGeneration;
         _partialDifficultyService = partialDifficultyService;
         _calculationLimiter = calculationLimiter;
+        _logger = logger;
     }
 
     private Ruleset GetRuleset(uint id) => id switch
@@ -65,9 +68,29 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
             if (mod == null) continue;
 
             var modType = mod.GetType();
-            var properties = ModPropertiesCache.GetOrAdd(modType, t => 
-                t.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase)
-                 .ToDictionary(p => p.Name.Replace("_", ""), StringComparer.OrdinalIgnoreCase));
+            var properties =
+                ModPropertiesCache.GetOrAdd(
+                    modType,
+                    type => type
+                        .GetProperties(
+                            BindingFlags.Public |
+                            BindingFlags.Instance |
+                            BindingFlags.IgnoreCase
+                        )
+                        .Where(property =>
+                            property.GetIndexParameters().Length == 0 &&
+                            property.GetGetMethod(nonPublic: false) is not null
+                        )
+                        .GroupBy(
+                            property => property.Name.Replace("_", ""),
+                            StringComparer.OrdinalIgnoreCase
+                        )
+                        .ToDictionary(
+                            group => group.Key,
+                            group => group.First(),
+                            StringComparer.OrdinalIgnoreCase
+                        )
+                );
 
             foreach (var setting in reqMod.Settings)
             {
@@ -111,19 +134,59 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
 
     private Dictionary<string, double> ExtractAttributes(object obj)
     {
-        var dict = new Dictionary<string, double>();
-        var properties = ObjectPropertiesCache.GetOrAdd(obj.GetType(), t => t.GetProperties(BindingFlags.Public | BindingFlags.Instance));
+        var result = new Dictionary<string, double>();
 
-        foreach (var prop in properties)
+        PropertyInfo[] properties =
+            ObjectPropertiesCache.GetOrAdd(
+                obj.GetType(),
+                type => type.GetProperties(
+                    BindingFlags.Public |
+                    BindingFlags.Instance
+                )
+            );
+
+        foreach (PropertyInfo property in properties)
         {
-            var name = char.ToLowerInvariant(prop.Name[0]) + prop.Name[1..];
-            
-            if (prop.PropertyType == typeof(double)) 
-                dict[name] = (double)prop.GetValue(obj)!;
-            else if (prop.PropertyType == typeof(int)) 
-                dict[name] = (int)prop.GetValue(obj)!;
+            if (
+                property.GetIndexParameters().Length != 0 ||
+                property.GetGetMethod(nonPublic: false) is null
+            )
+            {
+                continue;
+            }
+
+            object? value;
+
+            try
+            {
+                value = property.GetValue(obj);
+            }
+            catch (Exception exception)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to read property " +
+                    $"{obj.GetType().FullName}.{property.Name}.",
+                    exception
+                );
+            }
+
+            string name =
+                char.ToLowerInvariant(property.Name[0]) +
+                property.Name[1..];
+
+            switch (value)
+            {
+                case double doubleValue:
+                    result[name] = doubleValue;
+                    break;
+
+                case int intValue:
+                    result[name] = intValue;
+                    break;
+            }
         }
-        return dict;
+
+        return result;
     }
 
     private IEnumerable<SkillStrain> GetStrains(DifficultyCalculator calculator, IBeatmap playableBeatmap, Mod[] mods)
@@ -524,10 +587,22 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
             }
             catch (Exception exception)
             {
+                _logger.LogError(
+                    exception,
+                    "Performance calculation failed. " +
+                    "Ruleset={RulesetId}, Beatmap={BeatmapPath}, " +
+                    "ReferenceId={ReferenceId}",
+                    request.RulesetId,
+                    request.BeatmapPath,
+                    request.HasReferenceId
+                        ? request.ReferenceId
+                        : null
+                );
+
                 throw new RpcException(
                     new Status(
-                        StatusCode.Unknown,
-                        exception.Message
+                        StatusCode.Internal,
+                        "Performance calculation failed."
                     )
                 );
             }
