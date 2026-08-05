@@ -1,8 +1,13 @@
 name: ESLint
 
 on:
-    push:
-    pull_request:
+  pull_request:
+    branches:
+      - main
+
+  push:
+    branches:
+      - main
 
 permissions:
     contents: read
