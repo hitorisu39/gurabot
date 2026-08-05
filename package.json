@@ -1,6 +1,6 @@
 {
     "name": "gurabot",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "A simple osu! Discord bot with a bunch of features",
     "main": "index.js",
     "scripts": {
