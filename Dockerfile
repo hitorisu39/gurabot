@@ -77,6 +77,10 @@ ENV APP_MODE=production
 COPY --from=production-dependencies /gurabot /gurabot
 
 COPY --from=builder /gurabot/dist ./dist
+COPY --from=builder /gurabot/web ./web
+COPY --from=builder /gurabot/resources ./resources
+
+RUN mkdir -p ./cache
 
 COPY entrypoint.sh ./
 RUN chmod +x entrypoint.sh
