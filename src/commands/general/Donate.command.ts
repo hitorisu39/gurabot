@@ -6,6 +6,7 @@ import { Embed } from "@/core/discord/ui/Embed";
 @Command({
     name: "donate",
     description: "Sends a ko-fi link to support the project.",
+    defer: false
 })
 export class DonateCommand extends AbstractCommand {
     public async execute(ctx: CommandContext): Promise<void> {

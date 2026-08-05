@@ -38,7 +38,8 @@ export class MessageContext extends CommandContext {
     public async defer(): Promise<void> {
         if (this.isDeferred) return;
 
-        if (this.channel.isSendable()) await this.channel.sendTyping();
+        if (this.channel.isSendable())
+            this.channel.sendTyping(); // May randomly take seconds for some reason when awaited for response.
 
         this.isDeferred = true;
     }
