@@ -36,6 +36,9 @@ services:
             REDIS_HOST: redis
             DATABASE_HOST: postgres
             LOKI_HOST: http://loki:3100
+            APP_CACHE: ${APP_CACHE:-cache}
+        volumes:
+            - gurabot_cache:/gurabot/cache
 
     calculator:
         image: ${APP_IMAGE:?APP_IMAGE must be set}-calculator:${APP_IMAGE_TAG:?APP_IMAGE_TAG must be set}
@@ -46,7 +49,11 @@ services:
         networks:
             - gurabot_network
         environment:
-            ASPNETCORE_URLS: http://+:5000
+            Kestrel__Endpoints__Grpc__Url: http://0.0.0.0:5000
+            Kestrel__Endpoints__Grpc__Protocols: Http2
+            APP_CACHE: ${APP_CACHE:-cache}
+        volumes:
+            - gurabot_cache:/gurabot/cache
 
     postgres:
         image: postgres:17.6
@@ -84,3 +91,4 @@ services:
 volumes:
     postgres_data:
     redis_data:
+    gurabot_cache:
