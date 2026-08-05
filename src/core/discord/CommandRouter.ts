@@ -310,7 +310,7 @@ export class CommandRouter {
     }
 
     private async runCommand(ctx: CommandContext, targetCommand: AbstractCommand): Promise<void> {
-        if (ctx.metadata.options.defer !== false) ctx.defer(ctx.metadata.options.ephemeral).catch(() => {});
+        if (ctx.metadata.options.defer !== false) await ctx.defer(ctx.metadata.options.ephemeral).catch(() => {});
 
         try {
             const properties = this.getCommandProperties(targetCommand);
