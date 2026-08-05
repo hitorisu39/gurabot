@@ -38,6 +38,19 @@ services:
         networks:
             - monitoring_network
 
+    loki-init:
+        image: alpine:3.22
+        user: "0:0"
+        restart: "no"
+        command:
+            - sh
+            - -c
+            - |
+                mkdir -p /tmp/loki/chunks /tmp/loki/rules /tmp/loki/compactor
+                chown -R 10001:10001 /tmp/loki
+        volumes:
+            - loki_data:/tmp/loki
+
     loki:
         image: grafana/loki:3.7.5
         container_name: ${APP_NAME:-gurabot}-loki
