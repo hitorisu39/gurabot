@@ -45,9 +45,10 @@ services:
         logging: *default-logging
 
         command:
-            - "-config.file=/etc/loki/local-config.yaml"
+            - "-config.file=/etc/loki/loki-config.yml"
 
         volumes:
+            - ./loki-config.yml:/etc/loki/loki-config.yml:ro
             - loki_data:/tmp/loki
 
         expose:
