@@ -112,7 +112,7 @@ export class OsuService extends AbstractService {
         let cachedID: number | null = null;
 
         if (isCacheable) {
-            cachedID = await this.resolveCachedID(username);
+            cachedID = await this.resolveCachedID(username, provider);
         }
 
         if (cachedID) {
@@ -404,11 +404,11 @@ export class OsuService extends AbstractService {
     }
 
     @Trace("osu_resolve_cached_id")
-    public async resolveCachedID(nameOrID: string | number): Promise<number | null> {
+    public async resolveCachedID(nameOrID: string | number, provider: AdapterProvider): Promise<number | null> {
         if (typeof nameOrID === "number") return nameOrID;
 
         const cachedUser = await this.repository.userCache.findUnique({
-            where: { username: nameOrID.toLowerCase() },
+            where: { username_server: { username: nameOrID, server: provider } },
         });
 
         return cachedUser?.id || null;
@@ -556,14 +556,14 @@ export class OsuService extends AbstractService {
         id: number,
         username: string,
         previous: Array<string> = [],
-        provider: AdapterProvider = AdapterProvider.Bancho,
+        provider: AdapterProvider,
     ): void {
         const namesToCache = [username, ...previous].map((n) => n.toLowerCase());
 
         Promise.all(
             namesToCache.map((name) =>
                 this.repository.userCache.upsert({
-                    where: { username: name, server: provider },
+                    where: { username_server: { username: name, server: provider } },
                     create: { id, username: name, server: provider },
                     update: { id },
                 }),

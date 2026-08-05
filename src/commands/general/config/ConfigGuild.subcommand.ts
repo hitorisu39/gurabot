@@ -9,6 +9,7 @@ import { PermissionFlagsBits } from "discord.js";
 import { CommandOption } from "@domain/core/Command";
 import { EScoreListSize } from "@domain/osu/enums/Score.enum";
 import { GuildConfigUpdateDto } from "@domain/guild/Guild.dto";
+import { AdapterProvider, GameMode } from "@generated/adapter/types";
 
 @Subcommand({
     root: "config",
@@ -24,6 +25,14 @@ export class ConfigGuildSubcommand extends AbstractCommand {
     @Option("prefix", "Specify the prefix to utilize for message commands.")
     @IsString(1, 3)
     declare private readonly prefix: CommandOption<string>;
+
+    @Option("mode", "Specify your default osu! game mode.")
+    @IsEnum(GameMode)
+    declare private readonly mode: CommandOption<GameMode>;
+
+    @Option("server", "Specify your default osu! server.")
+    @IsEnum(AdapterProvider)
+    declare private readonly server: CommandOption<AdapterProvider>;
 
     @Option("score_list_size", "Specify the default size for score lists (detailed/compact).")
     @IsEnum(EScoreListSize)
@@ -46,9 +55,9 @@ export class ConfigGuildSubcommand extends AbstractCommand {
             updates.prefix = newPrefix;
         }
 
-        if (this.scoreListSize.some()) {
-            updates.scoreListSize = this.scoreListSize.unwrap();
-        }
+        if (this.scoreListSize.some()) updates.scoreListSize = this.scoreListSize.unwrap();
+        if (this.server.some()) updates.server = this.server.unwrap();
+        if (this.mode.some()) updates.mode = this.mode.unwrap();
 
         await this.guildService.update(ctx.guild.id, updates);
         await ctx.respond(Embed.success("The guild configuration was updated."));

@@ -5,3 +5,6 @@ calculator
 *.md
 *.mjs
 *.yml
+*.json
+*.html
+*.css

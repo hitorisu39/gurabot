@@ -13,7 +13,7 @@ export abstract class AbstractProfileCommand extends AbstractOsuCommand {
 
     public async execute(ctx: CommandContext): Promise<void> {
         const target = await this.resolveTarget(ctx);
-        const cachedID = await this.osuService.resolveCachedID(target.query);
+        const cachedID = await this.osuService.resolveCachedID(target.query, target.server);
 
         let user, scores, ameobea;
 
