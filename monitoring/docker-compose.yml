@@ -92,6 +92,10 @@ services:
             GF_USERS_ALLOW_SIGN_UP: "false"
             GF_AUTH_ANONYMOUS_ENABLED: "false"
 
+            GF_SERVER_DOMAIN: ${GRAFANA_DOMAIN:-localhost}
+            GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:${GRAFANA_PORT:-3000}/}
+            GF_SERVER_SERVE_FROM_SUB_PATH: ${GRAFANA_SERVE_FROM_SUB_PATH:-false}
+
         volumes:
             - grafana_data:/var/lib/grafana
             - ./grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
@@ -99,7 +103,7 @@ services:
             - ./dashboards:/etc/grafana/dashboards:ro
 
         ports:
-            - "${GRAFANA_BIND_ADDRESS:-127.0.0.1}:${GRAFANA_PORT:-3000}:3000"
+            - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
 
         depends_on:
             prometheus:
