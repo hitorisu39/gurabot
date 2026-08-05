@@ -23,6 +23,9 @@
         "docker:prod:down": "docker compose --profile prod down",
         "docker:prod:logs": "docker compose --profile prod logs -f --tail 100",
         "docker:prod:status": "docker compose --profile prod ps",
+        "docker:monitoring": "docker compose --env-file .env -f monitoring/docker-compose.yml up -d",
+        "docker:monitoring:down": "docker compose --env-file .env -f monitoring/docker-compose.yml down",
+        "docker:monitoring:logs": "docker compose --env-file .env -f monitoring/docker-compose.yml logs -f --tail 100",
         "docker:dev": "docker compose -p gurabot-dev -f docker-compose.dev.yml --profile dev up -d",
         "docker:db-wipe": "docker compose down -v"
     },
