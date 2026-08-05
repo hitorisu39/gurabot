@@ -27,7 +27,7 @@
         "docker:prod:logs": "docker compose --profile prod logs -f --tail 100",
         "docker:prod:status": "docker compose --profile prod ps",
 
-        "docker:monitoring": "docker compose --env-file .env -f monitoring/docker-compose.yml pull && docker compose --env-file .env -f monitoring/docker-compose.yml up -d --remove-orphans --wait",
+        "docker:monitoring": "docker compose --env-file .env -f monitoring/docker-compose.yml pull && docker compose --env-file .env -f monitoring/docker-compose.yml up -d --remove-orphans",
         "docker:monitoring:up": "docker compose --env-file .env -f monitoring/docker-compose.yml up -d --remove-orphans --wait",
         "docker:monitoring:down": "docker compose --env-file .env -f monitoring/docker-compose.yml down",
         "docker:monitoring:logs": "docker compose --env-file .env -f monitoring/docker-compose.yml logs -f --tail 100",

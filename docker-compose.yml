@@ -22,6 +22,7 @@ services:
             - monitoring_network
         ports:
             - "9090:9090"
+            - "127.0.0.1:3001:3001"
         depends_on:
             postgres:
                 condition: service_healthy
