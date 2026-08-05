@@ -404,20 +404,39 @@ public sealed class PartialDifficultyService
 
         foreach (PropertyInfo property in properties)
         {
-            object? value = property.GetValue(attributes);
+            if (
+                property.GetIndexParameters().Length != 0 ||
+                property.GetGetMethod(nonPublic: false) is null
+            )
+            {
+                continue;
+            }
+
+            object? value;
+
+            try
+            {
+                value = property.GetValue(attributes);
+            }
+            catch (Exception exception)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to read property " +
+                    $"{attributes.GetType().FullName}.{property.Name}.",
+                    exception
+                );
+            }
 
             switch (value)
             {
                 case double doubleValue:
-                    result[
-                        LowerFirst(property.Name)
-                    ] = doubleValue;
+                    result[LowerFirst(property.Name)] =
+                        doubleValue;
                     break;
 
                 case int intValue:
-                    result[
-                        LowerFirst(property.Name)
-                    ] = intValue;
+                    result[LowerFirst(property.Name)] =
+                        intValue;
                     break;
             }
         }

@@ -14,7 +14,7 @@ RUN dotnet publish Calculator.csproj -c Release \
     -r linux-musl-x64 \
     --self-contained true \
     -p:PublishSingleFile=true \
-    -p:PublishTrimmed=true \
+    -p:PublishTrimmed=false \
     -o /app/publish
 
 FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-alpine AS runtime
