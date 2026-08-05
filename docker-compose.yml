@@ -4,6 +4,10 @@ networks:
     gurabot_network:
         name: gurabot_network
 
+    monitoring_network:
+        name: gurabot_monitoring
+        external: true
+
 services:
     gurabot:
         image: ${APP_IMAGE:?APP_IMAGE must be set}:${APP_IMAGE_TAG:?APP_IMAGE_TAG must be set}
@@ -15,6 +19,7 @@ services:
         profiles: ["prod"]
         networks:
             - gurabot_network
+            - monitoring_network
         ports:
             - "9090:9090"
         depends_on:
