@@ -4,6 +4,7 @@ model UserCache {
     server      String      // AdapterProvider
     updatedAt   DateTime    @map("updated_at") @updatedAt @default(now())
 
+    @@unique([username, server])
     @@map("user_cache")
 }
 
