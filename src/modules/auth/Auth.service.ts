@@ -209,7 +209,6 @@ export class AuthService extends AbstractService {
 
         if (!state || !code) {
             this.sendHtml(EAuthConnectionType.Osu, res, 400, "Missing Data", "Missing state or code parameter.", false);
-
             return;
         }
 
