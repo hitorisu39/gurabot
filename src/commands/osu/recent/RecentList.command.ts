@@ -32,7 +32,7 @@ export class RecentListCommand extends AbstractRecentListCommand {
 @Command({
     name: "recentpasslist",
     description: "Shows a list of recent passed plays of an osu! player.",
-    aliases: ["rpl"],
+    aliases: ["rpl", "rlp"],
 })
 export class RecentPassListCommand extends AbstractRecentListCommand {
     protected forcedPassed = true;
@@ -55,7 +55,7 @@ export class RecentTaikoListCommand extends AbstractRecentListCommand {
     name: "recentpasstaikolist",
     description: "Shows a list of recent passed taiko plays of an osu! player.",
     prefixOnly: true,
-    aliases: ["rptl", "trpl"],
+    aliases: ["rptl", "trpl", "trlp"],
 })
 export class RecentPassTaikoListCommand extends AbstractRecentListCommand {
     protected forcedMode = GameMode.Taiko;
