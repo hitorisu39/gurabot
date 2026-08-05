@@ -66,7 +66,6 @@ export class ScoreViewService extends AbstractViewService<ScoresViewDto, Record<
         const provider = data.profile.provider;
 
         const pageSize = this.getPageSize(data.pageSize, data.activeAttributes, layout);
-
         await this.populatePage(data.scores, data.page, pageSize, mode, provider);
 
         if (!this.shouldPopulatePlacements(data)) {

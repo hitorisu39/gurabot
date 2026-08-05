@@ -430,6 +430,17 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
         DifficultyRequest request,
         ServerCallContext context)
     {
+        return _calculationLimiter.RunAsync(
+            () => CalculateDifficultyCore(
+                request,
+                context.CancellationToken),
+            context.CancellationToken);
+    }
+
+    private DifficultyResponse CalculateDifficultyCore(
+        DifficultyRequest request,
+        CancellationToken cancellationToken)
+    {
         Ruleset ruleset = GetRuleset(request.RulesetId);
 
         Mod[] mods = ParseMods(
@@ -437,8 +448,7 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
             request.Mods,
             request.HasClockRate
                 ? request.ClockRate
-                : null
-        );
+                : null);
 
         CachedWorkingBeatmap cachedBeatmap =
             _cache.GetBeatmap(request.BeatmapPath);
@@ -454,9 +464,7 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
                 throw new RpcException(
                     new Status(
                         StatusCode.InvalidArgument,
-                        "passed_objects must be greater than zero."
-                    )
-                );
+                        "passed_objects must be greater than zero."));
             }
 
             if (request.CalculateStrains)
@@ -464,9 +472,7 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
                 throw new RpcException(
                     new Status(
                         StatusCode.Unimplemented,
-                        "Strain calculation for partial difficulty is not supported."
-                    )
-                );
+                        "Strain calculation for partial difficulty is not supported."));
             }
 
             PartialDifficultyResult partial =
@@ -480,8 +486,7 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
                         ? request.ClockRate
                         : null,
                     request.PassedObjects,
-                    context.CancellationToken
-                );
+                    cancellationToken);
 
             difficultyAttributes = partial.Attributes;
             playableBeatmap = partial.PlayableBeatmap;
@@ -490,17 +495,18 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
         {
             difficultyCalculator =
                 ruleset.CreateDifficultyCalculator(
-                    cachedBeatmap.WorkingBeatmap
-                );
+                    cachedBeatmap.WorkingBeatmap);
 
             difficultyAttributes =
-                difficultyCalculator.Calculate(mods);
+                difficultyCalculator.Calculate(
+                    mods,
+                    cancellationToken);
 
             playableBeatmap =
                 cachedBeatmap.WorkingBeatmap.GetPlayableBeatmap(
                     ruleset.RulesetInfo,
-                    mods
-                );
+                    mods,
+                    cancellationToken);
         }
 
         double clockRate = CalculateClockRate(mods);
@@ -509,26 +515,23 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
         {
             Beatmap = CalculateAdjustedAttributes(
                 playableBeatmap,
-                clockRate
-            )
+                clockRate)
         };
 
         response.Attributes.Add(
-            ExtractAttributes(difficultyAttributes)
-        );
+            ExtractAttributes(difficultyAttributes));
 
         if (request.CalculateStrains)
         {
             var strains = GetStrains(
                 difficultyCalculator!,
                 playableBeatmap,
-                mods
-            );
+                mods);
 
             response.Strains.AddRange(strains);
         }
 
-        return Task.FromResult(response);
+        return response;
     }
 
     public override async Task CalculatePerformanceStream(

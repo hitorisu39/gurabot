@@ -1,12 +1,13 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
-using System.Runtime.ExceptionServices;
 using Calculator.Protos;
 using Grpc.Core;
 using osu.Game.Beatmaps;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Catch.Beatmaps;
+using osu.Game.Rulesets.Catch.Difficulty;
 using osu.Game.Rulesets.Catch.Objects;
 using osu.Game.Rulesets.Difficulty;
 using osu.Game.Rulesets.Mania.Difficulty;
@@ -15,13 +16,9 @@ using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Osu.Difficulty;
 using osu.Game.Rulesets.Taiko.Difficulty;
-using osu.Game.Rulesets.Catch.Difficulty;
 
-using ManiaNote =
-    osu.Game.Rulesets.Mania.Objects.Note;
-
-using TaikoHit =
-    osu.Game.Rulesets.Taiko.Objects.Hit;
+using ManiaNote = osu.Game.Rulesets.Mania.Objects.Note;
+using TaikoHit = osu.Game.Rulesets.Taiko.Objects.Hit;
 
 namespace Calculator.Services;
 
@@ -30,15 +27,19 @@ public sealed record PartialDifficultyResult(
     IBeatmap PlayableBeatmap,
     uint PlayedEvents,
     double ProgressTime,
-    double SnapshotTime
-);
+    double SnapshotTime);
 
 public sealed class PartialDifficultyService
 {
     private static readonly ConcurrentDictionary<
         Type,
         PropertyInfo[]
-    > objectPropertiesCache = new();
+    > readablePropertiesCache = new();
+
+    private static readonly ConcurrentDictionary<
+        Type,
+        IReadOnlyDictionary<string, PropertyInfo>
+    > writablePropertiesCache = new();
 
     private readonly PartialDifficultyCache cache;
     private readonly ILogger<PartialDifficultyService> logger;
@@ -61,160 +62,107 @@ public sealed class PartialDifficultyService
         uint playedEvents,
         CancellationToken cancellationToken)
     {
+        long totalStarted = Stopwatch.GetTimestamp();
+        cancellationToken.ThrowIfCancellationRequested();
+
         DifficultyCalculator calculator =
             ruleset.CreateDifficultyCalculator(
-                source.WorkingBeatmap
-            );
+                source.WorkingBeatmap);
 
-        PreparedDifficultyCalculator prepared =
-            PrepareCalculator(
+        SingleSnapshotDifficultyCalculator.PreparedDifficultyContext prepared =
+            SingleSnapshotDifficultyCalculator.Prepare(
                 calculator,
                 mods,
-                cancellationToken
-            );
+                cancellationToken);
+
+        IBeatmap playableBeatmap = prepared.PlayableBeatmap;
+        Mod[] playableMods = prepared.PlayableMods;
+
+        double preparationMilliseconds =
+            Stopwatch.GetElapsedTime(totalStarted).TotalMilliseconds;
 
         double progressTime = ResolveProgressTime(
             rulesetId,
-            prepared.PlayableBeatmap,
-            playedEvents
-        );
+            playableBeatmap,
+            playedEvents);
 
         PartialSnapshot snapshot = ResolveSnapshot(
-            prepared.PlayableBeatmap,
-            progressTime
-        );
+            playableBeatmap,
+            progressTime);
+
+        if (snapshot.TopLevelObjectCount <= 0)
+        {
+            throw new RpcException(
+                new Status(
+                    StatusCode.InvalidArgument,
+                    "The converted beatmap does not contain a calculable snapshot."));
+        }
 
         var key = new PartialDifficultyCacheKey(
             source.Identity,
             rulesetId,
             BuildModsKey(modMessages, customClockRate),
-            playedEvents,
-            calculator.Version
-        );
+            snapshot.TopLevelObjectCount,
+            calculator.Version);
+
+        bool cacheMiss = false;
+        double calculationMilliseconds = 0;
 
         IReadOnlyDictionary<string, double> values =
             cache.GetOrCreate(
                 key,
                 () =>
                 {
-                    List<TimedDifficultyAttributes> timeline =
-                        calculator.CalculateTimed(
-                            mods,
-                            cancellationToken
-                        );
+                    cacheMiss = true;
+                    long calculationStarted = Stopwatch.GetTimestamp();
 
-                    int snapshotIndex =
-                        snapshot.TopLevelObjectCount - 1;
+                    DifficultyAttributes calculated =
+                        SingleSnapshotDifficultyCalculator.Calculate(
+                            calculator,
+                            playableBeatmap,
+                            playableMods,
+                            snapshot.TopLevelObjectCount,
+                            cancellationToken);
 
-                    if (
-                        snapshotIndex < 0 ||
-                        snapshotIndex >= timeline.Count
-                    )
-                    {
-                        throw new RpcException(
-                            new Status(
-                                StatusCode.InvalidArgument,
-                                $"Unable to select partial difficulty " +
-                                $"snapshot {snapshot.TopLevelObjectCount}; " +
-                                $"the calculated timeline contains " +
-                                $"{timeline.Count} snapshots."
-                            )
-                        );
-                    }
+                    calculationMilliseconds = Stopwatch
+                        .GetElapsedTime(calculationStarted)
+                        .TotalMilliseconds;
 
-                    DifficultyAttributes attributes =
-                        timeline[snapshotIndex].Attributes;
-
-                    return ExtractAttributes(attributes);
-                }
-            );
+                    return ExtractAttributes(calculated);
+                });
 
         DifficultyAttributes attributes =
             CreateDifficultyAttributes(
                 rulesetId,
-                prepared.PlayableMods,
-                values
-            );
+                playableMods,
+                values);
+
+        double totalMilliseconds = Stopwatch
+            .GetElapsedTime(totalStarted)
+            .TotalMilliseconds;
 
         logger.LogDebug(
-            "Calculated partial difficulty: ruleset={Ruleset}, " +
-            "events={Events}, progress={ProgressTime}, " +
-            "snapshot={SnapshotTime}, objects={Objects}",
+            "Partial difficulty {CacheState}: ruleset={Ruleset}, " +
+            "events={Events}, snapshotObjects={SnapshotObjects}, " +
+            "progress={ProgressTime}, snapshot={SnapshotTime}, " +
+            "prepareMs={PrepareMs:F2}, calculateMs={CalculateMs:F2}, " +
+            "totalMs={TotalMs:F2}",
+            cacheMiss ? "cache-miss" : "cache-hit",
             rulesetId,
             playedEvents,
+            snapshot.TopLevelObjectCount,
             progressTime,
             snapshot.Time,
-            snapshot.TopLevelObjectCount
-        );
+            preparationMilliseconds,
+            calculationMilliseconds,
+            totalMilliseconds);
 
         return new PartialDifficultyResult(
             attributes,
-            prepared.PlayableBeatmap,
+            playableBeatmap,
             playedEvents,
             progressTime,
-            snapshot.Time
-        );
-    }
-
-    private static PreparedDifficultyCalculator PrepareCalculator(
-        DifficultyCalculator calculator,
-        Mod[] mods,
-        CancellationToken cancellationToken)
-    {
-        MethodInfo preProcess =
-            FindInstanceMethod(
-                calculator.GetType(),
-                "preProcess",
-                typeof(IEnumerable<Mod>),
-                typeof(CancellationToken)
-            ) ?? throw new MissingMethodException(
-                calculator.GetType().FullName,
-                "preProcess(IEnumerable<Mod>, CancellationToken)"
-            );
-
-        Invoke(
-            preProcess,
-            calculator,
-            mods,
-            cancellationToken
-        );
-
-        PropertyInfo beatmapProperty =
-            FindInstanceProperty(
-                calculator.GetType(),
-                "Beatmap"
-            ) ?? throw new MissingMemberException(
-                calculator.GetType().FullName,
-                "Beatmap"
-            );
-
-        FieldInfo playableModsField =
-            FindInstanceField(
-                calculator.GetType(),
-                "playableMods"
-            ) ?? throw new MissingFieldException(
-                calculator.GetType().FullName,
-                "playableMods"
-            );
-
-        var playableBeatmap =
-            beatmapProperty.GetValue(calculator) as IBeatmap
-            ?? throw new InvalidOperationException(
-                "Difficulty calculator did not produce " +
-                "a playable beatmap."
-            );
-
-        var playableMods =
-            playableModsField.GetValue(calculator) as Mod[]
-            ?? throw new InvalidOperationException(
-                "Difficulty calculator did not produce " +
-                "a playable mod array."
-            );
-
-        return new PreparedDifficultyCalculator(
-            playableBeatmap,
-            playableMods
-        );
+            snapshot.Time);
     }
 
     private static double ResolveProgressTime(
@@ -222,92 +170,68 @@ public sealed class PartialDifficultyService
         IBeatmap beatmap,
         uint playedEvents)
     {
-        ProgressEvent[] events = GetProgressEvents(
-                rulesetId,
-                beatmap
-            )
-            .Select((progressEvent, index) => new
-            {
-                Event = progressEvent,
-                Index = index,
-            })
-            .OrderBy(entry => entry.Event.OrderTime)
-            .ThenBy(entry => entry.Index)
-            .Select(entry => entry.Event)
-            .ToArray();
-
         if (playedEvents == 0)
         {
             return double.NegativeInfinity;
         }
 
-        if (playedEvents > events.Length)
+        int initialCapacity = rulesetId == 3
+            ? checked(beatmap.HitObjects.Count * 2)
+            : beatmap.HitObjects.Count;
+
+        var events = new List<ProgressEvent>(initialCapacity);
+        int sequence = 0;
+
+        void add(double orderTime, double completionTime)
         {
-            throw new RpcException(
-                new Status(
-                    StatusCode.InvalidArgument,
-                    $"Score contains {playedEvents} played " +
-                    $"events, but the converted beatmap contains " +
-                    $"only {events.Length} events."
-                )
-            );
+            events.Add(new ProgressEvent(
+                orderTime,
+                completionTime,
+                sequence++));
         }
 
-        return events[checked((int)playedEvents - 1)]
-            .CompletionTime;
-    }
-
-    private static IEnumerable<ProgressEvent> GetProgressEvents(
-        uint rulesetId,
-        IBeatmap beatmap)
-    {
         switch (rulesetId)
         {
             case 0:
                 foreach (HitObject hitObject in beatmap.HitObjects)
                 {
-                    yield return new ProgressEvent(
+                    add(
                         hitObject.StartTime,
-                        hitObject.GetEndTime()
-                    );
+                        hitObject.GetEndTime());
                 }
 
-                yield break;
+                break;
 
             case 1:
-                foreach (
-                    TaikoHit hit in
-                    beatmap.HitObjects.OfType<TaikoHit>()
-                )
+                foreach (HitObject hitObject in beatmap.HitObjects)
                 {
-                    yield return new ProgressEvent(
-                        hit.StartTime,
-                        hit.GetEndTime()
-                    );
+                    if (hitObject is TaikoHit hit)
+                    {
+                        add(
+                            hit.StartTime,
+                            hit.GetEndTime());
+                    }
                 }
 
-                yield break;
+                break;
 
             case 2:
                 foreach (
                     PalpableCatchHitObject hitObject in
                     CatchBeatmap.GetPalpableObjects(
-                        beatmap.HitObjects
-                    )
-                )
+                        beatmap.HitObjects))
                 {
                     if (hitObject is Banana)
                     {
                         continue;
                     }
 
-                    yield return new ProgressEvent(
+                    add(
                         hitObject.StartTime,
-                        hitObject.GetEndTime()
-                    );
+                        hitObject.GetEndTime());
                 }
 
-                yield break;
+                break;
 
             case 3:
                 foreach (HitObject hitObject in beatmap.HitObjects)
@@ -315,38 +239,56 @@ public sealed class PartialDifficultyService
                     switch (hitObject)
                     {
                         case HoldNote hold:
-                            yield return new ProgressEvent(
+                            add(
                                 hold.Head.StartTime,
-                                hold.Head.GetEndTime()
-                            );
+                                hold.Head.GetEndTime());
 
-                            yield return new ProgressEvent(
+                            add(
                                 hold.Tail.StartTime,
-                                hold.Tail.GetEndTime()
-                            );
+                                hold.Tail.GetEndTime());
 
                             break;
 
                         case ManiaNote note:
-                            yield return new ProgressEvent(
+                            add(
                                 note.StartTime,
-                                note.GetEndTime()
-                            );
+                                note.GetEndTime());
 
                             break;
                     }
                 }
 
-                yield break;
+                break;
 
             default:
                 throw new RpcException(
                     new Status(
                         StatusCode.InvalidArgument,
-                        "Invalid ruleset ID."
-                    )
-                );
+                        "Invalid ruleset ID."));
         }
+
+        events.Sort(static (left, right) =>
+        {
+            int orderComparison =
+                left.OrderTime.CompareTo(right.OrderTime);
+
+            return orderComparison != 0
+                ? orderComparison
+                : left.Sequence.CompareTo(right.Sequence);
+        });
+
+        if (playedEvents > events.Count)
+        {
+            throw new RpcException(
+                new Status(
+                    StatusCode.InvalidArgument,
+                    $"Score contains {playedEvents} played " +
+                    $"events, but the converted beatmap contains " +
+                    $"only {events.Count} events."));
+        }
+
+        return events[checked((int)playedEvents - 1)]
+            .CompletionTime;
     }
 
     private static PartialSnapshot ResolveSnapshot(
@@ -357,11 +299,11 @@ public sealed class PartialDifficultyService
         {
             return new PartialSnapshot(
                 0,
-                double.NegativeInfinity
-            );
+                double.NegativeInfinity);
         }
 
-        PartialSnapshot? selected = null;
+        int selectedObjectCount = 0;
+        double selectedTime = double.NegativeInfinity;
 
         for (int index = 0; index < beatmap.HitObjects.Count; index++)
         {
@@ -370,73 +312,67 @@ public sealed class PartialDifficultyService
 
             if (endTime <= progressTime)
             {
-                selected = new PartialSnapshot(
-                    index + 1,
-                    endTime
-                );
+                selectedObjectCount = index + 1;
+                selectedTime = endTime;
             }
         }
 
-        if (selected.HasValue)
+        if (selectedObjectCount > 0)
         {
-            return selected.Value;
+            return new PartialSnapshot(
+                selectedObjectCount,
+                selectedTime);
         }
 
         return new PartialSnapshot(
             1,
-            beatmap.HitObjects[0].GetEndTime()
-        );
+            beatmap.HitObjects[0].GetEndTime());
     }
 
-    private static Dictionary<string, double> ExtractAttributes(
-        DifficultyAttributes attributes)
+    private static IReadOnlyDictionary<string, double>
+        ExtractAttributes(DifficultyAttributes attributes)
     {
         var result = new Dictionary<string, double>();
 
         PropertyInfo[] properties =
-            objectPropertiesCache.GetOrAdd(
+            readablePropertiesCache.GetOrAdd(
                 attributes.GetType(),
-                type => type.GetProperties(
+                static type => type.GetProperties(
                     BindingFlags.Public |
-                    BindingFlags.Instance
-                )
-            );
+                    BindingFlags.Instance));
 
         foreach (PropertyInfo property in properties)
         {
             if (
                 property.GetIndexParameters().Length != 0 ||
-                property.GetGetMethod(nonPublic: false) is null
-            )
+                property.GetGetMethod(nonPublic: false) is null)
             {
                 continue;
             }
 
-            object? value;
-
-            try
-            {
-                value = property.GetValue(attributes);
-            }
-            catch (Exception exception)
-            {
-                throw new InvalidOperationException(
-                    $"Failed to read property " +
-                    $"{attributes.GetType().FullName}.{property.Name}.",
-                    exception
-                );
-            }
+            object? value = property.GetValue(attributes);
+            string name = LowerFirst(property.Name);
 
             switch (value)
             {
                 case double doubleValue:
-                    result[LowerFirst(property.Name)] =
-                        doubleValue;
+                    result[name] = doubleValue;
+                    break;
+
+                case float floatValue:
+                    result[name] = floatValue;
                     break;
 
                 case int intValue:
-                    result[LowerFirst(property.Name)] =
-                        intValue;
+                    result[name] = intValue;
+                    break;
+
+                case uint uintValue:
+                    result[name] = uintValue;
+                    break;
+
+                case long longValue:
+                    result[name] = longValue;
                     break;
             }
         }
@@ -459,51 +395,40 @@ public sealed class PartialDifficultyService
             _ => throw new RpcException(
                 new Status(
                     StatusCode.InvalidArgument,
-                    "Invalid ruleset ID."
-                )
-            ),
+                    "Invalid ruleset ID."))
         };
 
         attributes.Mods = mods;
 
-        PropertyInfo[] properties =
-            objectPropertiesCache.GetOrAdd(
+        IReadOnlyDictionary<string, PropertyInfo> properties =
+            writablePropertiesCache.GetOrAdd(
                 attributes.GetType(),
-                type => type.GetProperties(
-                    BindingFlags.Public |
-                    BindingFlags.Instance |
-                    BindingFlags.IgnoreCase
-                )
-            );
+                static type => type
+                    .GetProperties(
+                        BindingFlags.Public |
+                        BindingFlags.Instance)
+                    .Where(property => property.CanWrite)
+                    .ToDictionary(
+                        property => property.Name,
+                        StringComparer.OrdinalIgnoreCase));
 
         foreach (
-            KeyValuePair<string, double> pair in values
-        )
+            KeyValuePair<string, double> pair in values)
         {
-            PropertyInfo? property =
-                properties.FirstOrDefault(candidate =>
-                    string.Equals(
-                        candidate.Name,
-                        pair.Key,
-                        StringComparison.OrdinalIgnoreCase
-                    )
-                );
-
-            if (property is not { CanWrite: true })
+            if (!properties.TryGetValue(pair.Key, out PropertyInfo? property))
             {
                 continue;
             }
 
             Type targetType =
                 Nullable.GetUnderlyingType(
-                    property.PropertyType
-                ) ?? property.PropertyType;
+                    property.PropertyType) ??
+                property.PropertyType;
 
             object converted = Convert.ChangeType(
                 pair.Value,
                 targetType,
-                CultureInfo.InvariantCulture
-            );
+                CultureInfo.InvariantCulture);
 
             property.SetValue(attributes, converted);
         }
@@ -518,134 +443,28 @@ public sealed class PartialDifficultyService
         string modsKey = string.Join(
             ",",
             mods
-                .OrderBy(mod => mod.Acronym)
+                .OrderBy(
+                    mod => mod.Acronym,
+                    StringComparer.Ordinal)
                 .Select(mod =>
                 {
                     string settings = string.Join(
                         ";",
                         mod.Settings
-                            .OrderBy(pair => pair.Key)
+                            .OrderBy(
+                                pair => pair.Key,
+                                StringComparer.Ordinal)
                             .Select(pair =>
-                                $"{pair.Key}={pair.Value}"
-                            )
-                    );
+                                $"{pair.Key}={pair.Value}"));
 
                     return $"{mod.Acronym}[{settings}]";
-                })
-        );
+                }));
 
         string rate = customClockRate?.ToString(
             "R",
-            CultureInfo.InvariantCulture
-        ) ?? "default";
+            CultureInfo.InvariantCulture) ?? "default";
 
         return $"{modsKey}@{rate}";
-    }
-
-    private static MethodInfo? FindInstanceMethod(
-        Type type,
-        string methodName,
-        params Type[] parameterTypes)
-    {
-        for (
-            Type? current = type;
-            current != null;
-            current = current.BaseType
-        )
-        {
-            MethodInfo? method = current.GetMethod(
-                methodName,
-                BindingFlags.Instance |
-                BindingFlags.Public |
-                BindingFlags.NonPublic |
-                BindingFlags.DeclaredOnly,
-                binder: null,
-                types: parameterTypes,
-                modifiers: null
-            );
-
-            if (method != null)
-            {
-                return method;
-            }
-        }
-
-        return null;
-    }
-
-    private static PropertyInfo? FindInstanceProperty(
-        Type type,
-        string propertyName)
-    {
-        for (
-            Type? current = type;
-            current != null;
-            current = current.BaseType
-        )
-        {
-            PropertyInfo? property = current.GetProperty(
-                propertyName,
-                BindingFlags.Instance |
-                BindingFlags.Public |
-                BindingFlags.NonPublic |
-                BindingFlags.DeclaredOnly
-            );
-
-            if (property != null)
-            {
-                return property;
-            }
-        }
-
-        return null;
-    }
-
-    private static FieldInfo? FindInstanceField(
-        Type type,
-        string fieldName)
-    {
-        for (
-            Type? current = type;
-            current != null;
-            current = current.BaseType
-        )
-        {
-            FieldInfo? field = current.GetField(
-                fieldName,
-                BindingFlags.Instance |
-                BindingFlags.Public |
-                BindingFlags.NonPublic |
-                BindingFlags.DeclaredOnly
-            );
-
-            if (field != null)
-            {
-                return field;
-            }
-        }
-
-        return null;
-    }
-
-    private static object? Invoke(
-        MethodInfo method,
-        object target,
-        params object?[] arguments)
-    {
-        try
-        {
-            return method.Invoke(target, arguments);
-        }
-        catch (
-            TargetInvocationException exception
-        ) when (exception.InnerException != null)
-        {
-            ExceptionDispatchInfo
-                .Capture(exception.InnerException)
-                .Throw();
-
-            throw;
-        }
     }
 
     private static string LowerFirst(string value)
@@ -661,16 +480,10 @@ public sealed class PartialDifficultyService
 
     private readonly record struct ProgressEvent(
         double OrderTime,
-        double CompletionTime
-    );
+        double CompletionTime,
+        int Sequence);
 
     private readonly record struct PartialSnapshot(
         int TopLevelObjectCount,
-        double Time
-    );
-
-    private sealed record PreparedDifficultyCalculator(
-        IBeatmap PlayableBeatmap,
-        Mod[] PlayableMods
-    );
+        double Time);
 }

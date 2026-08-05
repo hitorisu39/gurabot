@@ -8,9 +8,8 @@ public readonly record struct PartialDifficultyCacheKey(
     string BeatmapIdentity,
     uint RulesetId,
     string ModsKey,
-    uint PassedObjects,
-    int CalculatorVersion
-);
+    int TopLevelObjectCount,
+    int CalculatorVersion);
 
 public sealed class PartialDifficultyCache : IDisposable
 {
@@ -33,35 +32,27 @@ public sealed class PartialDifficultyCache : IDisposable
         {
             SizeLimit = Math.Max(
                 1,
-                value.PartialDifficultyCacheSize
-            )
+                value.PartialDifficultyCacheSize)
         });
 
         slidingExpiration = TimeSpan.FromMinutes(
             Math.Max(
                 1,
-                value.PartialDifficultySlidingMinutes
-            )
-        );
+                value.PartialDifficultySlidingMinutes));
 
         absoluteExpiration = TimeSpan.FromMinutes(
             Math.Max(
                 value.PartialDifficultySlidingMinutes,
-                value.PartialDifficultyAbsoluteMinutes
-            )
-        );
+                value.PartialDifficultyAbsoluteMinutes));
     }
 
     public IReadOnlyDictionary<string, double> GetOrCreate(
         PartialDifficultyCacheKey key,
         Func<IReadOnlyDictionary<string, double>> factory)
     {
-        if (
-            cache.TryGetValue(
+        if (cache.TryGetValue(
                 key,
-                out IReadOnlyDictionary<string, double>? cached
-            )
-        )
+                out IReadOnlyDictionary<string, double>? cached))
         {
             return cached!;
         }
@@ -71,9 +62,7 @@ public sealed class PartialDifficultyCache : IDisposable
                 key,
                 _ => new Lazy<IReadOnlyDictionary<string, double>>(
                     factory,
-                    LazyThreadSafetyMode.ExecutionAndPublication
-                )
-            );
+                    LazyThreadSafetyMode.ExecutionAndPublication));
 
         try
         {
@@ -89,8 +78,7 @@ public sealed class PartialDifficultyCache : IDisposable
                     SlidingExpiration = slidingExpiration,
                     AbsoluteExpirationRelativeToNow =
                         absoluteExpiration
-                }
-            );
+                });
 
             return attributes;
         }
