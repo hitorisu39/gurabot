@@ -95,7 +95,6 @@ export class ScoreViewService extends AbstractViewService<ScoresViewDto, Record<
 
     private shouldPopulatePlacements(data: ScoresViewDto): boolean {
         const layout = data.layout ?? EScoreViewLayout.List;
-
         return layout === EScoreViewLayout.Compare || data.scores.length === 1;
     }
 

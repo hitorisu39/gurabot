@@ -268,12 +268,37 @@ export class CommandRouter {
             botPermissions: botPermissions,
         };
 
-        const executeChain = async (index: number): Promise<void> => {
+        const executeChain = async (
+            index: number,
+        ): Promise<void> => {
             if (index < this.middlewares.length) {
-                await Promise.resolve(this.middlewares[index]?.instance.execute(ctx, () => executeChain(index + 1)));
-            } else {
-                await this.runCommand(ctx, targetCommand);
+                const middleware =
+                    this.middlewares[index]!.instance;
+
+                const startedAt = performance.now();
+
+                await Promise.resolve(
+                    middleware.execute(
+                        ctx,
+                        () => executeChain(index + 1),
+                    ),
+                );
+
+                this.logger.info(
+                    {
+                        middleware:
+                            middleware.constructor.name,
+                        durationMs:
+                            performance.now() - startedAt,
+                        command: ctx.commandName,
+                    },
+                    "Command middleware completed",
+                );
+
+                return;
             }
+
+            await this.runCommand(ctx, targetCommand);
         };
 
         const profiler = new InteractionProfiler();
@@ -310,7 +335,21 @@ export class CommandRouter {
     }
 
     private async runCommand(ctx: CommandContext, targetCommand: AbstractCommand): Promise<void> {
+        const deferStartedAt = performance.now();
+
         if (ctx.metadata.options.defer !== false) await ctx.defer(ctx.metadata.options.ephemeral).catch(() => {});
+
+        this.logger.info(
+            {
+                durationMs:
+                    performance.now() - deferStartedAt,
+                command: ctx.commandName,
+                contextType: ctx.isSlash
+                    ? "slash"
+                    : "prefix",
+            },
+            "Command defer completed",
+        );
 
         try {
             const properties = this.getCommandProperties(targetCommand);
