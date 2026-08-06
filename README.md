@@ -29,18 +29,18 @@ Development requires:
 - Docker and Docker Compose, recommended for PostgreSQL and Redis
 
 Clone the repository and install the dependencies:
-```
+```bash
 git clone https://github.com/hitorisu39/gurabot.git
 cd gurabot
 yarn install --frozen-lockfile
 ```
 
 Copy the environment template:
-```
+```bash
 cp .env.template .env
 ```
 On Windows:
-```
+```bash
 Copy-Item .env.template .env
 ```
 
@@ -58,18 +58,19 @@ If you installed Docker, you can start them up by running `yarn docker:dev`.
 For complete functionality, fill in the remaining environment variables.
 
 Generate the Prisma client and apply the schema to the database:
-```
+```bash
 yarn prisma generate
 yarn prisma db push
 ```
+When committing changes to the Prisma schema, remember to create a migration via `yarn prisma migrate dev`.
 
 Build the project:
-```
+```bash
 yarn build
 ```
 
 Start the bot and calculator in development mode:
-```
+```bash
 yarn dev
 ```
 
@@ -84,7 +85,7 @@ The production server requires:
 Node.js, Yarn, and the .NET SDK are not required unless you want to use the optional Yarn deployment scripts.
 
 ### 1. Clone a release
-```
+```bash
 git clone https://github.com/hitorisu39/gurabot.git
 cd gurabot
 
@@ -93,7 +94,7 @@ git checkout v1.0.0
 ```
 
 ### 2. Configure the environment
-```
+```bash
 cp .env.template .env
 ```
 Set the image repository and release version:
@@ -112,11 +113,11 @@ Configure any remaining integrations required by your deployment, such as OAuth 
 
 ### 3. Start monitoring (optional)
 Create the external network used by the application and monitoring stacks:
-```
+```bash
 docker network inspect gurabot_monitoring >/dev/null 2>&1 || docker network create gurabot_monitoring
 ```
 Start Prometheus, Loki, and Grafana:
-```
+```bash
 docker compose --env-file .env -f monitoring/docker-compose.yml pull
 docker compose --env-file .env -f monitoring/docker-compose.yml up -d --remove-orphans
 ```
@@ -124,22 +125,22 @@ The loki-init container exits after preparing Loki storage. An `Exited (0)` stat
 
 ### 4. Start gurabot
 Validate the configuration:
-```
+```bash
 docker compose --profile prod config
 ```
 Pull and start the production services:
-```
+```bash
 docker compose --profile prod pull
 docker compose --profile prod up -d --no-build --remove-orphans --wait
 ```
 Check the status:
-```
+```bash
 docker compose --profile prod ps
 ```
 
 ### 5. Updating
 Check out the new release and update `APP_IMAGE_TAG`:
-```
+```bash
 git fetch --tags
 git checkout v1.0.1
 
@@ -147,7 +148,7 @@ git checkout v1.0.1
 APP_IMAGE_TAG=1.0.1
 ```
 Pull and recreate the services:
-```
+```bash
 docker compose --profile prod pull
 docker compose --profile prod up -d --no-build --remove-orphans --wait
 ```
