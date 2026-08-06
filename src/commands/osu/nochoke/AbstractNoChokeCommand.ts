@@ -1,4 +1,4 @@
-import { Aliases, Examples, Help, Import, IsInteger, IsNumber, Option } from "@/core/decorators";
+import { Aliases, Examples, Help, Import, IsInteger, Option } from "@/core/decorators";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { Embed } from "@/core/discord/ui/Embed";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
