@@ -18,7 +18,7 @@ import { levenshtein } from "@domain/utils";
     name: "help",
     description: "Shows help for commands.",
     aliases: ["h"],
-    defer: false
+    defer: false,
 })
 @Help(`
     Displays detailed information, examples and aliases for a specific command.

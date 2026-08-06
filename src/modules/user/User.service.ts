@@ -47,7 +47,7 @@ export class UserService extends AbstractService {
         return repository ? cb(repository) : this.repository.$transaction<UserDto>(cb);
     }
 
-    public async unlink(userID: string, provider?: AdapterProvider, repository?: TRepository): Promise<void> {
+    public async unlink(userID: string, provider?: AdapterProvider | null, repository?: TRepository): Promise<void> {
         const cb = async (repo: TRepository) => {
             if (provider) {
                 await repo.userToOsu.delete({

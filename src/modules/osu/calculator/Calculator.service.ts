@@ -202,6 +202,9 @@ export class CalculatorService extends AbstractService {
                 return;
             }
 
+            const scoreState = ScoreCalculationUtils.scoreState(score, mode);
+            const misses = Math.max(0, scoreState.countMiss ?? 0);
+
             streamRequests.push({
                 mode,
                 beatmapPath: this.calculatorMapService.getPath(
@@ -212,12 +215,10 @@ export class CalculatorService extends AbstractService {
                 mods: protoMods,
 
                 score: {
+                    ...scoreState,
                     kind: ScoreStateKind.SIMULATION,
+                    count300: (scoreState.count300 ?? 0) + misses,
                     countMiss: 0,
-                    count300:
-                        (score.statistics.great || 0) +
-                        (score.statistics.miss || 0),
-
                     maxCombo: fullDifficulty.maxCombo,
                 },
             });

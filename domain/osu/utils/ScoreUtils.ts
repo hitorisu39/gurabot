@@ -45,6 +45,11 @@ export class ScoreUtils {
         return undefined;
     }
 
+    public static isFC(score: Score): boolean {
+        if (!ScoreUtils.isPopulated(score)) return score.statistics.miss < 1;
+        return score.statistics.miss < 1 && score.maxCombo >= score.fullDifficulty.maxCombo * 0.995;
+    }
+
     public static weightedPP(scores: ReadonlyArray<Score>): number {
         return this.weightedPPValues(
             scores.map((score) => this.pp(score)).filter((pp): pp is number => typeof pp === "number"),

@@ -19,6 +19,7 @@ import { EApplicationError, Exception } from "@domain/core/Exception";
 import { AdapterProvider, Beatmap } from "@generated/adapter/types";
 import { OsuService } from "./Osu.service";
 import { levenshtein } from "@domain/utils";
+import { discordRegexAnyNumber } from "@domain/discord/configs/Discord.config";
 
 export class BeatmapResolverService extends AbstractService {
     @Import() declare private readonly channelService: ChannelService;
@@ -81,7 +82,7 @@ export class BeatmapResolverService extends AbstractService {
         if (mapOption?.some()) {
             const val = mapOption.unwrap();
 
-            if (/^\d+$/.test(val)) return { beatmapID: parseInt(val), beatmapsetID: null };
+            if (discordRegexAnyNumber.test(val)) return { beatmapID: parseInt(val), beatmapsetID: null };
 
             const extracted = this.fromText(val);
             if (extracted) return extracted;
