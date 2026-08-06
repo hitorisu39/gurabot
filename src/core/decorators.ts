@@ -12,6 +12,7 @@ import {
     METAKEY_GUILD_ONLY,
     METAKEY_IMPORTS,
     METAKEY_MIDDLEWARE_OPTIONS,
+    METAKEY_NO_USER_INSTALL,
     METAKEY_SUBCOMMAND_OPTIONS,
     METAKEY_USER_PERMISSIONS,
 } from "./metakeys";
@@ -122,6 +123,20 @@ export function UserPermissions(...permissions: Array<PermissionResolvable>): Cl
 export function BotPermissions(...permissions: Array<PermissionResolvable>): ClassDecorator {
     return (target: Function) => {
         Reflect.defineMetadata(METAKEY_BOT_PERMISSIONS, permissions, target);
+    };
+}
+
+/**
+ * Prevents a root command from being available through a user installation.
+ *
+ * The command remains available when the app is installed to a guild.
+ *
+ * This decorator cannot be applied to individual subcommands because Discord
+ * defines installation types on the root application command.
+ */
+export function NoUserInstall(): ClassDecorator {
+    return (target: Function) => {
+        Reflect.defineMetadata(METAKEY_NO_USER_INSTALL, true, target);
     };
 }
 

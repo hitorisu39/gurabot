@@ -35,11 +35,7 @@ export class ScoreFormatter {
         return emote;
     }
 
-    public static pp(
-        pp: number = 0,
-        ppfc?: number,
-        bold: boolean = true,
-    ): string {
+    public static pp(pp: number = 0, ppfc?: number, bold: boolean = true): string {
         const formattedPP = pp.toFixed(2);
         const displayedPP = bold ? `**${formattedPP}**` : formattedPP;
 
