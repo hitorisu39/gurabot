@@ -10,11 +10,8 @@ import { NoChokeScoreView } from "./NoChokeScoreView.service";
 import { plainToInstance } from "class-transformer";
 
 export class NoChokeViewService extends AbstractViewService<NoChokeViewDto, Record<string, unknown>> {
-    @Import()
-    declare private readonly osuService: OsuService;
-
-    @Import()
-    declare private readonly noChokeScoreView: NoChokeScoreView;
+    @Import() declare private readonly osuService: OsuService;
+    @Import() declare private readonly noChokeScoreView: NoChokeScoreView;
 
     protected readonly ttl: number = 180;
 

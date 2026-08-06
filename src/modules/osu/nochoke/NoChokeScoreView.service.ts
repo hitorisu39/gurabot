@@ -15,8 +15,7 @@ import { NoChokeViewDto } from "@domain/osu/views/NoChoke.view";
 import { ProfileViewService } from "../profile/ProfileView.service";
 
 export class NoChokeScoreView extends AbstractService {
-    @Import()
-    declare private readonly profileViewService: ProfileViewService;
+    @Import() declare private readonly profileViewService: ProfileViewService;
 
     public getPageSize(): number {
         return scoreDetailedPageSize;
