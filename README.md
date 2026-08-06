@@ -16,12 +16,12 @@ After inviting the bot, use `!help` to get started or `!help [command]` to view 
 # Calculations
 Difficulty, performance, and strain calculations are handled by a separate C# service built on the official osu! packages used by the game.
 
-# Building
+# Setup
 
 ## Development
 Development requires:
 
-- Node.js 22.21.1, recommended
+- Node.js 22 or newer.
 - Yarn 1.22.22
 - .NET 8 SDK
 - PostgreSQL
@@ -53,6 +53,7 @@ OSU_CLIENT_SECRET=
 ```
 
 PostgreSQL and Redis must also be available using the connection details configured in `.env`.
+If you installed Docker, you can start them up by running `yarn docker:dev`.
 
 For complete functionality, fill in the remaining environment variables for services such as o!rdr, metrics, public URLs, and optional Loki logging.
 
@@ -75,22 +76,81 @@ yarn dev
 When working only on Discord-related TypeScript code, `yarn dev` is sufficient. Rebuilding the adapter and calculator is generally unnecessary unless their source code or generated interfaces were changed.
 
 ## Production
-The recommended production deployment uses Docker Compose.
-Create a populated `.env` file before starting the stack. Production deployments should use secure database credentials and valid Discord, osu!, and external-service credentials.
+The recommended production setup uses the prebuilt Docker images and the included Docker Compose files.
+The production server requires:
+- Docker Engine with Docker Compose v2
+- Git
 
-Within the Docker network, the application connects to the other services using their Compose service names:
+Node.js, Yarn, and the .NET SDK are not required unless you want to use the optional Yarn deployment scripts.
 
+### 1. Clone a release
 ```
-APP_MODE=production
+git clone https://github.com/hitorisu39/gurabot.git
+cd gurabot
 
-CALCULATOR_HOST=calculator
-DATABASE_HOST=postgres
-REDIS_HOST=redis
-LOKI_HOST=http://loki:3100
+git fetch --tags
+git checkout v1.0.0
 ```
 
-PostgreSQL and Redis use persistent Docker volumes so their data remains available after containers are recreated.
-The bot image is built using Node.js, while the calculator is published as a self-contained .NET 8 executable for Alpine Linux.
+### 2. Configure the environment
+```
+cp .env.template .env
+```
+Set the image repository and release version:
+```
+APP_IMAGE=ghcr.io/hitorisu39/gurabot
+APP_IMAGE_TAG=1.0.0
+```
+Configure the required Discord and osu! credentials:
+```
+DISCORD_TOKEN=
+DISCORD_APPLICATION_ID=
+OSU_CLIENT_ID=
+OSU_CLIENT_SECRET=
+```
+Configure any remaining integrations required by your deployment, such as OAuth URLs, o!rdr, Grafana, etc.
+
+### 3. Start monitoring (optional)
+Create the external network used by the application and monitoring stacks:
+```
+docker network inspect gurabot_monitoring >/dev/null 2>&1 || docker network create gurabot_monitoring
+```
+Start Prometheus, Loki, and Grafana:
+```
+docker compose --env-file .env -f monitoring/docker-compose.yml pull
+docker compose --env-file .env -f monitoring/docker-compose.yml up -d --remove-orphans
+```
+The loki-init container exits after preparing Loki storage. An `Exited (0)` status for it is expected.
+
+### 4. Start gurabot
+Validate the configuration:
+```
+docker compose --profile prod config
+```
+Pull and start the production services:
+```
+docker compose --profile prod pull
+docker compose --profile prod up -d --no-build --remove-orphans --wait
+```
+Check the status:
+```
+docker compose --profile prod ps
+```
+
+### 5. Updating
+Check out the new release and update `APP_IMAGE_TAG`:
+```
+git fetch --tags
+git checkout v1.0.1
+
+// .env
+APP_IMAGE_TAG=1.0.1
+```
+Pull and recreate the services:
+```
+docker compose --profile prod pull
+docker compose --profile prod up -d --no-build --remove-orphans --wait
+```
 
 # Contributing
 Contributions are welcome.
