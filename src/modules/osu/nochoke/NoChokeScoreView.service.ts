@@ -60,7 +60,9 @@ export class NoChokeScoreView extends AbstractService {
                 `${ScoreFormatter.accuracy(projection.projectedAccuracy)}`;
 
             const ppChange =
-                `${ScoreFormatter.pp(projection.originalPP, undefined, false)}` + ` ➞ ` + `${ScoreFormatter.pp(projection.projectedPP)}`;
+                `${ScoreFormatter.pp(projection.originalPP, undefined, false)}` +
+                ` ➞ ` +
+                `${ScoreFormatter.pp(projection.projectedPP)}`;
 
             const originalCombo = ScoreFormatter.combo(projection.originalCombo);
             const projectedCombo = ScoreFormatter.combo(projection.projectedCombo, score.fullDifficulty.maxCombo, true);

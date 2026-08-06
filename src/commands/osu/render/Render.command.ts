@@ -1,6 +1,6 @@
 import { AbstractSessionCommand } from "@/commands/AbstractSessionCommand";
 import { CommandContext } from "@/core/discord/context/CommandContext";
-import { Command, Import, IsAttachment, Option, Required } from "@/core/decorators";
+import { Command, Import, IsAttachment, NoUserInstall, Option, Required } from "@/core/decorators";
 import { OrdrService } from "@/modules/ordr/Ordr.service";
 import { OrdrConfigService } from "@/modules/ordr/OrdrConfig.service";
 import { IRecentOrdrSkin, OrdrRenderService } from "@/modules/ordr/OrdrRender.service";
@@ -19,6 +19,7 @@ import { plainToInstance } from "class-transformer";
     defer: true,
     ephemeral: false,
 })
+@NoUserInstall()
 export class RenderCommand extends AbstractSessionCommand {
     @Import() declare private readonly ordrService: OrdrService;
     @Import() declare private readonly ordrConfigService: OrdrConfigService;

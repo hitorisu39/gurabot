@@ -1,4 +1,10 @@
-import { ApplicationCommandDataResolvable, ApplicationCommandOptionType, PermissionResolvable } from "discord.js";
+import {
+    ApplicationCommandDataResolvable,
+    ApplicationCommandOptionType,
+    ApplicationIntegrationType,
+    InteractionContextType,
+    PermissionResolvable,
+} from "discord.js";
 
 import {
     METAKEY_BOT_PERMISSIONS,
@@ -6,6 +12,7 @@ import {
     METAKEY_COMMAND_PROPERTIES,
     METAKEY_GUILD_ONLY,
     METAKEY_MIDDLEWARE_OPTIONS,
+    METAKEY_NO_USER_INSTALL,
     METAKEY_SUBCOMMAND_OPTIONS,
     METAKEY_USER_PERMISSIONS,
 } from "../metakeys";
@@ -54,6 +61,14 @@ export class CommandRouter {
             command.constructor,
         );
 
+        const userInstallable = this.isCommandUserInstallable(command);
+        if (subcommandOptions && !userInstallable) {
+            throw new Exception(
+                EApplicationError.INTERNAL_ERROR,
+                `@NoUserInstall() cannot be applied to subcommand '${subcommandOptions.root}:${subcommandOptions.name}'. Discord installation types are configured on the root command.`,
+            );
+        }
+
         if (subcommandOptions) {
             const key = subcommandOptions.group
                 ? `${subcommandOptions.root}:${subcommandOptions.group}:${subcommandOptions.name}`
@@ -80,6 +95,10 @@ export class CommandRouter {
         }
     }
 
+    public isCommandUserInstallable(command: AbstractCommand): boolean {
+        return Reflect.getMetadata(METAKEY_NO_USER_INSTALL, command.constructor) !== true;
+    }
+
     public registerMiddleware(middleware: AbstractMiddleware): void {
         const options: IMiddlewareOptions =
             Reflect.getMetadata(METAKEY_MIDDLEWARE_OPTIONS, middleware.constructor) || {};
@@ -99,10 +118,23 @@ export class CommandRouter {
             const properties: Array<IOptionMetadata> =
                 Reflect.getMetadata(METAKEY_COMMAND_PROPERTIES, command.constructor.prototype) || [];
 
+            const userInstallable = this.isCommandUserInstallable(command);
+            const guildOnly = this.isCommandGuildOnly(command);
+
             payload.set(name, {
                 name: options.name,
                 description: options.description,
                 options: properties.map((prop) => CommandParser.mapToDiscordOption(prop)),
+                integration_types: userInstallable
+                    ? [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall]
+                    : [ApplicationIntegrationType.GuildInstall],
+                contexts: guildOnly
+                    ? [InteractionContextType.Guild]
+                    : [
+                          InteractionContextType.Guild,
+                          InteractionContextType.BotDM,
+                          InteractionContextType.PrivateChannel,
+                      ],
             });
         }
 
