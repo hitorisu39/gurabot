@@ -7,6 +7,8 @@ import { AbstractSkillCardCommand } from "./AbstractSkillCardCommand";
 @Command({
     name: "skill",
     description: "The root command for skill subcommands.",
+    defer: false,
+    slashOnly: true,
 })
 export class SkillRootCommand extends AbstractCommand {
     public async execute(): Promise<void> {
@@ -35,6 +37,7 @@ export class SkillCardSubcommand extends AbstractSkillCardCommand {}
 @Command({
     name: "skills",
     description: "Calculates skill statistics from an osu! player's top plays.",
+    aliases: ["skill"],
     prefixOnly: true,
 })
 export class SkillsCommand extends AbstractSkillStatsCommand {}
