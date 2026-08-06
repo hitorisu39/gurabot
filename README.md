@@ -55,7 +55,7 @@ OSU_CLIENT_SECRET=
 PostgreSQL and Redis must also be available using the connection details configured in `.env`.
 If you installed Docker, you can start them up by running `yarn docker:dev`.
 
-For complete functionality, fill in the remaining environment variables for services such as o!rdr, metrics, public URLs, and optional Loki logging.
+For complete functionality, fill in the remaining environment variables.
 
 Generate the Prisma client and apply the schema to the database:
 ```
