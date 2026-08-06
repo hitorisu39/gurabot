@@ -32,8 +32,6 @@ export class RecentPassSubcommand extends AbstractRecentCommand {
     protected forcedPassed = true;
 }
 
-// Standard
-
 @Command({
     name: "recentscore",
     description: "Shows most recent play of an osu! player.",

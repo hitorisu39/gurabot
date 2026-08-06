@@ -20,6 +20,7 @@ import {
 import { EOrdrConfigSource, OrdrConfigDto, OrdrSettingsDto } from "@domain/ordr/OrdrConfig.dto";
 import { basename } from "node:path";
 import { plainToInstance } from "class-transformer";
+import { discordRegexAnyNumber } from "@domain/discord/configs/Discord.config";
 
 type TOrdrServerEvents = {
     render_added_json(data: unknown): void;
@@ -174,7 +175,7 @@ export class OrdrService extends AbstractService {
         const result = await this.officialSkins(input, Math.max(20, suggestionLimit));
         let match = this.matchOfficialSkin(result.skins, input);
 
-        if (!match && /^\d+$/.test(input)) {
+        if (!match && discordRegexAnyNumber.test(input)) {
             match = await this.officialSkinByID(Number(input));
         }
 
@@ -205,7 +206,7 @@ export class OrdrService extends AbstractService {
 
     private matchOfficialSkin(skins: Array<OrdrOfficialSkinDto>, query: string): OrdrOfficialSkinDto | null {
         const input = query.trim().toLocaleLowerCase();
-        const numericID = /^\d+$/.test(input) ? Number(input) : null;
+        const numericID = discordRegexAnyNumber.test(input) ? Number(input) : null;
 
         const exact = skins.find((skin) => {
             return (

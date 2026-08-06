@@ -59,8 +59,8 @@ export class CommandOption<T> {
         return this.value as T;
     }
 
-    public unwrapUnchecked(): T | undefined {
-        return this.value as T | undefined;
+    public unwrapUnchecked(): T | null {
+        return this.value as T | null;
     }
 
     public unwrapOr(defaultValue: T): T {

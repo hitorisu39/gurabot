@@ -22,7 +22,7 @@ export abstract class AbstractWhatIfCommand extends AbstractOsuCommand {
     @Import() declare private readonly whatIfViewService: WhatIfViewService;
 
     @Option("pp", "Amount of PP for the hypothetical performance play")
-    @IsNumber(0, 999999)
+    @IsNumber(0, 99999)
     @Inject()
     @Aliases("value")
     declare private readonly pp: CommandOption<number>;
@@ -48,7 +48,7 @@ export abstract class AbstractWhatIfCommand extends AbstractOsuCommand {
         if (projection.placement === null) {
             throw new Exception(
                 EApplicationError.INPUT_ERROR,
-                `A ${DiscordFormatter.fixed(playPP)}pp play would not enter ${user.username}'s top plays.`,
+                `A ${DiscordFormatter.fixed(playPP)}pp play would not enter ${user.username}'s top 100 scores.`,
             );
         }
 

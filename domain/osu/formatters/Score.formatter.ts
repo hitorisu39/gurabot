@@ -35,14 +35,19 @@ export class ScoreFormatter {
         return emote;
     }
 
-    public static pp(pp: number = 0, ppfc?: number): string {
+    public static pp(
+        pp: number = 0,
+        ppfc?: number,
+        bold: boolean = true,
+    ): string {
         const formattedPP = pp.toFixed(2);
+        const displayedPP = bold ? `**${formattedPP}**` : formattedPP;
 
         if (ppfc && pp !== ppfc) {
-            return `**${formattedPP}**/${Math.round(ppfc)}pp`;
+            return `${displayedPP}/${Math.round(ppfc)}pp`;
         }
 
-        return `**${formattedPP}**pp`;
+        return `${displayedPP}pp`;
     }
 
     public static combo(combo: number = 0, max?: number, bolded: boolean = false): string {
@@ -54,8 +59,8 @@ export class ScoreFormatter {
         return comboStr;
     }
 
-    public static miss(count?: number): string {
-        if (count && count > 0) {
+    public static miss(count?: number, zero?: boolean): string {
+        if ((count && count > 0) || zero) {
             return `${count}${discordEmoteMiss}`;
         }
         return "";

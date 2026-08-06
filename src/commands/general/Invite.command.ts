@@ -6,7 +6,7 @@ import { Embed } from "@/core/discord/ui/Embed";
 @Command({
     name: "invite",
     description: "Sends an invite link to invite the bot to your server with support server invite link.",
-    defer: false
+    defer: false,
 })
 export class InviteCommand extends AbstractCommand {
     public async execute(ctx: CommandContext): Promise<void> {
