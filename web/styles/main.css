@@ -62,6 +62,13 @@ body {
     font-size: 14px;
 }
 
+.auth-links {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1.25rem;
+}
+
 a {
     text-decoration: none;
     color: #3690ff;

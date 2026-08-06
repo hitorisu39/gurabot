@@ -180,9 +180,11 @@ export class AuthService extends AbstractService {
     ): void {
         const footer = success
             ? [
-                  `<a href="${this.config.app.domain}/terms">Terms</a>`,
-                  `<a href="${this.config.app.domain}/privacy">Privacy</a>`,
-              ].join(" ")
+                `<nav class="auth-links" aria-label="Legal">`,
+                `<a href="${this.config.app.domain}/terms">Terms</a>`,
+                `<a href="${this.config.app.domain}/privacy">Privacy</a>`,
+                `</nav>`,
+            ].join("")
             : `You can contact us <a href="${this.config.app.supportServer}">here</a> for support.`;
 
         const checkmarkImage = success ? authConnectionOkImage : authConnectionFailImage;

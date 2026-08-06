@@ -10,6 +10,6 @@ import { Embed } from "@/core/discord/ui/Embed";
 })
 export class DonateCommand extends AbstractCommand {
     public async execute(ctx: CommandContext): Promise<void> {
-        await ctx.respond(Embed.success(`You can support gurabot project here: ${this.config.app.donate}`));
+        await ctx.respond(Embed.success(`You can support ${this.config.app.name} project here: ${this.config.app.donate}`));
     }
 }
