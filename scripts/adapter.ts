@@ -82,6 +82,7 @@ interface GlobalEndpoint {
 function endpointReturnType(endpoint: SchemaProvider["config"]["endpoints"][string]): string {
     const model = "model" in endpoint.returns ? endpoint.returns.model.name : endpoint.returns.name;
     const isArray = "isArray" in endpoint.returns ? Boolean(endpoint.returns.isArray) : false;
+
     return isArray ? `${model}[]` : model;
 }
 
@@ -103,7 +104,16 @@ function buildEndpointArgumentsType(endpoint: GlobalEndpoint): string {
         .join("; ");
 
     const argsObjectOptional = endpoint.implementationsWithArgs < endpoint.implementationCount;
+
     return `(args${argsObjectOptional ? "?" : ""}: { ${properties} })`;
+}
+
+function getAccountProviderID(provider: SchemaProvider): string {
+    return provider.config.accountProvider ?? provider.id;
+}
+
+function adapterProviderMember(provider: SchemaProvider): string {
+    return `AdapterProvider[${JSON.stringify(provider.config.name)}]`;
 }
 
 async function generateProviders(): Promise<void> {
@@ -142,6 +152,26 @@ async function generateProviders(): Promise<void> {
                     provider: exportedValue,
                 });
             }
+        }
+    }
+
+    const providersByID = new Map<string, ProviderMetadata>();
+
+    for (const providerMeta of providersMeta) {
+        if (providersByID.has(providerMeta.id)) {
+            throw new Error(`Duplicate adapter provider ID "${providerMeta.id}".`);
+        }
+
+        providersByID.set(providerMeta.id, providerMeta);
+    }
+
+    for (const providerMeta of providersMeta) {
+        const accountProviderID = getAccountProviderID(providerMeta.provider);
+
+        if (!providersByID.has(accountProviderID)) {
+            throw new Error(
+                `Provider "${providerMeta.id}" references unknown ` + `account provider "${accountProviderID}".`,
+            );
         }
     }
 
@@ -203,7 +233,6 @@ async function generateProviders(): Promise<void> {
             }
 
             dependencies.get(model.name)!.add(nestedModel.name);
-
             dependents.get(nestedModel.name)!.add(model.name);
         }
     }
@@ -364,7 +393,6 @@ export type {
                 }
 
                 globalArgument.types.add(fieldTypeSignature(argumentField));
-
                 globalArgument.presentInImplementations += 1;
 
                 if (!argumentField.$isOptional) {
@@ -389,12 +417,10 @@ export type {
 
     for (const provider of providers) {
         outputTypeFile += `export interface ${provider.id}Client {\n`;
-
         outputTypeFile += `    $use: (hook: AdapterHook) => void;\n`;
 
         for (const [endpointName, globalEndpoint] of globalEndpoints.entries()) {
             const argsType = buildEndpointArgumentsType(globalEndpoint);
-
             const returnType = Array.from(globalEndpoint.returnTypes).join(" | ");
 
             outputTypeFile += `    ${endpointName}${argsType}: Promise<${returnType}>;\n`;
@@ -428,7 +454,7 @@ import type {
 
 import {
     type Adapter,
-    AdapterProvider
+    AdapterProvider,
 } from "./types";
 
 import {
@@ -537,16 +563,61 @@ export class AdapterClient implements Adapter {
     }
 }
 
+export const LinkableAdapterProvider = {
+`;
+
+    const linkableProviderNames = new Set<string>();
+
+    for (const providerMeta of providersMeta) {
+        if (providerMeta.provider.config.linkable === false) {
+            continue;
+        }
+
+        const providerName = providerMeta.provider.config.name;
+
+        if (linkableProviderNames.has(providerName)) {
+            throw new Error(
+                `Duplicate linkable provider display name "${providerName}". ` +
+                    `LinkableAdapterProvider keys must be unique.`,
+            );
+        }
+
+        linkableProviderNames.add(providerName);
+
+        outputClientFile +=
+            `    ${JSON.stringify(providerName)}: ` + `${adapterProviderMember(providerMeta.provider)},\n`;
+    }
+
+    outputClientFile += `} as const;
+
+export type LinkableAdapterProvider =
+    (typeof LinkableAdapterProvider)[keyof typeof LinkableAdapterProvider];
+
 export const ProviderMeta = {
 `;
 
     for (const providerMeta of providersMeta) {
+        const accountProviderID = getAccountProviderID(providerMeta.provider);
+        const accountProviderMeta = providersByID.get(accountProviderID)!;
+
+        const linkTargets = providersMeta.filter(
+            (candidate) => getAccountProviderID(candidate.provider) === accountProviderID,
+        );
+
         outputClientFile += `    ${JSON.stringify(providerMeta.id)}: {\n`;
         outputClientFile += `        id: ${JSON.stringify(providerMeta.id)},\n`;
         outputClientFile += `        name: ${JSON.stringify(providerMeta.provider.config.name)},\n`;
         outputClientFile += `        display: ${providerMeta.provider.config.display},\n`;
         outputClientFile += `        cache: ${providerMeta.provider.config.cache},\n`;
-        outputClientFile += `        accountProvider: "${providerMeta.provider.config.accountProvider ?? providerMeta.id}" as AdapterProvider,\n`;
+        outputClientFile += `        accountProvider: ` + `${adapterProviderMember(accountProviderMeta.provider)},\n`;
+
+        outputClientFile += `        linkTargets: [\n`;
+
+        for (const target of linkTargets) {
+            outputClientFile += `            ${adapterProviderMember(target.provider)},\n`;
+        }
+
+        outputClientFile += `        ] as const,\n`;
         outputClientFile += `        linkable: ${providerMeta.provider.config.linkable ?? true},\n`;
         outputClientFile += `        formatters: ${providerMeta.exportName}.config.formatters,\n`;
         outputClientFile += `    },\n`;
@@ -633,7 +704,7 @@ async function generateMods(): Promise<void> {
                 const settingType =
                     setting.Type === "number" ? "number" : setting.Type === "boolean" ? "boolean" : "string";
 
-                modsFile += `        ${JSON.stringify(setting.Name)}?: ` + `${settingType};\n`;
+                modsFile += `        ${JSON.stringify(setting.Name)}?: ${settingType};\n`;
             }
 
             modsFile += `    };\n`;
@@ -654,6 +725,7 @@ async function generateMods(): Promise<void> {
 `;
 
     modsFile += `export type ParsedMod = ` + `${parsedModNames.join(" | ")} | ModUnknown;\n`;
+
     modsFile +=
         `export type KnownModAcronym = ` + `${parsedModNames.map((name) => `${name}["acronym"]`).join(" | ")};\n\n`;
 
@@ -1038,9 +1110,7 @@ async function generateMods(): Promise<void> {
                 ),
             ];
 
-            if (
-                currentConflicts.length > 0
-            ) {
+            if (currentConflicts.length > 0) {
                 conflicts[mod.acronym] =
                     currentConflicts;
             }

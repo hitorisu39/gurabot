@@ -11,33 +11,50 @@ export class UserService extends AbstractService {
         provider: AdapterProvider = AdapterProvider.Bancho,
         repository?: TRepository,
     ): Promise<UserDto> {
-        const cb = async (repo: TRepository) => {
-            const user = await repo.user.upsert({
-                where: { id: userID },
+        return this.linkMany(userID, osuID, [provider], repository);
+    }
+
+    public async linkMany(
+        userID: string,
+        osuID: number,
+        providers: ReadonlyArray<AdapterProvider>,
+        repository?: TRepository,
+    ): Promise<UserDto> {
+        const cb = async (repo: TRepository): Promise<UserDto> => {
+            await repo.user.upsert({
+                where: {
+                    id: userID,
+                },
                 create: {
                     id: userID,
-                    linked: {
-                        create: {
-                            server: provider,
-                            osuID: osuID,
-                        },
-                    },
                 },
-                update: {
-                    linked: {
-                        connectOrCreate: {
-                            where: {
-                                userID_server: {
-                                    userID: userID,
-                                    server: provider,
-                                },
-                            },
-                            create: {
-                                server: provider,
-                                osuID: osuID,
-                            },
+                update: {},
+            });
+
+            const uniqueProviders = [...new Set(providers)];
+
+            for (const provider of uniqueProviders) {
+                await repo.userToOsu.upsert({
+                    where: {
+                        userID_server: {
+                            userID,
+                            server: provider,
                         },
                     },
+                    create: {
+                        userID,
+                        server: provider,
+                        osuID,
+                    },
+                    update: {
+                        osuID,
+                    },
+                });
+            }
+
+            const user = await repo.user.findUniqueOrThrow({
+                where: {
+                    id: userID,
                 },
             });
 
@@ -61,6 +78,27 @@ export class UserService extends AbstractService {
             } else {
                 await repo.user.delete({ where: { id: userID } });
             }
+        };
+
+        return repository ? cb(repository) : this.repository.$transaction(cb);
+    }
+
+    public async unlinkMany(
+        userID: string,
+        providers: ReadonlyArray<AdapterProvider>,
+        repository?: TRepository,
+    ): Promise<void> {
+        const cb = async (repo: TRepository): Promise<void> => {
+            const uniqueProviders = [...new Set(providers)];
+
+            await repo.userToOsu.deleteMany({
+                where: {
+                    userID,
+                    server: {
+                        in: uniqueProviders,
+                    },
+                },
+            });
         };
 
         return repository ? cb(repository) : this.repository.$transaction(cb);
