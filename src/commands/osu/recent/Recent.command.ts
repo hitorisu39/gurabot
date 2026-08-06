@@ -7,6 +7,7 @@ import { GameMode } from "@generated/adapter/types";
     name: "recent",
     description: "The root command for recent subcommands",
     defer: false,
+    slashOnly: true,
 })
 export class RecentRootCommand extends AbstractCommand {
     public async execute(): Promise<void> {
@@ -35,7 +36,7 @@ export class RecentPassSubcommand extends AbstractRecentCommand {
 @Command({
     name: "recentscore",
     description: "Shows most recent play of an osu! player.",
-    aliases: ["rs", "r"],
+    aliases: ["rs", "r", "recent"],
 })
 export class RecentScoreCommand extends AbstractRecentCommand {
     protected forcedPassed = false;

@@ -54,6 +54,7 @@ export interface ICommandOptions {
     defer?: boolean; // Auto-defer before execution.
     ephemeral?: boolean; // If deferred, should it be hidden.
     prefixOnly?: boolean;
+    slashOnly?: boolean;
 }
 
 export interface ISubcommandOptions {

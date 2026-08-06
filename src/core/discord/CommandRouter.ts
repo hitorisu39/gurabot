@@ -84,10 +84,24 @@ export class CommandRouter {
 
             this.logger.debug(`Registered subcommand: ${key}`);
         } else if (commandOptions) {
-            if (!commandOptions.prefixOnly) this.slashRootCommands.set(commandOptions.name.toLowerCase(), command);
-            this.prefixCommands.set(commandOptions.name.toLowerCase(), command);
+            if (commandOptions.prefixOnly && commandOptions.slashOnly) {
+                throw new Exception(
+                    EApplicationError.INTERNAL_ERROR,
+                    `Command '${commandOptions.name}' cannot be both prefix-only and slash-only.`,
+                );
+            }
 
-            commandOptions.aliases?.forEach((alias) => this.prefixCommands.set(alias.toLowerCase(), command));
+            if (!commandOptions.prefixOnly) {
+                this.slashRootCommands.set(commandOptions.name.toLowerCase(), command);
+            }
+
+            if (!commandOptions.slashOnly) {
+                this.prefixCommands.set(commandOptions.name.toLowerCase(), command);
+
+                commandOptions.aliases?.forEach((alias) => {
+                    this.prefixCommands.set(alias.toLowerCase(), command);
+                });
+            }
 
             this.logger.debug(`Registered root command: ${commandOptions.name}`);
         } else {
