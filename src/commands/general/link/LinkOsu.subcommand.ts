@@ -9,8 +9,7 @@ import { CommandOption } from "@domain/core/Command";
 import { randomBytes } from "crypto";
 import { osuBaseUrl } from "@domain/osu/configs/Osu.config";
 import { EApplicationError, Exception } from "@domain/core/Exception";
-import { ProviderMeta } from "@generated/adapter";
-import { LinkableAdapterProvider } from "@domain/osu/Profile.dto";
+import { LinkableAdapterProvider, ProviderMeta } from "@generated/adapter";
 
 @Subcommand({
     root: "link",
@@ -32,7 +31,8 @@ export class LinkOsuSubcommand extends AbstractCommand {
 
     public async execute(ctx: CommandContext): Promise<void> {
         const provider = this.server.unwrapOr(LinkableAdapterProvider.Bancho);
-        const accountProvider = ProviderMeta[provider].accountProvider;
+        const providerMeta = ProviderMeta[provider];
+        const accountProvider = providerMeta.accountProvider;
 
         if (accountProvider === AdapterProvider.Bancho) {
             const state = randomBytes(16).toString("hex");
@@ -53,7 +53,7 @@ export class LinkOsuSubcommand extends AbstractCommand {
                 `${ProviderMeta[provider].name} profile with that name was not found.`,
             );
 
-        await this.userService.link(ctx.author.id, profile.id, accountProvider);
+        await this.userService.linkMany(ctx.author.id, profile.id, providerMeta.linkTargets);
         await ctx.respond(Embed.success(`\`${profile.username}\` was successfully linked to your Discord.`));
     }
 }

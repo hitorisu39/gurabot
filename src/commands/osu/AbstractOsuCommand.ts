@@ -48,33 +48,53 @@ export abstract class AbstractOsuCommand extends AbstractSessionCommand {
         const guild = ctx.guild ? await this.guildService.get(ctx.guild.id) : null;
 
         const server = this.server.unwrapUnchecked() ?? performer?.server ?? guild?.server ?? AdapterProvider.Bancho;
+
         const mode =
             this.forcedMode ?? this.mode.unwrapUnchecked() ?? performer?.mode ?? guild?.mode ?? GameMode.Standard;
 
         let query: string | number;
 
         if (this.name.some()) {
-            query = this.name.unwrap();
+            const value = this.name.unwrap().trim();
+            const mentionedUserID = this.parseDiscordMention(value);
+
+            if (mentionedUserID) {
+                query = await this.resolveLinkedUser(mentionedUserID, server);
+            } else {
+                query = value;
+            }
         } else if (this.discordUser.some()) {
-            const userID = this.discordUser.unwrap().id;
-            const linked = await this.userService.getLinkedID(userID, server);
-            if (!linked)
-                throw new Exception(
-                    EApplicationError.INPUT_ERROR,
-                    `<@${userID}> hasn't linked an account on ${ProviderMeta[server].name}.`,
-                );
-            query = linked.osuID;
+            query = await this.resolveLinkedUser(this.discordUser.unwrap().id, server);
         } else {
-            const linked = await this.userService.getLinkedID(ctx.author.id, server);
-            if (!linked)
+            query = await this.resolveLinkedUser(ctx.author.id, server, true);
+        }
+
+        return { query, mode, server };
+    }
+
+    private parseDiscordMention(value: string): string | null {
+        const match = value.match(/^<@!?(\d+)>$/);
+        return match?.[1] ?? null;
+    }
+
+    private async resolveLinkedUser(userID: string, server: AdapterProvider, isCommandAuthor = false): Promise<number> {
+        const linked = await this.userService.getLinkedID(userID, server);
+
+        if (!linked) {
+            if (isCommandAuthor) {
                 throw new Exception(
                     EApplicationError.INPUT_ERROR,
                     `You haven't linked an account on ${ProviderMeta[server].name}. Please specify a name or use \`/link osu\`.`,
                 );
-            query = linked.osuID;
+            }
+
+            throw new Exception(
+                EApplicationError.INPUT_ERROR,
+                `<@${userID}> hasn't linked an account on ${ProviderMeta[server].name}.`,
+            );
         }
 
-        return { query, mode, server };
+        return linked.osuID;
     }
 
     public getHelpContext(): Record<string, string> {
