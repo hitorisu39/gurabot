@@ -1,7 +1,9 @@
 @import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap");
 
 body {
+    margin: 0;
     background-color: #1c1c22;
+    font-family: "Nunito", sans-serif;
 }
 
 .auth {
@@ -15,7 +17,7 @@ body {
     -webkit-transform: translate(-50%, -50%);
     transform: translate(-50%, -50%);
     text-align: center;
-    box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
+    box-shadow: rgba(0, 0, 0, 0.24) 0 3px 8px;
 }
 
 .auth .header {
@@ -33,21 +35,18 @@ body {
 }
 
 .auth .body {
-    margin: auto;
     width: 80%;
-    margin-top: 30px;
+    margin: 30px auto auto;
 }
 
 .auth .title {
     color: #d7d7d7;
-    font-family: "Nunito", sans-serif;
     font-size: 20px;
     font-weight: 700;
 }
 
 .auth .description {
     color: #d7d7d7;
-    font-family: "Nunito", sans-serif;
     font-size: 20px;
 }
 
@@ -58,25 +57,18 @@ body {
 
 .footer .app {
     color: #d7d7d7;
-    font-family: "Nunito", sans-serif;
     font-size: 14px;
-}
-
-.auth-links {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 1.25rem;
+    padding: 14px 0;
 }
 
 a {
-    text-decoration: none;
     color: #3690ff;
+    text-decoration: none;
 }
 
 a:hover {
     color: #ff9036;
-    transition: 0.2s all;
+    transition: color 0.2s;
 }
 
 @media screen and (max-width: 660px) {
