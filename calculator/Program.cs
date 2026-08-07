@@ -4,9 +4,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddGrpc();
 
-builder.Services.Configure<CalculatorRuntimeOptions>(
-    builder.Configuration.GetSection("Calculator")
-);
+builder.Services.Configure<CalculatorRuntimeOptions>(builder.Configuration.GetSection("Calculator"));
 
 builder.Services.AddMemoryCache(options =>
 {
@@ -16,6 +14,7 @@ builder.Services.AddMemoryCache(options =>
 builder.Services.AddSingleton<BeatmapCache>();
 builder.Services.AddSingleton<HitResultGeneration>();
 builder.Services.AddSingleton<PartialDifficultyCache>();
+builder.Services.AddSingleton<FullDifficultyCache>();
 builder.Services.AddSingleton<PartialDifficultyService>();
 builder.Services.AddSingleton<CalculationConcurrencyLimiter>();
 

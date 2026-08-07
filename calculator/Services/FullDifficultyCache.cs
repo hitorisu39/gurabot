@@ -4,39 +4,37 @@ using Microsoft.Extensions.Options;
 
 namespace Calculator.Services;
 
-public readonly record struct PartialDifficultyCacheKey(
+public readonly record struct FullDifficultyCacheKey(
     string BeatmapIdentity,
     uint RulesetId,
     string ModsKey,
-    int TopLevelObjectCount,
     int CalculatorVersion
 );
 
-public sealed class PartialDifficultyCache : IDisposable
+public sealed class FullDifficultyCache : IDisposable
 {
     private readonly MemoryCache cache;
 
-    private readonly ConcurrentDictionary<PartialDifficultyCacheKey, Lazy<DifficultyAttributeSnapshot>> inFlight =
-        new();
+    private readonly ConcurrentDictionary<FullDifficultyCacheKey, Lazy<DifficultyAttributeSnapshot>> inFlight = new();
 
     private readonly TimeSpan slidingExpiration;
     private readonly TimeSpan absoluteExpiration;
 
-    public PartialDifficultyCache(IOptions<CalculatorRuntimeOptions> options)
+    public FullDifficultyCache(IOptions<CalculatorRuntimeOptions> options)
     {
         CalculatorRuntimeOptions value = options.Value;
 
-        cache = new MemoryCache(new MemoryCacheOptions { SizeLimit = Math.Max(1, value.PartialDifficultyCacheSize) });
+        cache = new MemoryCache(new MemoryCacheOptions { SizeLimit = Math.Max(1, value.FullDifficultyCacheSize) });
 
-        slidingExpiration = TimeSpan.FromMinutes(Math.Max(1, value.PartialDifficultySlidingMinutes));
+        slidingExpiration = TimeSpan.FromMinutes(Math.Max(1, value.FullDifficultySlidingMinutes));
 
         absoluteExpiration = TimeSpan.FromMinutes(
-            Math.Max(value.PartialDifficultySlidingMinutes, value.PartialDifficultyAbsoluteMinutes)
+            Math.Max(value.FullDifficultySlidingMinutes, value.FullDifficultyAbsoluteMinutes)
         );
     }
 
     internal DifficultyAttributeSnapshot GetOrCreate(
-        PartialDifficultyCacheKey key,
+        FullDifficultyCacheKey key,
         Func<DifficultyAttributeSnapshot> factory
     )
     {
@@ -56,18 +54,7 @@ public sealed class PartialDifficultyCache : IDisposable
                     }
 
                     DifficultyAttributeSnapshot snapshot = factory();
-
-                    cache.Set(
-                        key,
-                        snapshot,
-                        new MemoryCacheEntryOptions
-                        {
-                            Size = 1,
-                            SlidingExpiration = slidingExpiration,
-                            AbsoluteExpirationRelativeToNow = absoluteExpiration,
-                        }
-                    );
-
+                    Set(key, snapshot);
                     return snapshot;
                 },
                 LazyThreadSafetyMode.ExecutionAndPublication
@@ -84,12 +71,25 @@ public sealed class PartialDifficultyCache : IDisposable
         }
     }
 
-    private void removeInFlight(PartialDifficultyCacheKey key, Lazy<DifficultyAttributeSnapshot> lazy)
+    internal void Set(FullDifficultyCacheKey key, DifficultyAttributeSnapshot snapshot)
     {
-        var collection =
-            (ICollection<KeyValuePair<PartialDifficultyCacheKey, Lazy<DifficultyAttributeSnapshot>>>)inFlight;
+        cache.Set(
+            key,
+            snapshot,
+            new MemoryCacheEntryOptions
+            {
+                Size = 1,
+                SlidingExpiration = slidingExpiration,
+                AbsoluteExpirationRelativeToNow = absoluteExpiration,
+            }
+        );
+    }
 
-        collection.Remove(new KeyValuePair<PartialDifficultyCacheKey, Lazy<DifficultyAttributeSnapshot>>(key, lazy));
+    private void removeInFlight(FullDifficultyCacheKey key, Lazy<DifficultyAttributeSnapshot> lazy)
+    {
+        var collection = (ICollection<KeyValuePair<FullDifficultyCacheKey, Lazy<DifficultyAttributeSnapshot>>>)inFlight;
+
+        collection.Remove(new KeyValuePair<FullDifficultyCacheKey, Lazy<DifficultyAttributeSnapshot>>(key, lazy));
     }
 
     public void Dispose()

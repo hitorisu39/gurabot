@@ -9,29 +9,18 @@ public class TruncatedWorkingBeatmap : WorkingBeatmap
 {
     private readonly IBeatmap beatmap;
 
-    public TruncatedWorkingBeatmap(
-        IBeatmap sourceBeatmap,
-        int passedObjects)
+    public TruncatedWorkingBeatmap(IBeatmap sourceBeatmap, int passedObjects)
         : base((BeatmapInfo)sourceBeatmap.BeatmapInfo, null)
     {
         beatmap = sourceBeatmap.Clone();
 
         if (beatmap is not Beatmap concreteBeatmap)
         {
-            throw new InvalidOperationException(
-                $"Cannot truncate beatmap type {beatmap.GetType().Name}."
-            );
+            throw new InvalidOperationException($"Cannot truncate beatmap type {beatmap.GetType().Name}.");
         }
 
-        int objectCount = Math.Clamp(
-            passedObjects,
-            0,
-            concreteBeatmap.HitObjects.Count
-        );
-
-        concreteBeatmap.HitObjects = concreteBeatmap.HitObjects
-            .Take(objectCount)
-            .ToList();
+        int objectCount = Math.Clamp(passedObjects, 0, concreteBeatmap.HitObjects.Count);
+        concreteBeatmap.HitObjects = concreteBeatmap.HitObjects.Take(objectCount).ToList();
     }
 
     protected override IBeatmap GetBeatmap() => beatmap;
