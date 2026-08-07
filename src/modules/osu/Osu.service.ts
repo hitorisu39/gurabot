@@ -898,12 +898,8 @@ export class OsuService extends AbstractService {
         ).catch((error) => this.logger.error(error, `Failed to update UserCache for ${username}`));
     }
 
-    private normalizeUserLookup(
-        nameOrID: string | number,
-    ): string | number {
-        return typeof nameOrID === "string"
-            ? nameOrID.toLowerCase()
-            : nameOrID;
+    private normalizeUserLookup(nameOrID: string | number): string | number {
+        return typeof nameOrID === "string" ? nameOrID.toLowerCase() : nameOrID;
     }
 
     //#endregion

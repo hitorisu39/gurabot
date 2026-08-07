@@ -4,6 +4,7 @@ import { CommandContext } from "@/core/discord/context/CommandContext";
 import { Embed } from "@/core/discord/ui/Embed";
 import { UserService } from "@/modules/user/User.service";
 import { CommandOption } from "@domain/core/Command";
+import { EApplicationError, Exception } from "@domain/core/Exception";
 import { EScoreListSize } from "@domain/osu/enums/Score.enum";
 import { UserConfigUpdateDto } from "@domain/user/User.dto";
 import { AdapterProvider, GameMode } from "@generated/adapter/types";
@@ -30,6 +31,15 @@ export class ConfigUserSubcommand extends AbstractCommand {
     declare private readonly scoreListSize: CommandOption<EScoreListSize>;
 
     public async execute(ctx: CommandContext): Promise<void> {
+        const user = await this.userService.getLinked(ctx.author.id);
+
+        if (!user || !user.linked?.length) {
+            throw new Exception(
+                EApplicationError.NOT_FOUND,
+                "You need to link an osu! account before configuring your user defaults. Use `/link osu` first.",
+            );
+        }
+
         const updates: UserConfigUpdateDto = {};
 
         if (this.scoreListSize.some()) updates.scoreListSize = this.scoreListSize.unwrap();
