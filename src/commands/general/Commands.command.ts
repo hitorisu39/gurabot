@@ -8,7 +8,6 @@ import { GuildService } from "@/modules/guild/Guild.service";
     name: "commands",
     description: "Sends you a list of available prefix commands.",
     aliases: ["cmds"],
-    defer: false,
 })
 @Help(`
     Sends you a direct message containing all available
