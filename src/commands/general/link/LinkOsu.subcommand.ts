@@ -45,11 +45,14 @@ export class LinkOsuSubcommand extends AbstractCommand {
             await ctx.respond(Embed.general(`Please [click here](${oauthUrl}) to authenticate yourself through osu!`));
             return;
         }
+        
+        if (!this.name.some())
+            throw new Exception(EApplicationError.INPUT_ERROR, `\`name\` option is required when not linking to ${ProviderMeta.osu.name}.`);
 
         const profile = await this.osuService.user(this.name.unwrap(), GameMode.Standard, accountProvider);
         if (!profile)
             throw new Exception(
-                EApplicationError.INPUT_ERROR,
+                EApplicationError.NOT_FOUND,
                 `${ProviderMeta[provider].name} profile with that name was not found.`,
             );
 
