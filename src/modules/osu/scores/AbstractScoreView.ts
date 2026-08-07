@@ -83,9 +83,9 @@ export abstract class AbstractScoreView extends AbstractService {
         const liveLength = BeatmapAttributesCalculator.length(score.beatmap.totalLength, attrs.clockRate);
 
         const statsThirdRow = [
-            `${MapFormatter.length(liveLength)}`,
-            `\`CS: ${DiscordFormatter.fixed(attrs.cs)} AR: ${DiscordFormatter.fixed(attrs.ar)} OD: ${DiscordFormatter.fixed(attrs.od)} HP: ${DiscordFormatter.fixed(attrs.hp)}\``,
-            `♫ ${DiscordFormatter.fixed(liveBpm)}`,
+            MapFormatter.length(liveLength),
+            MapFormatter.attributes(data.profile.mode, attrs),
+            MapFormatter.bpm(liveBpm),
         ]
             .filter(Boolean)
             .join(scoreStatsDelimiter);
