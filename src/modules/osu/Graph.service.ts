@@ -188,7 +188,7 @@ export class GraphService extends AbstractService {
     }
 
     private normalizeSkillName(skillName: string): string {
-        switch(skillName) {
+        switch (skillName) {
             case "Stamina2":
                 return "Stamina (Single color)";
             default:
