@@ -7,9 +7,10 @@ export const graphStrainColors: Record<string, { border: string; bg: string }> =
     Flashlight: { border: "#fcad6c", bg: "rgba(252, 173, 108,0.2)" },
     Reading: { border: "#fcda6c", bg: "rgba(252, 226, 108, 0.2)" },
     // Taiko
-    Color: { border: "#fc6c6c", bg: "rgba(252, 108, 108, 0.2)" },
+    Colour: { border: "#fc6c6c", bg: "rgba(252, 108, 108, 0.2)" },
     Rhythm: { border: "#f06cfc", bg: "rgba(240, 108, 252, 0.2)" },
     Stamina: { border: "#6c6efc", bg: "rgba(108, 110, 252, 0.2)" },
+    "Stamina (Single color)": { border: "#6cf2fc", bg: "rgba(108, 235, 252, 0.2)" },
     // Catch
     Movement: { border: "#76fc6c", bg: "rgba(118, 252, 108, 0.2)" },
     // Mania
