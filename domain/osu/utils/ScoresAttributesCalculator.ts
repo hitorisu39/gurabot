@@ -9,7 +9,7 @@ import { BeatmapAttributesCalculator } from "./BeatmapAttributesCalculator";
 
 export class ScoresAttributesCalculator {
     public static average(scores: Array<PopulatedScore>): PopulatedScoreAverageDto {
-        const getStats = (values: number[]): PopulatedScoreAverageFieldDto => {
+        const getStats = (values: Array<number>): PopulatedScoreAverageFieldDto => {
             const field = new PopulatedScoreAverageFieldDto();
             if (!values || values.length === 0) {
                 field.min = 0;
@@ -17,50 +17,53 @@ export class ScoresAttributesCalculator {
                 field.max = 0;
                 return field;
             }
+
             let min = values[0]!;
             let max = values[0]!;
             let sum = 0;
+
             for (const v of values) {
                 if (v < min) min = v;
                 if (v > max) max = v;
                 sum += v;
             }
+
             field.min = min;
             field.max = max;
             field.avg = sum / values.length;
+
             return field;
         };
 
-        const ppValues: number[] = [];
-        const comboValues: number[] = [];
-        const lengthValues: number[] = [];
-        const accuracyValues: number[] = [];
-        const bpmValues: number[] = [];
-        const arValues: number[] = [];
-        const odValues: number[] = [];
-        const csValues: number[] = [];
-        const hpValues: number[] = [];
-        const missValues: number[] = [];
-        const starsValues: number[] = [];
+        const ppValues: Array<number> = [];
+        const comboValues: Array<number> = [];
+        const lengthValues: Array<number> = [];
+        const accuracyValues: Array<number> = [];
+        const bpmValues: Array<number> = [];
+        const arValues: Array<number> = [];
+        const odValues: Array<number> = [];
+        const csValues: Array<number> = [];
+        const hpValues: Array<number> = [];
+        const missValues: Array<number> = [];
+        const starsValues: Array<number> = [];
 
         for (const score of scores || []) {
-            ppValues.push(score.calculated?.attributes?.total ?? score.pp ?? 0);
-            comboValues.push(score.maxCombo ?? 0);
-            accuracyValues.push(score.accuracy ?? 0);
-            starsValues.push(score.calculated?.difficulty?.attributes?.starRating ?? 0);
+            ppValues.push(score.calculated?.attributes?.total ?? score.pp);
+            comboValues.push(score.maxCombo);
+            accuracyValues.push(score.accuracy * 100);
+            starsValues.push(score.fullDifficulty.starRating);
 
             const beatmapAttributes = score.calculated?.difficulty?.beatmap;
             const beatmap = score.beatmap;
-
             const clockRate = beatmapAttributes.clockRate;
 
             bpmValues.push(BeatmapAttributesCalculator.bpm(beatmap.bpm, clockRate));
+            lengthValues.push(BeatmapAttributesCalculator.length(beatmap.totalLength, clockRate));
+
             arValues.push(beatmapAttributes.ar);
             odValues.push(beatmapAttributes.od);
             csValues.push(beatmapAttributes.cs);
             hpValues.push(beatmapAttributes.hp);
-
-            lengthValues.push(BeatmapAttributesCalculator.length(beatmap.totalLength, clockRate));
 
             const stats = score.statistics;
             missValues.push(stats.miss);

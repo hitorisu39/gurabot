@@ -14,9 +14,10 @@ import { PopulatedUser } from "@domain/osu/Profile.dto";
 import { ScoresAttributesCalculator } from "@domain/osu/utils/ScoresAttributesCalculator";
 import { UserAttributesCalculator } from "@domain/osu/utils/UserAttributesCalculator";
 import { EProfileView, ProfileViewDto } from "@domain/osu/views/Profile.view";
-import { Genre, Grade, HighestRank, Status, UserGrades, UserLevel } from "@generated/adapter/types";
+import { GameMode, Genre, Grade, HighestRank, Status, UserGrades, UserLevel } from "@generated/adapter/types";
 import { MapFormatter } from "@domain/osu/formatters/Map.formatter";
 import { AbstractViewService } from "@/modules/AbstractViewService";
+import { PopulatedScoreAverageDto } from "@domain/osu/Score.dto";
 
 interface IAverageStatRow {
     metric: string;
@@ -170,6 +171,7 @@ export class ProfileViewService extends AbstractViewService<ProfileViewDto, EPro
         const embed = this.createBaseEmbed(data.profile, data.timestamp);
         const scores = data.populated;
         const average = ScoresAttributesCalculator.average(scores);
+        const difficultyRows = this.averageDifficultyRows(data.profile.mode, average);
 
         const tableGenerator = new AsciiTable<IAverageStatRow>({
             padding: 1,
@@ -222,30 +224,7 @@ export class ProfileViewService extends AbstractViewService<ProfileViewDto, EPro
                 avg: DiscordFormatter.fixed(average.stars.avg),
                 max: DiscordFormatter.fixed(average.stars.max),
             },
-            {
-                metric: "AR",
-                min: DiscordFormatter.fixed(average.ar.min),
-                avg: DiscordFormatter.fixed(average.ar.avg),
-                max: DiscordFormatter.fixed(average.ar.max),
-            },
-            {
-                metric: "CS",
-                min: DiscordFormatter.fixed(average.cs.min),
-                avg: DiscordFormatter.fixed(average.cs.avg),
-                max: DiscordFormatter.fixed(average.cs.max),
-            },
-            {
-                metric: "HP",
-                min: DiscordFormatter.fixed(average.hp.min),
-                avg: DiscordFormatter.fixed(average.hp.avg),
-                max: DiscordFormatter.fixed(average.hp.max),
-            },
-            {
-                metric: "OD",
-                min: DiscordFormatter.fixed(average.od.min),
-                avg: DiscordFormatter.fixed(average.od.avg),
-                max: DiscordFormatter.fixed(average.od.max),
-            },
+            ...difficultyRows,
             {
                 metric: "BPM",
                 min: DiscordFormatter.fixed(average.bpm.min),
@@ -520,6 +499,39 @@ export class ProfileViewService extends AbstractViewService<ProfileViewDto, EPro
             `${discordEmoteGrades[Grade.S]}${grades.s}`,
             `${discordEmoteGrades[Grade.A]}${grades.a}`,
         ].join(" ");
+    }
+
+    private averageDifficultyRows(
+        mode: GameMode,
+        average: PopulatedScoreAverageDto,
+    ): ReadonlyArray<IAverageStatRow> {
+        const row = (metric: string, key: "ar" | "cs" | "od" | "hp"): IAverageStatRow => ({
+            metric,
+            min: DiscordFormatter.fixed(average[key].min),
+            avg: DiscordFormatter.fixed(average[key].avg),
+            max: DiscordFormatter.fixed(average[key].max),
+        });
+
+        switch (mode) {
+            case GameMode.Taiko:
+                return [
+                    row("OD", "od"),
+                    row("HP", "hp"),
+                ];
+            case GameMode.Mania:
+                return [
+                    row("Keys", "cs"),
+                    row("OD", "od"),
+                    row("HP", "hp"),
+                ];
+            default:
+                return [
+                    row("AR", "ar"),
+                    row("CS", "cs"),
+                    row("HP", "hp"),
+                    row("OD", "od"),
+                ];
+        }
     }
 
     private formatLevel(level: UserLevel, totalScore: number, origin: string): string {
