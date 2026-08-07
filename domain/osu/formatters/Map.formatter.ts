@@ -1,6 +1,8 @@
 import { discordEmoteDifficulty, modeEmoteKeys } from "@domain/discord/configs/Emotes.config";
 import { GameMode } from "@generated/adapter/types";
 import { osuBaseUrl } from "../configs/Osu.config";
+import { BeatmapAttributes } from "@generated/calculator/calculator";
+import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";
 
 export class MapFormatter {
     public static header(artist: string, title: string, version: string, limit: number = 65): string {
@@ -69,6 +71,10 @@ export class MapFormatter {
         return `${floored.toFixed(2)}★`;
     }
 
+    public static bpm(bpm: number): string {
+        return `♫ ${DiscordFormatter.fixed(bpm)}`;
+    }
+
     public static length(length: number): string {
         const totalSeconds = Math.floor(length);
         const hours = Math.floor(totalSeconds / 3600);
@@ -82,5 +88,18 @@ export class MapFormatter {
 
     public static link(mapID: number): string {
         return `${osuBaseUrl}/b/${mapID}`;
+    }
+
+    public static attributes(mode: GameMode, attributes: BeatmapAttributes): string {
+        const { cs, ar, od, hp } = attributes;
+
+        switch (mode) {
+            case GameMode.Taiko:
+                return `\`OD: ${DiscordFormatter.fixed(od)} HP: ${DiscordFormatter.fixed(hp)}\``;
+            case GameMode.Mania:
+                return `\`Keys: ${DiscordFormatter.fixed(cs)} OD: ${DiscordFormatter.fixed(od)} HP: ${DiscordFormatter.fixed(hp)}\``;
+            default:
+                return `\`CS: ${DiscordFormatter.fixed(cs)} AR: ${DiscordFormatter.fixed(ar)} OD: ${DiscordFormatter.fixed(od)} HP: ${DiscordFormatter.fixed(hp)}\``;
+        }
     }
 }
