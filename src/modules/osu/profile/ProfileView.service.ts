@@ -501,10 +501,7 @@ export class ProfileViewService extends AbstractViewService<ProfileViewDto, EPro
         ].join(" ");
     }
 
-    private averageDifficultyRows(
-        mode: GameMode,
-        average: PopulatedScoreAverageDto,
-    ): ReadonlyArray<IAverageStatRow> {
+    private averageDifficultyRows(mode: GameMode, average: PopulatedScoreAverageDto): ReadonlyArray<IAverageStatRow> {
         const row = (metric: string, key: "ar" | "cs" | "od" | "hp"): IAverageStatRow => ({
             metric,
             min: DiscordFormatter.fixed(average[key].min),
@@ -514,23 +511,11 @@ export class ProfileViewService extends AbstractViewService<ProfileViewDto, EPro
 
         switch (mode) {
             case GameMode.Taiko:
-                return [
-                    row("OD", "od"),
-                    row("HP", "hp"),
-                ];
+                return [row("OD", "od"), row("HP", "hp")];
             case GameMode.Mania:
-                return [
-                    row("Keys", "cs"),
-                    row("OD", "od"),
-                    row("HP", "hp"),
-                ];
+                return [row("Keys", "cs"), row("OD", "od"), row("HP", "hp")];
             default:
-                return [
-                    row("AR", "ar"),
-                    row("CS", "cs"),
-                    row("HP", "hp"),
-                    row("OD", "od"),
-                ];
+                return [row("AR", "ar"), row("CS", "cs"), row("HP", "hp"), row("OD", "od")];
         }
     }
 
