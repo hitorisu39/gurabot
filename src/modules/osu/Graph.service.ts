@@ -157,7 +157,7 @@ export class GraphService extends AbstractService {
         return rawStrains
             .map(
                 (strain): ILineSeries => ({
-                    label: strain.skillName,
+                    label: this.normalizeSkillName(strain.skillName),
                     points: this.normalizePoints(
                         (strain.points ?? []).map((point) => ({
                             x: Number(point.timeMs),
@@ -185,6 +185,15 @@ export class GraphService extends AbstractService {
         }
 
         return Array.from(valuesByTime, ([x, y]) => ({ x, y })).sort((a, b) => a.x - b.x);
+    }
+
+    private normalizeSkillName(skillName: string): string {
+        switch(skillName) {
+            case "Stamina2":
+                return "Stamina (Single color)";
+            default:
+                return skillName;
+        }
     }
 
     private replaceNoSliderAimWithSliderAim(series: Array<ILineSeries>): void {
