@@ -1,25 +1,23 @@
-using Grpc.Core;
+using System.Collections.Concurrent;
+using System.Globalization;
+using System.Reflection;
+using System.Runtime.ExceptionServices;
+using System.Threading.Channels;
 using Calculator.Protos;
-using osu.Game.Rulesets;
-using osu.Game.Rulesets.Osu;
-using osu.Game.Rulesets.Taiko;
-using osu.Game.Rulesets.Catch;
-using osu.Game.Rulesets.Mania;
-using osu.Game.Rulesets.Mods;
-using osu.Game.Scoring;
+using Grpc.Core;
 using osu.Framework.Bindables;
 using osu.Game.Beatmaps;
+using osu.Game.Rulesets;
+using osu.Game.Rulesets.Catch;
 using osu.Game.Rulesets.Difficulty;
-using osu.Game.Rulesets.Scoring;
-using System.Reflection;
-using System.Globalization;
-using osu.Game.Rulesets.Osu.Difficulty;
-using osu.Game.Rulesets.Taiko.Difficulty;
-using osu.Game.Rulesets.Catch.Difficulty;
-using osu.Game.Rulesets.Mania.Difficulty;
 using osu.Game.Rulesets.Difficulty.Preprocessing;
 using osu.Game.Rulesets.Difficulty.Skills;
-using System.Collections.Concurrent;
+using osu.Game.Rulesets.Mania;
+using osu.Game.Rulesets.Mods;
+using osu.Game.Rulesets.Osu;
+using osu.Game.Rulesets.Scoring;
+using osu.Game.Rulesets.Taiko;
+using osu.Game.Scoring;
 
 namespace Calculator.Services;
 
@@ -28,80 +26,71 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
     private readonly BeatmapCache _cache;
     private readonly HitResultGeneration _hitResultGeneration;
     private readonly PartialDifficultyService _partialDifficultyService;
+    private readonly FullDifficultyCache _fullDifficultyCache;
     private readonly CalculationConcurrencyLimiter _calculationLimiter;
     private readonly ILogger<CalculatorService> _logger;
 
-    private static readonly ConcurrentDictionary<Type, PropertyInfo[]> ObjectPropertiesCache = new();
-    private static readonly ConcurrentDictionary<Type, Dictionary<string, PropertyInfo>> ModPropertiesCache = new();
+    private static readonly ConcurrentDictionary<Type, ReadableProperty[]> ReadablePropertiesCache = new();
+    private static readonly ConcurrentDictionary<Type, IReadOnlyDictionary<string, PropertyInfo>> ModPropertiesCache =
+        new();
+    private static readonly ConcurrentDictionary<Type, SkillMetadata> SkillMetadataCache = new();
 
     public CalculatorService(
         BeatmapCache cache,
         HitResultGeneration hitResultGeneration,
         PartialDifficultyService partialDifficultyService,
+        FullDifficultyCache fullDifficultyCache,
         CalculationConcurrencyLimiter calculationLimiter,
-        ILogger<CalculatorService> logger)
+        ILogger<CalculatorService> logger
+    )
     {
         _cache = cache;
         _hitResultGeneration = hitResultGeneration;
         _partialDifficultyService = partialDifficultyService;
+        _fullDifficultyCache = fullDifficultyCache;
         _calculationLimiter = calculationLimiter;
         _logger = logger;
     }
 
-    private Ruleset GetRuleset(uint id) => id switch
-    {
-        0 => new OsuRuleset(),
-        1 => new TaikoRuleset(),
-        2 => new CatchRuleset(),
-        3 => new ManiaRuleset(),
-        _ => throw new RpcException(new Status(StatusCode.InvalidArgument, "Invalid ruleset ID"))
-    };
+    private static Ruleset GetRuleset(uint id) =>
+        id switch
+        {
+            0 => new OsuRuleset(),
+            1 => new TaikoRuleset(),
+            2 => new CatchRuleset(),
+            3 => new ManiaRuleset(),
+            _ => throw new RpcException(new Status(StatusCode.InvalidArgument, "Invalid ruleset ID")),
+        };
 
     private Mod[] ParseMods(Ruleset ruleset, IEnumerable<ModMessage> modMessages, double? customClockRate)
     {
-        var availableMods = ruleset.CreateAllMods().ToList();
         var result = new List<Mod>();
 
-        foreach (var reqMod in modMessages)
+        foreach (ModMessage reqMod in modMessages)
         {
-            var mod = availableMods.FirstOrDefault(m => m.Acronym == reqMod.Acronym);
-            if (mod == null) continue;
+            Mod? mod = ruleset.CreateModFromAcronym(reqMod.Acronym);
+            if (mod == null)
+                continue;
 
-            var modType = mod.GetType();
-            var properties =
-                ModPropertiesCache.GetOrAdd(
-                    modType,
-                    type => type
-                        .GetProperties(
-                            BindingFlags.Public |
-                            BindingFlags.Instance |
-                            BindingFlags.IgnoreCase
-                        )
+            IReadOnlyDictionary<string, PropertyInfo> properties = ModPropertiesCache.GetOrAdd(
+                mod.GetType(),
+                static type =>
+                    type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                         .Where(property =>
-                            property.GetIndexParameters().Length == 0 &&
-                            property.GetGetMethod(nonPublic: false) is not null
+                            property.GetIndexParameters().Length == 0
+                            && property.GetGetMethod(nonPublic: false) is not null
                         )
-                        .GroupBy(
-                            property => property.Name.Replace("_", ""),
-                            StringComparer.OrdinalIgnoreCase
-                        )
-                        .ToDictionary(
-                            group => group.Key,
-                            group => group.First(),
-                            StringComparer.OrdinalIgnoreCase
-                        )
-                );
+                        .GroupBy(property => property.Name, ModPropertyNameComparer.Instance)
+                        .ToDictionary(group => group.Key, group => group.First(), ModPropertyNameComparer.Instance)
+            );
 
-            foreach (var setting in reqMod.Settings)
+            foreach (KeyValuePair<string, string> setting in reqMod.Settings)
             {
-                var normalized = setting.Key.Replace("_", "");
-                if (properties.TryGetValue(normalized, out var prop))
-                {
-                    if (prop.GetValue(mod) is IParseable parseableBindable)
-                    {
-                        parseableBindable.Parse(setting.Value, CultureInfo.InvariantCulture);
-                    }
-                }
+                if (!properties.TryGetValue(setting.Key, out PropertyInfo? property))
+                    continue;
+
+                if (property.GetValue(mod) is IParseable parseableBindable)
+                    parseableBindable.Parse(setting.Value, CultureInfo.InvariantCulture);
             }
 
             result.Add(mod);
@@ -109,7 +98,16 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
 
         if (customClockRate.HasValue)
         {
-            var existingRateMod = result.OfType<ModRateAdjust>().FirstOrDefault();
+            ModRateAdjust? existingRateMod = null;
+
+            foreach (Mod mod in result)
+            {
+                if (mod is ModRateAdjust rateAdjust)
+                {
+                    existingRateMod = rateAdjust;
+                    break;
+                }
+            }
 
             if (existingRateMod != null)
             {
@@ -117,11 +115,8 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
             }
             else if (Math.Abs(customClockRate.Value - 1.0) > 0.000001)
             {
-                var targetAcronym = customClockRate.Value > 1.0 ? "DT" : "HT";
-                var rateMod = availableMods
-                    .FirstOrDefault(mod => mod.Acronym == targetAcronym) as ModRateAdjust;
-
-                if (rateMod != null)
+                string acronym = customClockRate.Value > 1.0 ? "DT" : "HT";
+                if (ruleset.CreateModFromAcronym(acronym) is ModRateAdjust rateMod)
                 {
                     rateMod.SpeedChange.Value = customClockRate.Value;
                     result.Add(rateMod);
@@ -134,54 +129,43 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
 
     private Dictionary<string, double> ExtractAttributes(object obj)
     {
-        var result = new Dictionary<string, double>();
+        ReadableProperty[] properties = ReadablePropertiesCache.GetOrAdd(
+            obj.GetType(),
+            static type =>
+                type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                    .Where(property =>
+                        property.GetIndexParameters().Length == 0 && property.GetGetMethod(nonPublic: false) is not null
+                    )
+                    .Select(property => new ReadableProperty(property, LowerFirst(property.Name)))
+                    .ToArray()
+        );
 
-        PropertyInfo[] properties =
-            ObjectPropertiesCache.GetOrAdd(
-                obj.GetType(),
-                type => type.GetProperties(
-                    BindingFlags.Public |
-                    BindingFlags.Instance
-                )
-            );
+        var result = new Dictionary<string, double>(properties.Length);
 
-        foreach (PropertyInfo property in properties)
+        foreach (ReadableProperty readableProperty in properties)
         {
-            if (
-                property.GetIndexParameters().Length != 0 ||
-                property.GetGetMethod(nonPublic: false) is null
-            )
-            {
-                continue;
-            }
-
             object? value;
 
             try
             {
-                value = property.GetValue(obj);
+                value = readableProperty.Property.GetValue(obj);
             }
             catch (Exception exception)
             {
                 throw new InvalidOperationException(
-                    $"Failed to read property " +
-                    $"{obj.GetType().FullName}.{property.Name}.",
+                    $"Failed to read property {obj.GetType().FullName}.{readableProperty.Property.Name}.",
                     exception
                 );
             }
 
-            string name =
-                char.ToLowerInvariant(property.Name[0]) +
-                property.Name[1..];
-
             switch (value)
             {
                 case double doubleValue:
-                    result[name] = doubleValue;
+                    result[readableProperty.Name] = doubleValue;
                     break;
 
                 case int intValue:
-                    result[name] = intValue;
+                    result[readableProperty.Name] = intValue;
                     break;
             }
         }
@@ -189,92 +173,76 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
         return result;
     }
 
-    private IEnumerable<SkillStrain> GetStrains(DifficultyCalculator calculator, IBeatmap playableBeatmap, Mod[] mods)
+    private DifficultyWithStrainsResult CalculateDifficultyWithStrains(
+        CachedWorkingBeatmap cachedBeatmap,
+        Ruleset ruleset,
+        uint rulesetId,
+        Mod[] mods,
+        IEnumerable<ModMessage> modMessages,
+        double? customClockRate,
+        CancellationToken cancellationToken
+    )
     {
-        Type calculatorType = calculator.GetType();
+        DifficultyCalculator calculator = ruleset.CreateDifficultyCalculator(cachedBeatmap.WorkingBeatmap);
 
-        MethodInfo createSkillsMethod = FindInstanceMethod(
-            calculatorType,
-            "CreateSkills",
-            typeof(IBeatmap),
-            typeof(Mod[])
-        ) ?? throw new MissingMethodException(
-            calculatorType.FullName,
-            "CreateSkills(IBeatmap, Mod[])"
+        SingleSnapshotDifficultyCalculator.PreparedDifficultyContext prepared =
+            SingleSnapshotDifficultyCalculator.Prepare(calculator, mods, cancellationToken);
+
+        Skill[] skills = SingleSnapshotDifficultyCalculator.CreateSkills(
+            calculator,
+            prepared.PlayableBeatmap,
+            prepared.PlayableMods
         );
 
-        MethodInfo createHitObjectsMethod = FindInstanceMethod(
-            calculatorType,
-            "CreateDifficultyHitObjects",
-            typeof(IBeatmap),
-            typeof(Mod[])
-        ) ?? throw new MissingMethodException(
-            calculatorType.FullName,
-            "CreateDifficultyHitObjects(IBeatmap, Mod[])"
-        );
+        DifficultyHitObject[] difficultyObjects = SingleSnapshotDifficultyCalculator
+            .CreateSortedDifficultyHitObjects(calculator, prepared.PlayableBeatmap, prepared.PlayableMods)
+            .ToArray();
 
-        MethodInfo sortObjectsMethod = FindInstanceMethod(
-            calculatorType,
-            "SortObjects",
-            typeof(IEnumerable<DifficultyHitObject>)
-        ) ?? throw new MissingMethodException(
-            calculatorType.FullName,
-            "SortObjects(IEnumerable<DifficultyHitObject>)"
-        );
-
-        var skills = createSkillsMethod.Invoke(
-            calculator,
-            new object[] { playableBeatmap, mods }
-        ) as Skill[];
-
-        if (skills == null)
-        {
-            throw new InvalidOperationException(
-                $"{calculatorType.Name}.CreateSkills() returned an unexpected value."
-            );
-        }
-
-        var unsortedHitObjects = createHitObjectsMethod.Invoke(
-            calculator,
-            new object[] { playableBeatmap, mods }
-        ) as IEnumerable<DifficultyHitObject>;
-
-        if (unsortedHitObjects == null)
-        {
-            throw new InvalidOperationException(
-                $"{calculatorType.Name}.CreateDifficultyHitObjects() returned an unexpected value."
-            );
-        }
-
-        var sortedHitObjects = sortObjectsMethod.Invoke(
-            calculator,
-            new object[] { unsortedHitObjects }
-        ) as IEnumerable<DifficultyHitObject>;
-
-        if (sortedHitObjects == null)
-        {
-            throw new InvalidOperationException(
-                $"{calculatorType.Name}.SortObjects() returned an unexpected value."
-            );
-        }
-
-        DifficultyHitObject[] hitObjects = sortedHitObjects.ToArray();
-
-        if (hitObjects.Length == 0)
-            return Array.Empty<SkillStrain>();
-
-        foreach (DifficultyHitObject hitObject in hitObjects)
+        foreach (DifficultyHitObject difficultyObject in difficultyObjects)
         {
             foreach (Skill skill in skills)
             {
-                skill.Process(hitObject);
+                cancellationToken.ThrowIfCancellationRequested();
+                skill.Process(difficultyObject);
             }
         }
 
-        double timelineEnd = hitObjects.Max(hitObject => hitObject.EndTime);
+        DifficultyAttributes attributes = SingleSnapshotDifficultyCalculator.CreateDifficultyAttributes(
+            calculator,
+            prepared.PlayableBeatmap,
+            prepared.PlayableMods,
+            skills
+        );
+
+        IReadOnlyList<SkillStrain> strains = BuildStrains(skills, difficultyObjects);
+
+        var cacheKey = new FullDifficultyCacheKey(
+            cachedBeatmap.Identity,
+            rulesetId,
+            CalculationKeyBuilder.BuildModsKey(modMessages, customClockRate),
+            calculator.Version
+        );
+
+        _fullDifficultyCache.Set(cacheKey, DifficultyAttributeSnapshot.Capture(attributes));
+
+        return new DifficultyWithStrainsResult(attributes, prepared.PlayableBeatmap, prepared.PlayableMods, strains);
+    }
+
+    private static IReadOnlyList<SkillStrain> BuildStrains(Skill[] skills, DifficultyHitObject[] hitObjects)
+    {
+        if (hitObjects.Length == 0)
+            return Array.Empty<SkillStrain>();
+
+        double timelineEnd = hitObjects[0].EndTime;
+
+        for (int i = 1; i < hitObjects.Length; i++)
+        {
+            if (hitObjects[i].EndTime > timelineEnd)
+                timelineEnd = hitObjects[i].EndTime;
+        }
 
         var result = new List<SkillStrain>(skills.Length);
-        var nameCounts = new Dictionary<string, int>();
+        var nameCounts = new Dictionary<string, int>(skills.Length);
 
         foreach (Skill skill in skills)
         {
@@ -283,9 +251,8 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
             if (values.Count != hitObjects.Length)
             {
                 throw new InvalidOperationException(
-                    $"Skill {skill.GetType().FullName} returned " +
-                    $"{values.Count} object difficulties for " +
-                    $"{hitObjects.Length} difficulty hit objects."
+                    $"Skill {skill.GetType().FullName} returned {values.Count} object difficulties for "
+                        + $"{hitObjects.Length} difficulty hit objects."
                 );
             }
 
@@ -293,44 +260,29 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
                 continue;
 
             string name = GetUniqueSkillName(skill, nameCounts);
-
-            var strain = new SkillStrain
-            {
-                SkillName = name
-            };
+            var strain = new SkillStrain { SkillName = name };
 
             if (hitObjects[0].StartTime > 0)
             {
-                strain.Points.Add(new SkillStrainPoint
-                {
-                    TimeMs = 0,
-                    Value = 0
-                });
+                strain.Points.Add(new SkillStrainPoint { TimeMs = 0, Value = 0 });
             }
 
             for (int i = 0; i < values.Count; i++)
             {
                 double value = values[i];
-
                 if (!double.IsFinite(value))
                     value = 0;
 
-                strain.Points.Add(new SkillStrainPoint
-                {
-                    TimeMs = Math.Max(0, hitObjects[i].StartTime),
-                    Value = Math.Max(0, value)
-                });
+                strain.Points.Add(
+                    new SkillStrainPoint { TimeMs = Math.Max(0, hitObjects[i].StartTime), Value = Math.Max(0, value) }
+                );
             }
 
             double lastPointTime = strain.Points[^1].TimeMs;
 
             if (timelineEnd > lastPointTime)
             {
-                strain.Points.Add(new SkillStrainPoint
-                {
-                    TimeMs = timelineEnd,
-                    Value = 0
-                });
+                strain.Points.Add(new SkillStrainPoint { TimeMs = timelineEnd, Value = 0 });
             }
 
             result.Add(strain);
@@ -339,47 +291,31 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
         return result;
     }
 
-    private static MethodInfo? FindInstanceMethod(
-        Type type,
-        string methodName,
-        params Type[] parameterTypes)
+    private static string GetSkillName(Skill skill)
     {
-        for (Type? current = type; current != null; current = current.BaseType)
-        {
-            MethodInfo? method = current.GetMethod(
-                methodName,
-                BindingFlags.Instance |
-                BindingFlags.Public |
-                BindingFlags.NonPublic |
-                BindingFlags.DeclaredOnly,
-                binder: null,
-                types: parameterTypes,
-                modifiers: null
-            );
+        Type type = skill.GetType();
 
-            if (method != null)
-                return method;
-        }
+        SkillMetadata metadata = SkillMetadataCache.GetOrAdd(
+            type,
+            static skillType => new SkillMetadata(
+                skillType.GetField(
+                    "IncludeSliders",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                )
+            )
+        );
 
-        return null;
-    }
+        string name = type.Name;
 
-    private string GetSkillName(object skill)
-    {
-        var name = skill.GetType().Name;
-        
-        var withSlidersField = skill.GetType().GetField("IncludeSliders", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-        if (withSlidersField != null && withSlidersField.GetValue(skill) is false)
+        if (metadata.IncludeSlidersField != null && metadata.IncludeSlidersField.GetValue(skill) is false)
         {
             name += "NoSliders";
         }
-        
+
         return name;
     }
 
-    private string GetUniqueSkillName(
-        Skill skill,
-        Dictionary<string, int> nameCounts)
+    private static string GetUniqueSkillName(Skill skill, Dictionary<string, int> nameCounts)
     {
         string name = GetSkillName(skill);
 
@@ -398,10 +334,11 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
     private BeatmapAttributes CalculateAdjustedAttributes(IBeatmap beatmap, double clockRate)
     {
         var baseDifficulty = beatmap.Difficulty;
+
         double preempt = IBeatmapDifficultyInfo.DifficultyRange(baseDifficulty.ApproachRate, 1800, 1200, 450);
-        
         double adjustedPreempt = preempt / clockRate;
         float adjustedAr = (float)IBeatmapDifficultyInfo.InverseDifficultyRange(adjustedPreempt, 1800, 1200, 450);
+
         double hitWindowGreat = IBeatmapDifficultyInfo.DifficultyRange(baseDifficulty.OverallDifficulty, 80, 50, 20);
         double adjustedWindow = hitWindowGreat / clockRate;
         float adjustedOd = (float)IBeatmapDifficultyInfo.InverseDifficultyRange(adjustedWindow, 80, 50, 20);
@@ -412,122 +349,187 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
             Od = adjustedOd,
             Cs = baseDifficulty.CircleSize,
             Hp = baseDifficulty.DrainRate,
-            ClockRate = clockRate
+            ClockRate = clockRate,
         };
     }
 
-    private double CalculateClockRate(IEnumerable<Mod> mods)
+    private static double CalculateClockRate(Mod[] mods)
     {
         double rate = 1.0;
-        foreach (var mod in mods.OfType<IApplicableToRate>())
+
+        foreach (Mod mod in mods)
         {
-            rate = mod.ApplyToRate(0, rate);
+            if (mod is IApplicableToRate applicableToRate)
+                rate = applicableToRate.ApplyToRate(0, rate);
         }
+
         return rate;
     }
 
-    public override Task<DifficultyResponse> CalculateDifficulty(
-        DifficultyRequest request,
-        ServerCallContext context)
+    private FullDifficultyContext GetOrCalculateFullDifficulty(
+        CachedWorkingBeatmap cachedBeatmap,
+        Ruleset ruleset,
+        uint rulesetId,
+        Mod[] mods,
+        IEnumerable<ModMessage> modMessages,
+        double? customClockRate,
+        CancellationToken cancellationToken
+    )
     {
-        return _calculationLimiter.RunAsync(
-            () => CalculateDifficultyCore(
-                request,
-                context.CancellationToken),
-            context.CancellationToken);
+        DifficultyCalculator calculator = ruleset.CreateDifficultyCalculator(cachedBeatmap.WorkingBeatmap);
+
+        var key = new FullDifficultyCacheKey(
+            cachedBeatmap.Identity,
+            rulesetId,
+            CalculationKeyBuilder.BuildModsKey(modMessages, customClockRate),
+            calculator.Version
+        );
+
+        DifficultyAttributes? locallyCalculatedAttributes = null;
+        SingleSnapshotDifficultyCalculator.PreparedDifficultyContext? locallyPreparedContext = null;
+
+        DifficultyAttributeSnapshot snapshot = _fullDifficultyCache.GetOrCreate(
+            key,
+            () =>
+            {
+                locallyCalculatedAttributes = calculator.Calculate(mods, cancellationToken);
+                locallyPreparedContext = SingleSnapshotDifficultyCalculator.GetPreparedContext(calculator);
+                return DifficultyAttributeSnapshot.Capture(locallyCalculatedAttributes);
+            }
+        );
+
+        if (locallyCalculatedAttributes != null && locallyPreparedContext.HasValue)
+        {
+            SingleSnapshotDifficultyCalculator.PreparedDifficultyContext prepared = locallyPreparedContext.Value;
+            return new FullDifficultyContext(
+                locallyCalculatedAttributes,
+                prepared.PlayableBeatmap,
+                prepared.PlayableMods
+            );
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        Mod[] playableMods = CloneMods(mods);
+
+        IBeatmap playableBeatmap = cachedBeatmap.WorkingBeatmap.GetPlayableBeatmap(
+            ruleset.RulesetInfo,
+            playableMods,
+            cancellationToken
+        );
+
+        DifficultyAttributes attributes = snapshot.Restore(rulesetId, playableMods);
+
+        return new FullDifficultyContext(attributes, playableBeatmap, playableMods);
     }
 
-    private DifficultyResponse CalculateDifficultyCore(
-        DifficultyRequest request,
-        CancellationToken cancellationToken)
+    private static Mod[] CloneMods(Mod[] mods)
+    {
+        if (mods.Length == 0)
+            return Array.Empty<Mod>();
+
+        var result = new Mod[mods.Length];
+        for (int i = 0; i < mods.Length; i++)
+        {
+            result[i] = mods[i].DeepClone();
+        }
+
+        return result;
+    }
+
+    public override Task<DifficultyResponse> CalculateDifficulty(DifficultyRequest request, ServerCallContext context)
+    {
+        return _calculationLimiter.RunAsync(
+            () => CalculateDifficultyCore(request, context.CancellationToken),
+            context.CancellationToken
+        );
+    }
+
+    private DifficultyResponse CalculateDifficultyCore(DifficultyRequest request, CancellationToken cancellationToken)
     {
         Ruleset ruleset = GetRuleset(request.RulesetId);
-
-        Mod[] mods = ParseMods(
-            ruleset,
-            request.Mods,
-            request.HasClockRate
-                ? request.ClockRate
-                : null);
-
-        CachedWorkingBeatmap cachedBeatmap =
-            _cache.GetBeatmap(request.BeatmapPath);
+        double? customClockRate = request.HasClockRate ? request.ClockRate : null;
+        Mod[] mods = ParseMods(ruleset, request.Mods, customClockRate);
+        CachedWorkingBeatmap cachedBeatmap = _cache.GetBeatmap(request.BeatmapPath);
 
         DifficultyAttributes difficultyAttributes;
         IBeatmap playableBeatmap;
-        DifficultyCalculator? difficultyCalculator = null;
+        Mod[] playableMods;
+        IReadOnlyList<SkillStrain>? strains = null;
 
         if (request.HasPassedObjects)
         {
             if (request.PassedObjects == 0)
             {
                 throw new RpcException(
-                    new Status(
-                        StatusCode.InvalidArgument,
-                        "passed_objects must be greater than zero."));
+                    new Status(StatusCode.InvalidArgument, "passed_objects must be greater than zero.")
+                );
             }
 
             if (request.CalculateStrains)
             {
                 throw new RpcException(
-                    new Status(
-                        StatusCode.Unimplemented,
-                        "Strain calculation for partial difficulty is not supported."));
+                    new Status(StatusCode.Unimplemented, "Strain calculation for partial difficulty is not supported.")
+                );
             }
 
-            PartialDifficultyResult partial =
-                _partialDifficultyService.Calculate(
-                    cachedBeatmap,
-                    ruleset,
-                    request.RulesetId,
-                    mods,
-                    request.Mods,
-                    request.HasClockRate
-                        ? request.ClockRate
-                        : null,
-                    request.PassedObjects,
-                    cancellationToken);
+            PartialDifficultyResult partial = _partialDifficultyService.Calculate(
+                cachedBeatmap,
+                ruleset,
+                request.RulesetId,
+                mods,
+                request.Mods,
+                customClockRate,
+                request.PassedObjects,
+                cancellationToken
+            );
 
             difficultyAttributes = partial.Attributes;
             playableBeatmap = partial.PlayableBeatmap;
+            playableMods = difficultyAttributes.Mods;
+        }
+        else if (request.CalculateStrains)
+        {
+            DifficultyWithStrainsResult calculated = CalculateDifficultyWithStrains(
+                cachedBeatmap,
+                ruleset,
+                request.RulesetId,
+                mods,
+                request.Mods,
+                customClockRate,
+                cancellationToken
+            );
+
+            difficultyAttributes = calculated.Attributes;
+            playableBeatmap = calculated.PlayableBeatmap;
+            playableMods = calculated.PlayableMods;
+            strains = calculated.Strains;
         }
         else
         {
-            difficultyCalculator =
-                ruleset.CreateDifficultyCalculator(
-                    cachedBeatmap.WorkingBeatmap);
+            FullDifficultyContext calculated = GetOrCalculateFullDifficulty(
+                cachedBeatmap,
+                ruleset,
+                request.RulesetId,
+                mods,
+                request.Mods,
+                customClockRate,
+                cancellationToken
+            );
 
-            difficultyAttributes =
-                difficultyCalculator.Calculate(
-                    mods,
-                    cancellationToken);
-
-            playableBeatmap =
-                cachedBeatmap.WorkingBeatmap.GetPlayableBeatmap(
-                    ruleset.RulesetInfo,
-                    mods,
-                    cancellationToken);
+            difficultyAttributes = calculated.Attributes;
+            playableBeatmap = calculated.PlayableBeatmap;
+            playableMods = calculated.PlayableMods;
         }
 
-        double clockRate = CalculateClockRate(mods);
+        double clockRate = CalculateClockRate(playableMods);
 
-        var response = new DifficultyResponse
+        var response = new DifficultyResponse { Beatmap = CalculateAdjustedAttributes(playableBeatmap, clockRate) };
+
+        response.Attributes.Add(ExtractAttributes(difficultyAttributes));
+
+        if (strains != null)
         {
-            Beatmap = CalculateAdjustedAttributes(
-                playableBeatmap,
-                clockRate)
-        };
-
-        response.Attributes.Add(
-            ExtractAttributes(difficultyAttributes));
-
-        if (request.CalculateStrains)
-        {
-            var strains = GetStrains(
-                difficultyCalculator!,
-                playableBeatmap,
-                mods);
-
             response.Strains.AddRange(strains);
         }
 
@@ -537,43 +539,104 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
     public override async Task CalculatePerformanceStream(
         IAsyncStreamReader<PerformanceRequest> requestStream,
         IServerStreamWriter<PerformanceResponse> responseStream,
-        ServerCallContext context)
+        ServerCallContext context
+    )
     {
         using var writeLock = new SemaphoreSlim(1, 1);
+        using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
+        CancellationToken cancellationToken = linkedCancellation.Token;
 
-        var tasks = new List<Task>();
+        int workerCount = Math.Max(1, _calculationLimiter.MaxConcurrency);
+        int queueCapacity = Math.Max(workerCount, workerCount * 2);
 
-        await foreach (
-            PerformanceRequest request in
-            requestStream.ReadAllAsync(context.CancellationToken)
-        )
+        Channel<PerformanceRequest> channel = Channel.CreateBounded<PerformanceRequest>(
+            new BoundedChannelOptions(queueCapacity)
+            {
+                FullMode = BoundedChannelFullMode.Wait,
+                SingleWriter = true,
+                SingleReader = workerCount == 1,
+                AllowSynchronousContinuations = false,
+            }
+        );
+
+        Exception? workerFailure = null;
+        var workers = new Task[workerCount];
+
+        for (int i = 0; i < workers.Length; i++)
         {
-            tasks.Add(processRequest(request));
+            workers[i] = consume();
         }
 
-        await Task.WhenAll(tasks);
+        try
+        {
+            await foreach (PerformanceRequest request in requestStream.ReadAllAsync(cancellationToken))
+            {
+                await channel.Writer.WriteAsync(request, cancellationToken);
+            }
+
+            channel.Writer.TryComplete();
+            await Task.WhenAll(workers);
+        }
+        catch (OperationCanceledException) when (Volatile.Read(ref workerFailure) is Exception failure)
+        {
+            channel.Writer.TryComplete(failure);
+            await ObserveWorkers(workers);
+            ExceptionDispatchInfo.Capture(failure).Throw();
+            throw;
+        }
+        catch
+        {
+            linkedCancellation.Cancel();
+            channel.Writer.TryComplete();
+            await ObserveWorkers(workers);
+            throw;
+        }
+
+        async Task consume()
+        {
+            try
+            {
+                await foreach (PerformanceRequest request in channel.Reader.ReadAllAsync(cancellationToken))
+                {
+                    await processRequest(request);
+                }
+            }
+            catch (OperationCanceledException) when (linkedCancellation.IsCancellationRequested)
+            {
+                if (context.CancellationToken.IsCancellationRequested || Volatile.Read(ref workerFailure) != null)
+                {
+                    return;
+                }
+
+                throw;
+            }
+            catch (Exception exception)
+            {
+                if (Interlocked.CompareExchange(ref workerFailure, exception, null) == null)
+                {
+                    channel.Writer.TryComplete(exception);
+                    linkedCancellation.Cancel();
+                }
+
+                throw;
+            }
+        }
 
         async Task processRequest(PerformanceRequest request)
         {
             try
             {
-                PerformanceResponse response =
-                    await _calculationLimiter.RunAsync(
-                        () => CalculatePerformanceCore(
-                            request,
-                            context.CancellationToken
-                        ),
-                        context.CancellationToken
-                    );
+                PerformanceResponse response = await _calculationLimiter.RunAsync(
+                    () => CalculatePerformanceCore(request, cancellationToken),
+                    cancellationToken
+                );
 
                 if (request.HasReferenceId)
                 {
                     response.ReferenceId = request.ReferenceId;
                 }
 
-                await writeLock.WaitAsync(
-                    context.CancellationToken
-                );
+                await writeLock.WaitAsync(cancellationToken);
 
                 try
                 {
@@ -588,62 +651,56 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
             {
                 throw;
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception exception)
             {
-                _logger.LogError(
+                CalculatorLog.PerformanceCalculationFailed(
+                    _logger,
                     exception,
-                    "Performance calculation failed. " +
-                    "Ruleset={RulesetId}, Beatmap={BeatmapPath}, " +
-                    "ReferenceId={ReferenceId}",
                     request.RulesetId,
                     request.BeatmapPath,
-                    request.HasReferenceId
-                        ? request.ReferenceId
-                        : null
+                    request.HasReferenceId ? request.ReferenceId : null
                 );
 
-                throw new RpcException(
-                    new Status(
-                        StatusCode.Internal,
-                        "Performance calculation failed."
-                    )
-                );
+                throw new RpcException(new Status(StatusCode.Internal, "Performance calculation failed."));
             }
         }
     }
 
+    private static async Task ObserveWorkers(Task[] workers)
+    {
+        try
+        {
+            await Task.WhenAll(workers);
+        }
+        catch { }
+    }
+
     public override Task<PerformanceResponse> CalculatePerformance(
         PerformanceRequest request,
-        ServerCallContext context)
+        ServerCallContext context
+    )
     {
         return _calculationLimiter.RunAsync(
-            () => CalculatePerformanceCore(
-                request,
-                context.CancellationToken
-            ),
+            () => CalculatePerformanceCore(request, context.CancellationToken),
             context.CancellationToken
         );
     }
 
     private PerformanceResponse CalculatePerformanceCore(
         PerformanceRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         Ruleset ruleset = GetRuleset(request.RulesetId);
+        double? customClockRate = request.HasClockRate ? request.ClockRate : null;
+        Mod[] mods = ParseMods(ruleset, request.Mods, customClockRate);
+        CachedWorkingBeatmap cachedBeatmap = _cache.GetBeatmap(request.BeatmapPath);
 
-        Mod[] mods = ParseMods(
-            ruleset,
-            request.Mods,
-            request.HasClockRate
-                ? request.ClockRate
-                : null
-        );
-
-        CachedWorkingBeatmap cachedBeatmap =
-            _cache.GetBeatmap(request.BeatmapPath);
-
-        bool isActual =
-            request.Score.Kind == ScoreStateKind.Actual;
+        bool isActual = request.Score.Kind == ScoreStateKind.Actual;
 
         if (request.HasPassedObjects && !isActual)
         {
@@ -657,63 +714,63 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
 
         DifficultyAttributes difficultyAttributes;
         IBeatmap playableBeatmap;
+        Mod[] playableMods;
 
         if (request.HasPassedObjects)
         {
             if (request.PassedObjects == 0)
             {
                 throw new RpcException(
-                    new Status(
-                        StatusCode.InvalidArgument,
-                        "passed_objects must be greater than zero."
-                    )
+                    new Status(StatusCode.InvalidArgument, "passed_objects must be greater than zero.")
                 );
             }
 
-            PartialDifficultyResult partial =
-                _partialDifficultyService.Calculate(
-                    cachedBeatmap,
-                    ruleset,
-                    request.RulesetId,
-                    mods,
-                    request.Mods,
-                    request.HasClockRate
-                        ? request.ClockRate
-                        : null,
-                    request.PassedObjects,
-                    cancellationToken
-                );
+            PartialDifficultyResult partial = _partialDifficultyService.Calculate(
+                cachedBeatmap,
+                ruleset,
+                request.RulesetId,
+                mods,
+                request.Mods,
+                customClockRate,
+                request.PassedObjects,
+                cancellationToken
+            );
 
             difficultyAttributes = partial.Attributes;
             playableBeatmap = partial.PlayableBeatmap;
+            playableMods = difficultyAttributes.Mods;
+        }
+        else if (request.PrecalculatedDifficulty.Count > 0)
+        {
+            playableMods = CloneMods(mods);
+
+            playableBeatmap = cachedBeatmap.WorkingBeatmap.GetPlayableBeatmap(
+                ruleset.RulesetInfo,
+                playableMods,
+                cancellationToken
+            );
+
+            difficultyAttributes = DifficultyAttributeSnapshot.Create(
+                request.RulesetId,
+                playableMods,
+                request.PrecalculatedDifficulty
+            );
         }
         else
         {
-            playableBeatmap =
-                cachedBeatmap.WorkingBeatmap.GetPlayableBeatmap(
-                    ruleset.RulesetInfo,
-                    mods
-                );
+            FullDifficultyContext calculated = GetOrCalculateFullDifficulty(
+                cachedBeatmap,
+                ruleset,
+                request.RulesetId,
+                mods,
+                request.Mods,
+                customClockRate,
+                cancellationToken
+            );
 
-            if (request.PrecalculatedDifficulty.Count > 0)
-            {
-                difficultyAttributes =
-                    CreateDifficultyAttributes(
-                        request.RulesetId,
-                        mods,
-                        request.PrecalculatedDifficulty
-                    );
-            }
-            else
-            {
-                DifficultyCalculator difficultyCalculator =
-                    ruleset.CreateDifficultyCalculator(
-                        cachedBeatmap.WorkingBeatmap
-                    );
-
-                difficultyAttributes =
-                    difficultyCalculator.Calculate(mods);
-            }
+            difficultyAttributes = calculated.Attributes;
+            playableBeatmap = calculated.PlayableBeatmap;
+            playableMods = calculated.PlayableMods;
         }
 
         Dictionary<HitResult, int> statistics;
@@ -725,78 +782,49 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
         }
         else
         {
-            statistics = _hitResultGeneration.Generate(
-                request.RulesetId,
-                playableBeatmap,
-                mods,
-                request.Score
-            );
+            statistics = _hitResultGeneration.Generate(request.RulesetId, playableBeatmap, playableMods, request.Score);
         }
 
         double accuracy;
 
         if (isActual && request.Score.HasAccuracy)
         {
-            accuracy = Math.Clamp(
-                request.Score.Accuracy,
-                0,
-                1
-            );
+            accuracy = Math.Clamp(request.Score.Accuracy, 0, 1);
         }
         else
         {
-            accuracy =
-                _hitResultGeneration.GetAccuracyForRuleset(
-                    request.RulesetId,
-                    playableBeatmap,
-                    statistics,
-                    mods
-                );
+            accuracy = _hitResultGeneration.GetAccuracyForRuleset(
+                request.RulesetId,
+                playableBeatmap,
+                statistics,
+                playableMods
+            );
         }
 
         var scoreInfo = new ScoreInfo
         {
             Ruleset = ruleset.RulesetInfo,
-            Mods = mods,
-
-            MaxCombo = request.Score.HasMaxCombo
-                ? checked((int)request.Score.MaxCombo)
-                : difficultyAttributes.MaxCombo,
-
+            Mods = playableMods,
+            MaxCombo = request.Score.HasMaxCombo ? checked((int)request.Score.MaxCombo) : difficultyAttributes.MaxCombo,
             Statistics = statistics,
             Accuracy = accuracy,
             BeatmapInfo = playableBeatmap.BeatmapInfo,
-
-            TotalScore = request.HasTotalScore
-                ? request.TotalScore
-                : 0,
-
-            LegacyTotalScore = request.HasLegacyTotalScore
-                ? request.LegacyTotalScore
-                : null
+            TotalScore = request.HasTotalScore ? request.TotalScore : 0,
+            LegacyTotalScore = request.HasLegacyTotalScore ? request.LegacyTotalScore : null,
         };
 
-        PerformanceCalculator? performanceCalculator =
-            ruleset.CreatePerformanceCalculator();
+        PerformanceCalculator? performanceCalculator = ruleset.CreatePerformanceCalculator();
 
         if (performanceCalculator == null)
         {
             throw new RpcException(
-                new Status(
-                    StatusCode.Unimplemented,
-                    "Performance calculation is not supported " +
-                    "for this ruleset."
-                )
+                new Status(StatusCode.Unimplemented, "Performance calculation is not supported for this ruleset.")
             );
         }
 
-        PerformanceAttributes performanceAttributes =
-            performanceCalculator.Calculate(
-                scoreInfo,
-                difficultyAttributes
-            );
+        PerformanceAttributes performanceAttributes = performanceCalculator.Calculate(scoreInfo, difficultyAttributes);
 
-        double clockRate = CalculateClockRate(mods);
+        double clockRate = CalculateClockRate(playableMods);
 
         var response = new PerformanceResponse
         {
@@ -804,97 +832,46 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
             {
                 MaxCombo = (uint)scoreInfo.MaxCombo,
                 Accuracy = accuracy,
-
-                Count300 = (uint)statistics.GetValueOrDefault(
-                    HitResult.Great
-                ),
-
-                Count100 = request.RulesetId == 2
-                    ? (uint)statistics.GetValueOrDefault(
-                        HitResult.LargeTickHit
-                    )
-                    : (uint)statistics.GetValueOrDefault(
-                        HitResult.Ok
-                    ),
-
-                Count50 = request.RulesetId == 2
-                    ? (uint)statistics.GetValueOrDefault(
-                        HitResult.SmallTickHit
-                    )
-                    : (uint)statistics.GetValueOrDefault(
-                        HitResult.Meh
-                    ),
-
-                CountMiss = (uint)statistics.GetValueOrDefault(
-                    HitResult.Miss
-                ),
-
-                CountGeki = (uint)statistics.GetValueOrDefault(
-                    HitResult.Perfect
-                ),
-
-                CountKatu = request.RulesetId == 2
-                    ? (uint)statistics.GetValueOrDefault(
-                        HitResult.SmallTickMiss
-                    )
-                    : (uint)statistics.GetValueOrDefault(
-                        HitResult.Good
-                    ),
-
-                CountLargeTickHits =
-                    (uint)statistics.GetValueOrDefault(
-                        HitResult.LargeTickHit
-                    ),
-
-                CountSliderTailHits =
-                    (uint)statistics.GetValueOrDefault(
-                        HitResult.SliderTailHit
-                    ),
-
-                CountLargeTickMisses =
-                    (uint)statistics.GetValueOrDefault(
-                        HitResult.LargeTickMiss
-                    ),
-
-                CountSliderTailMisses =
-                    (uint)statistics.GetValueOrDefault(
-                        HitResult.IgnoreMiss
-                    )
+                Count300 = (uint)statistics.GetValueOrDefault(HitResult.Great),
+                Count100 =
+                    request.RulesetId == 2
+                        ? (uint)statistics.GetValueOrDefault(HitResult.LargeTickHit)
+                        : (uint)statistics.GetValueOrDefault(HitResult.Ok),
+                Count50 =
+                    request.RulesetId == 2
+                        ? (uint)statistics.GetValueOrDefault(HitResult.SmallTickHit)
+                        : (uint)statistics.GetValueOrDefault(HitResult.Meh),
+                CountMiss = (uint)statistics.GetValueOrDefault(HitResult.Miss),
+                CountGeki = (uint)statistics.GetValueOrDefault(HitResult.Perfect),
+                CountKatu =
+                    request.RulesetId == 2
+                        ? (uint)statistics.GetValueOrDefault(HitResult.SmallTickMiss)
+                        : (uint)statistics.GetValueOrDefault(HitResult.Good),
+                CountLargeTickHits = (uint)statistics.GetValueOrDefault(HitResult.LargeTickHit),
+                CountSliderTailHits = (uint)statistics.GetValueOrDefault(HitResult.SliderTailHit),
+                CountLargeTickMisses = (uint)statistics.GetValueOrDefault(HitResult.LargeTickMiss),
+                CountSliderTailMisses = (uint)statistics.GetValueOrDefault(HitResult.IgnoreMiss),
             },
 
-            Difficulty = new DifficultyResponse
-            {
-                Beatmap = CalculateAdjustedAttributes(
-                    playableBeatmap,
-                    clockRate
-                )
-            }
+            Difficulty = new DifficultyResponse { Beatmap = CalculateAdjustedAttributes(playableBeatmap, clockRate) },
         };
 
-        response.Difficulty.Attributes.Add(
-            ExtractAttributes(difficultyAttributes)
-        );
-
-        response.Attributes.Add(
-            ExtractAttributes(performanceAttributes)
-        );
+        response.Difficulty.Attributes.Add(ExtractAttributes(difficultyAttributes));
+        response.Attributes.Add(ExtractAttributes(performanceAttributes));
 
         return response;
     }
 
-    private Dictionary<HitResult, int> BuildExactStatistics(
-        ScoreState score)
+    private static Dictionary<HitResult, int> BuildExactStatistics(ScoreState score)
     {
-        var result = new Dictionary<HitResult, int>();
+        var result = new Dictionary<HitResult, int>(16);
 
         static int convert(uint value) => checked((int)value);
 
         void add(bool hasValue, uint value, HitResult hitResult)
         {
             if (hasValue)
-            {
                 result[hitResult] = convert(value);
-            }
         }
 
         add(score.HasCount300, score.Count300, HitResult.Great);
@@ -903,218 +880,153 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
         add(score.HasCountMiss, score.CountMiss, HitResult.Miss);
         add(score.HasCountGeki, score.CountGeki, HitResult.Perfect);
         add(score.HasCountKatu, score.CountKatu, HitResult.Good);
-
-        add(
-            score.HasCountSmallTickHits,
-            score.CountSmallTickHits,
-            HitResult.SmallTickHit
-        );
-
-        add(
-            score.HasCountSmallTickMisses,
-            score.CountSmallTickMisses,
-            HitResult.SmallTickMiss
-        );
-
-        add(
-            score.HasCountLargeTickHits,
-            score.CountLargeTickHits,
-            HitResult.LargeTickHit
-        );
-
-        add(
-            score.HasCountLargeTickMisses,
-            score.CountLargeTickMisses,
-            HitResult.LargeTickMiss
-        );
-
-        add(
-            score.HasCountSliderTailHits,
-            score.CountSliderTailHits,
-            HitResult.SliderTailHit
-        );
-
-        add(
-            score.HasCountSliderTailMisses,
-            score.CountSliderTailMisses,
-            HitResult.IgnoreMiss
-        );
+        add(score.HasCountSmallTickHits, score.CountSmallTickHits, HitResult.SmallTickHit);
+        add(score.HasCountSmallTickMisses, score.CountSmallTickMisses, HitResult.SmallTickMiss);
+        add(score.HasCountLargeTickHits, score.CountLargeTickHits, HitResult.LargeTickHit);
+        add(score.HasCountLargeTickMisses, score.CountLargeTickMisses, HitResult.LargeTickMiss);
+        add(score.HasCountSliderTailHits, score.CountSliderTailHits, HitResult.SliderTailHit);
+        add(score.HasCountSliderTailMisses, score.CountSliderTailMisses, HitResult.IgnoreMiss);
 
         if (!score.HasCountSliderTailHits)
-        {
-            add(
-                score.HasCountIgnoreHit,
-                score.CountIgnoreHit,
-                HitResult.IgnoreHit
-            );
-        }
+            add(score.HasCountIgnoreHit, score.CountIgnoreHit, HitResult.IgnoreHit);
 
         if (!score.HasCountSliderTailMisses)
-        {
-            add(
-                score.HasCountIgnoreMiss,
-                score.CountIgnoreMiss,
-                HitResult.IgnoreMiss
-            );
-        }
+            add(score.HasCountIgnoreMiss, score.CountIgnoreMiss, HitResult.IgnoreMiss);
 
-        add(
-            score.HasCountSmallBonus,
-            score.CountSmallBonus,
-            HitResult.SmallBonus
-        );
-
-        add(
-            score.HasCountLargeBonus,
-            score.CountLargeBonus,
-            HitResult.LargeBonus
-        );
+        add(score.HasCountSmallBonus, score.CountSmallBonus, HitResult.SmallBonus);
+        add(score.HasCountLargeBonus, score.CountLargeBonus, HitResult.LargeBonus);
 
         return result;
     }
 
-    private static void ValidateActualScore(
-        PerformanceRequest request)
+    private static void ValidateActualScore(PerformanceRequest request)
     {
         if (!request.HasPassedObjects)
-        {
             return;
-        }
 
-        int playedEvents = GetPlayedEventCount(
-            request.RulesetId,
-            request.Score
-        );
+        int playedEvents = GetPlayedEventCount(request.RulesetId, request.Score);
 
         if (playedEvents != request.PassedObjects)
         {
             throw new RpcException(
                 new Status(
                     StatusCode.InvalidArgument,
-                    $"The score contains {playedEvents} played " +
-                    $"events but passed_objects is " +
-                    $"{request.PassedObjects}."
+                    $"The score contains {playedEvents} played events but passed_objects is {request.PassedObjects}."
                 )
             );
         }
     }
 
-    private static int GetPlayedEventCount(
-        uint rulesetId,
-        ScoreState score)
+    private static int GetPlayedEventCount(uint rulesetId, ScoreState score)
     {
-        static int get(bool present, uint value) =>
-            present ? checked((int)value) : 0;
+        static int get(bool present, uint value) => present ? checked((int)value) : 0;
 
         return rulesetId switch
         {
-            0 =>
-                get(score.HasCount300, score.Count300) +
-                get(score.HasCount100, score.Count100) +
-                get(score.HasCount50, score.Count50) +
-                get(score.HasCountMiss, score.CountMiss),
+            0 => get(score.HasCount300, score.Count300)
+                + get(score.HasCount100, score.Count100)
+                + get(score.HasCount50, score.Count50)
+                + get(score.HasCountMiss, score.CountMiss),
 
-            1 =>
-                get(score.HasCount300, score.Count300) +
-                get(score.HasCount100, score.Count100) +
-                get(score.HasCountMiss, score.CountMiss),
+            1 => get(score.HasCount300, score.Count300)
+                + get(score.HasCount100, score.Count100)
+                + get(score.HasCountMiss, score.CountMiss),
 
-            2 =>
-                get(score.HasCount300, score.Count300) +
-                get(
-                    score.HasCountLargeTickHits,
-                    score.CountLargeTickHits
-                ) +
-                get(
-                    score.HasCountSmallTickHits,
-                    score.CountSmallTickHits
-                ) +
-                get(
-                    score.HasCountSmallTickMisses,
-                    score.CountSmallTickMisses
-                ) +
-                get(score.HasCountMiss, score.CountMiss),
+            2 => get(score.HasCount300, score.Count300)
+                + get(score.HasCountLargeTickHits, score.CountLargeTickHits)
+                + get(score.HasCountSmallTickHits, score.CountSmallTickHits)
+                + get(score.HasCountSmallTickMisses, score.CountSmallTickMisses)
+                + get(score.HasCountMiss, score.CountMiss),
 
-            3 =>
-                get(score.HasCountGeki, score.CountGeki) +
-                get(score.HasCount300, score.Count300) +
-                get(score.HasCountKatu, score.CountKatu) +
-                get(score.HasCount100, score.Count100) +
-                get(score.HasCount50, score.Count50) +
-                get(score.HasCountMiss, score.CountMiss),
+            3 => get(score.HasCountGeki, score.CountGeki)
+                + get(score.HasCount300, score.Count300)
+                + get(score.HasCountKatu, score.CountKatu)
+                + get(score.HasCount100, score.Count100)
+                + get(score.HasCount50, score.Count50)
+                + get(score.HasCountMiss, score.CountMiss),
 
-            _ => throw new RpcException(
-                new Status(
-                    StatusCode.InvalidArgument,
-                    "Invalid ruleset ID."
-                )
-            )
+            _ => throw new RpcException(new Status(StatusCode.InvalidArgument, "Invalid ruleset ID.")),
         };
     }
 
-    private DifficultyAttributes CreateDifficultyAttributes(
-        uint rulesetId,
-        Mod[] mods,
-        IReadOnlyDictionary<string, double> values)
+    private static string LowerFirst(string value)
     {
-        DifficultyAttributes attributes = rulesetId switch
+        if (string.IsNullOrEmpty(value))
+            return value;
+
+        return char.ToLowerInvariant(value[0]) + value[1..];
+    }
+
+    private readonly record struct ReadableProperty(PropertyInfo Property, string Name);
+
+    private readonly record struct SkillMetadata(FieldInfo? IncludeSlidersField);
+
+    private readonly record struct FullDifficultyContext(
+        DifficultyAttributes Attributes,
+        IBeatmap PlayableBeatmap,
+        Mod[] PlayableMods
+    );
+
+    private readonly record struct DifficultyWithStrainsResult(
+        DifficultyAttributes Attributes,
+        IBeatmap PlayableBeatmap,
+        Mod[] PlayableMods,
+        IReadOnlyList<SkillStrain> Strains
+    );
+
+    private sealed class ModPropertyNameComparer : IEqualityComparer<string>
+    {
+        public static ModPropertyNameComparer Instance { get; } = new();
+
+        public bool Equals(string? x, string? y)
         {
-            0 => new OsuDifficultyAttributes(),
-            1 => new TaikoDifficultyAttributes(),
-            2 => new CatchDifficultyAttributes(),
-            3 => new ManiaDifficultyAttributes(),
+            if (ReferenceEquals(x, y))
+                return true;
 
-            _ => throw new RpcException(
-                new Status(
-                    StatusCode.InvalidArgument,
-                    "Invalid ruleset ID"
-                )
-            )
-        };
+            if (x == null || y == null)
+                return false;
 
-        attributes.Mods = mods;
+            int xIndex = 0;
+            int yIndex = 0;
 
-        PropertyInfo[] properties =
-            ObjectPropertiesCache.GetOrAdd(
-                attributes.GetType(),
-                type => type.GetProperties(
-                    BindingFlags.Public |
-                    BindingFlags.Instance |
-                    BindingFlags.IgnoreCase
-                )
-            );
-
-        foreach (
-            KeyValuePair<string, double> value in values
-        )
-        {
-            PropertyInfo? property =
-                properties.FirstOrDefault(candidate =>
-                    string.Equals(
-                        candidate.Name,
-                        value.Key,
-                        StringComparison.OrdinalIgnoreCase
-                    )
-                );
-
-            if (property is not { CanWrite: true })
+            while (true)
             {
-                continue;
+                while (xIndex < x.Length && x[xIndex] == '_')
+                    xIndex++;
+
+                while (yIndex < y.Length && y[yIndex] == '_')
+                    yIndex++;
+
+                bool xEnded = xIndex >= x.Length;
+                bool yEnded = yIndex >= y.Length;
+
+                if (xEnded || yEnded)
+                    return xEnded && yEnded;
+
+                if (char.ToUpperInvariant(x[xIndex]) != char.ToUpperInvariant(y[yIndex]))
+                    return false;
+
+                xIndex++;
+                yIndex++;
             }
-
-            Type targetType =
-                Nullable.GetUnderlyingType(property.PropertyType) ??
-                property.PropertyType;
-
-            object converted = Convert.ChangeType(
-                value.Value,
-                targetType,
-                CultureInfo.InvariantCulture
-            );
-
-            property.SetValue(attributes, converted);
         }
 
-        return attributes;
+        public int GetHashCode(string obj)
+        {
+            unchecked
+            {
+                int hash = 17;
+
+                foreach (char character in obj)
+                {
+                    if (character == '_')
+                        continue;
+
+                    hash = hash * 31 + char.ToUpperInvariant(character);
+                }
+
+                return hash;
+            }
+        }
     }
 }
