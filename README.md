@@ -164,7 +164,7 @@ For questions about an implementation or the project structure, join the support
 gurabot relies on projects and services from the osu!, Discord, Node.js, .NET, PostgreSQL, Redis, Prisma, and wider open-source communities.
 Special thanks to:
 - [o!rdr](https://ordr.issou.best/) for replay rendering functionality.
-- [osu!daily](https://osudaily.net/) for pp <-> rank convertation functionality.
+- [osu!daily](https://osudaily.net/) for pp <-> rank conversion functionality.
 - [osu!track](https://ameobea.me/osutrack/) for historic ranking data.
 - everyone who has contributed code, testing, bug reports, suggestions, or provided other support.
 
