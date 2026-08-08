@@ -200,23 +200,18 @@ export class OrdrConfigViewService extends AbstractViewService<OrdrConfigViewDto
             case EOrdrConfigView.Overview:
                 rows.push(this.overviewControls(sessionID, data));
                 break;
-
             case EOrdrConfigView.Output:
                 rows.push(this.outputControls(sessionID, data));
                 break;
-
             case EOrdrConfigView.Audio:
                 rows.push(this.audioControls(sessionID, data));
                 break;
-
             case EOrdrConfigView.HUD:
                 rows.push(...this.hudControls(sessionID, data));
                 break;
-
             case EOrdrConfigView.Gameplay:
                 rows.push(...this.gameplayControls(sessionID, data));
                 break;
-
             case EOrdrConfigView.Background:
                 rows.push(this.backgroundControls(sessionID, data));
                 break;
@@ -261,15 +256,17 @@ export class OrdrConfigViewService extends AbstractViewService<OrdrConfigViewDto
 
         return new ActionRow()
             .addButton(
-                this.label("Skin", this.skin(settings)),
-                `ordr_config_action:skin:${sessionID}`,
-                ButtonStyle.Secondary,
+                settings.customSkin ? "Official skin" : this.label("Official skin", settings.skin || "Not set"),
+                `ordr_config_action:skin_official:${sessionID}`,
+                settings.customSkin ? ButtonStyle.Secondary : ButtonStyle.Primary,
                 { disabled: locked },
             )
             .addButton(
-                `Custom skin: ${this.state(settings.customSkin)}`,
-                `ordr_config_toggle:customSkin:${sessionID}`,
-                settings.customSkin ? ButtonStyle.Success : ButtonStyle.Secondary,
+                settings.customSkin
+                    ? this.label("Custom skin", settings.skin ? `#${settings.skin}` : "Not set")
+                    : "Custom skin",
+                `ordr_config_action:skin_custom:${sessionID}`,
+                settings.customSkin ? ButtonStyle.Primary : ButtonStyle.Secondary,
                 { disabled: locked },
             )
             .addButton(
