@@ -16,7 +16,6 @@ type TBooleanKeys<T> = {
 }[keyof T];
 
 const booleanSettings = [
-    "customSkin",
     "skip",
     "showResultScreen",
     "useSkinHitsounds",
@@ -55,7 +54,8 @@ type TOrdrConfigAction =
     | "source_preset"
     | "refresh"
     | "resolution"
-    | "skin"
+    | "skin_official"
+    | "skin_custom"
     | "audio"
     | "cursor"
     | "background"
@@ -63,10 +63,9 @@ type TOrdrConfigAction =
     | "discard"
     | "reset";
 
-type TOrdrConfigModal = "skin" | "audio" | "cursor" | "background";
+type TOrdrConfigModal = "skin_official" | "skin_custom" | "audio" | "cursor" | "background";
 
 const settingViews: Record<TOrdrBooleanSetting, EOrdrConfigView> = {
-    customSkin: EOrdrConfigView.Output,
     skip: EOrdrConfigView.Output,
     showResultScreen: EOrdrConfigView.Output,
 
@@ -109,7 +108,10 @@ export class OrdrConfigPageComponent extends AbstractComponent {
 
     public async execute(ctx: ComponentContext): Promise<void> {
         const sessionID = ctx.params.sessionID;
-        if (!sessionID) throw new Exception(EApplicationError.SESSION_EXPIRED);
+
+        if (!sessionID) {
+            throw new Exception(EApplicationError.SESSION_EXPIRED);
+        }
 
         const data = await this.getData(ctx, sessionID);
         const view = ctx.values[0] as EOrdrConfigView | undefined;
@@ -126,10 +128,15 @@ export class OrdrConfigPageComponent extends AbstractComponent {
 
     private async getData(ctx: ComponentContext, sessionID: string): Promise<OrdrConfigViewDto> {
         const plain = await this.sessionService.get("ordr_config_view", sessionID);
-        if (!plain) throw new Exception(EApplicationError.SESSION_EXPIRED);
+
+        if (!plain) {
+            throw new Exception(EApplicationError.SESSION_EXPIRED);
+        }
 
         const data = plainToInstance(OrdrConfigViewDto, plain);
-        if (data.authorID !== ctx.author.id) throw new Exception(EApplicationError.ACCESS_ERROR);
+        if (data.authorID !== ctx.author.id) {
+            throw new Exception(EApplicationError.ACCESS_ERROR);
+        }
 
         return data;
     }
@@ -141,7 +148,7 @@ export class OrdrConfigPageComponent extends AbstractComponent {
 }
 
 @Button(
-    /^ordr_config_action:(?<action>source_bot|source_preset|refresh|resolution|skin|audio|cursor|background|save|discard|reset):(?<sessionID>[a-zA-Z0-9_-]+)$/,
+    /^ordr_config_action:(?<action>source_bot|source_preset|refresh|resolution|skin_official|skin_custom|audio|cursor|background|save|discard|reset):(?<sessionID>[a-zA-Z0-9_-]+)$/,
 )
 export class OrdrConfigActionComponent extends AbstractComponent {
     @Import() declare private readonly sessionService: SessionService;
@@ -155,11 +162,13 @@ export class OrdrConfigActionComponent extends AbstractComponent {
             sessionID?: string;
         };
 
-        if (!action || !sessionID) throw new Exception(EApplicationError.SESSION_EXPIRED);
+        if (!action || !sessionID) {
+            throw new Exception(EApplicationError.SESSION_EXPIRED);
+        }
 
         const data = await this.getData(ctx, sessionID);
 
-        if (action === "skin" || action === "audio" || action === "cursor" || action === "background") {
+        if (this.isModalAction(action)) {
             this.requireBotSettings(data);
 
             return await ctx.showModal(OrdrConfigModalFactory.create(action, sessionID, data.draft.settings));
@@ -190,6 +199,7 @@ export class OrdrConfigActionComponent extends AbstractComponent {
                 }
 
                 data.view = EOrdrConfigView.Overview;
+
                 return await this.persist(ctx, sessionID, data);
 
             case "resolution":
@@ -226,6 +236,16 @@ export class OrdrConfigActionComponent extends AbstractComponent {
 
         await ctx.deferUpdate();
         await this.persist(ctx, sessionID, data);
+    }
+
+    private isModalAction(action: TOrdrConfigAction): action is TOrdrConfigModal {
+        return (
+            action === "skin_official" ||
+            action === "skin_custom" ||
+            action === "audio" ||
+            action === "cursor" ||
+            action === "background"
+        );
     }
 
     private validateDraft(data: OrdrConfigViewDto): void {
@@ -269,10 +289,21 @@ export class OrdrConfigActionComponent extends AbstractComponent {
             }
         }
 
-        if (!settings.showHitErrorMeter) settings.showUnstableRate = false;
-        if (!settings.showScoreboard) settings.showAvatarsOnScoreboard = false;
-        if (!settings.showHitCounter) settings.showSliderBreaks = false;
-        if (!settings.loadStoryboard) settings.loadVideo = false;
+        if (!settings.showHitErrorMeter) {
+            settings.showUnstableRate = false;
+        }
+
+        if (!settings.showScoreboard) {
+            settings.showAvatarsOnScoreboard = false;
+        }
+
+        if (!settings.showHitCounter) {
+            settings.showSliderBreaks = false;
+        }
+
+        if (!settings.loadStoryboard) {
+            settings.loadVideo = false;
+        }
     }
 
     private assertIntegerRange(name: string, value: number, min: number, max: number): void {
@@ -296,16 +327,23 @@ export class OrdrConfigActionComponent extends AbstractComponent {
 
     private async getData(ctx: ComponentContext, sessionID: string): Promise<OrdrConfigViewDto> {
         const plain = await this.sessionService.get("ordr_config_view", sessionID);
-        if (!plain) throw new Exception(EApplicationError.SESSION_EXPIRED);
+
+        if (!plain) {
+            throw new Exception(EApplicationError.SESSION_EXPIRED);
+        }
 
         const data = plainToInstance(OrdrConfigViewDto, plain);
-        if (data.authorID !== ctx.author.id) throw new Exception(EApplicationError.ACCESS_ERROR);
+
+        if (data.authorID !== ctx.author.id) {
+            throw new Exception(EApplicationError.ACCESS_ERROR);
+        }
 
         return data;
     }
 
     private async persist(ctx: ComponentContext, sessionID: string, data: OrdrConfigViewDto): Promise<void> {
         await this.sessionService.update("ordr_config_view", sessionID, data, this.ordrConfigViewService.getTtl());
+
         await ctx.update(this.ordrConfigViewService.build(sessionID, data));
     }
 }
@@ -313,7 +351,6 @@ export class OrdrConfigActionComponent extends AbstractComponent {
 @Button(/^ordr_config_toggle:(?<setting>[a-zA-Z]+):(?<sessionID>[a-zA-Z0-9_-]+)$/)
 export class OrdrConfigToggleComponent extends AbstractComponent {
     @Import() declare private readonly sessionService: SessionService;
-    @Import() declare private readonly ordrConfigService: OrdrConfigService;
     @Import() declare private readonly ordrConfigViewService: OrdrConfigViewService;
 
     public async execute(ctx: ComponentContext): Promise<void> {
@@ -322,7 +359,9 @@ export class OrdrConfigToggleComponent extends AbstractComponent {
             sessionID?: string;
         };
 
-        if (!setting || !sessionID) throw new Exception(EApplicationError.SESSION_EXPIRED);
+        if (!setting || !sessionID) {
+            throw new Exception(EApplicationError.SESSION_EXPIRED);
+        }
 
         if (!this.isBooleanSetting(setting)) {
             throw new Exception(EApplicationError.INPUT_ERROR, "Unknown render setting.");
@@ -335,23 +374,13 @@ export class OrdrConfigToggleComponent extends AbstractComponent {
         }
 
         this.validateDependency(data.draft.settings, setting);
-
-        if (setting === "customSkin") {
-            this.toggleSkinType(data.draft.settings);
-        } else {
-            data.draft.settings[setting] = !data.draft.settings[setting];
-        }
+        data.draft.settings[setting] = !data.draft.settings[setting];
 
         this.clearDependentSettings(data.draft.settings, setting);
         data.view = settingViews[setting];
 
         await ctx.deferUpdate();
         await this.persist(ctx, sessionID, data);
-    }
-
-    private toggleSkinType(settings: OrdrSettingsDto): void {
-        settings.customSkin = !settings.customSkin;
-        settings.skin = settings.customSkin ? "" : this.ordrConfigService.defaults().skin;
     }
 
     private clearDependentSettings(settings: OrdrSettingsDto, setting: TOrdrBooleanSetting): void {
@@ -405,21 +434,28 @@ export class OrdrConfigToggleComponent extends AbstractComponent {
 
     private async getData(ctx: ComponentContext, sessionID: string): Promise<OrdrConfigViewDto> {
         const plain = await this.sessionService.get("ordr_config_view", sessionID);
-        if (!plain) throw new Exception(EApplicationError.SESSION_EXPIRED);
+
+        if (!plain) {
+            throw new Exception(EApplicationError.SESSION_EXPIRED);
+        }
 
         const data = plainToInstance(OrdrConfigViewDto, plain);
-        if (data.authorID !== ctx.author.id) throw new Exception(EApplicationError.ACCESS_ERROR);
+
+        if (data.authorID !== ctx.author.id) {
+            throw new Exception(EApplicationError.ACCESS_ERROR);
+        }
 
         return data;
     }
 
     private async persist(ctx: ComponentContext, sessionID: string, data: OrdrConfigViewDto): Promise<void> {
         await this.sessionService.update("ordr_config_view", sessionID, data, this.ordrConfigViewService.getTtl());
+
         await ctx.update(this.ordrConfigViewService.build(sessionID, data));
     }
 }
 
-@Modal(/^ordr_config_modal:(?<action>skin|audio|cursor|background):(?<sessionID>[a-zA-Z0-9_-]+)$/)
+@Modal(/^ordr_config_modal:(?<action>skin_official|skin_custom|audio|cursor|background):(?<sessionID>[a-zA-Z0-9_-]+)$/)
 export class OrdrConfigModalComponent extends AbstractComponent {
     @Import() declare private readonly sessionService: SessionService;
     @Import() declare private readonly ordrService: OrdrService;
@@ -431,7 +467,9 @@ export class OrdrConfigModalComponent extends AbstractComponent {
             sessionID?: string;
         };
 
-        if (!action || !sessionID) throw new Exception(EApplicationError.SESSION_EXPIRED);
+        if (!action || !sessionID) {
+            throw new Exception(EApplicationError.SESSION_EXPIRED);
+        }
 
         const data = await this.getData(ctx, sessionID);
 
@@ -440,21 +478,22 @@ export class OrdrConfigModalComponent extends AbstractComponent {
         }
 
         switch (action) {
-            case "skin":
-                await this.applySkin(ctx, data.draft.settings);
+            case "skin_official":
+                await this.applyOfficialSkin(ctx, data.draft.settings);
                 data.view = EOrdrConfigView.Output;
                 break;
-
+            case "skin_custom":
+                await this.applyCustomSkin(ctx, data.draft.settings);
+                data.view = EOrdrConfigView.Output;
+                break;
             case "audio":
                 this.applyAudio(ctx, data.draft.settings);
                 data.view = EOrdrConfigView.Audio;
                 break;
-
             case "cursor":
                 this.applyCursor(ctx, data.draft.settings);
                 data.view = EOrdrConfigView.Gameplay;
                 break;
-
             case "background":
                 this.applyBackground(ctx, data.draft.settings);
                 data.view = EOrdrConfigView.Background;
@@ -465,44 +504,49 @@ export class OrdrConfigModalComponent extends AbstractComponent {
         await this.persist(ctx, sessionID, data);
     }
 
-    private async applySkin(ctx: ComponentContext, settings: OrdrSettingsDto): Promise<void> {
+    private async applyOfficialSkin(ctx: ComponentContext, settings: OrdrSettingsDto): Promise<void> {
         const input = (ctx.getTextInput("skin") ?? "").trim();
 
         if (!input) {
-            throw new Exception(EApplicationError.INPUT_ERROR, "A skin name or ID is required.");
-        }
-
-        if (settings.customSkin) {
-            const id = Number(input);
-
-            if (!Number.isInteger(id) || id <= 0) {
-                throw new Exception(EApplicationError.INPUT_ERROR, "Custom skins must use a positive numeric skin ID.");
-            }
-
-            const customSkin = await this.ordrService.customSkin(id);
-
-            if (!customSkin) {
-                throw new Exception(
-                    EApplicationError.INPUT_ERROR,
-                    "That custom o!rdr skin does not exist or is unavailable.",
-                );
-            }
-
-            settings.skin = String(id);
-            return;
+            throw new Exception(EApplicationError.INPUT_ERROR, "An official skin name is required.");
         }
 
         const lookup = await this.ordrService.lookupOfficialSkin(input);
 
         if (!lookup.match) {
             const suggestions = lookup.suggestions.map((skin) => `\`${skin.presentationName}\``).join(", ");
-
             const suffix = suggestions ? ` Closest matches: ${suggestions}.` : "";
-
             throw new Exception(EApplicationError.INPUT_ERROR, `That official o!rdr skin does not exist.${suffix}`);
         }
 
+        settings.customSkin = false;
         settings.skin = lookup.match.skin;
+    }
+
+    private async applyCustomSkin(ctx: ComponentContext, settings: OrdrSettingsDto): Promise<void> {
+        const input = (ctx.getTextInput("skin") ?? "").trim();
+
+        if (!input) {
+            throw new Exception(EApplicationError.INPUT_ERROR, "A custom skin ID is required.");
+        }
+
+        const id = Number(input);
+
+        if (!Number.isInteger(id) || id <= 0) {
+            throw new Exception(EApplicationError.INPUT_ERROR, "Custom skins must use a positive numeric skin ID.");
+        }
+
+        const customSkin = await this.ordrService.customSkin(id);
+
+        if (!customSkin) {
+            throw new Exception(
+                EApplicationError.INPUT_ERROR,
+                "That custom o!rdr skin does not exist or is unavailable.",
+            );
+        }
+
+        settings.customSkin = true;
+        settings.skin = String(id);
     }
 
     private applyAudio(ctx: ComponentContext, settings: OrdrSettingsDto): void {
@@ -523,6 +567,7 @@ export class OrdrConfigModalComponent extends AbstractComponent {
 
     private number(ctx: ComponentContext, id: string, min: number, max: number): number {
         const raw = (ctx.getTextInput(id) ?? "").trim();
+
         const value = Number(raw);
 
         if (!raw || !Number.isFinite(value) || value < min || value > max) {
@@ -544,10 +589,16 @@ export class OrdrConfigModalComponent extends AbstractComponent {
 
     private async getData(ctx: ComponentContext, sessionID: string): Promise<OrdrConfigViewDto> {
         const plain = await this.sessionService.get("ordr_config_view", sessionID);
-        if (!plain) throw new Exception(EApplicationError.SESSION_EXPIRED);
+
+        if (!plain) {
+            throw new Exception(EApplicationError.SESSION_EXPIRED);
+        }
 
         const data = plainToInstance(OrdrConfigViewDto, plain);
-        if (data.authorID !== ctx.author.id) throw new Exception(EApplicationError.ACCESS_ERROR);
+
+        if (data.authorID !== ctx.author.id) {
+            throw new Exception(EApplicationError.ACCESS_ERROR);
+        }
 
         return data;
     }
@@ -563,31 +614,40 @@ class OrdrConfigModalFactory {
         const modal = new ModalBuilder().setCustomId(`ordr_config_modal:${action}:${sessionID}`);
 
         switch (action) {
-            case "skin":
-                modal.setTitle(settings.customSkin ? "Custom Render Skin" : "Official Render Skin");
+            case "skin_official":
+                modal.setTitle("Official Render Skin");
 
                 this.addInput(
                     modal,
                     "skin",
-                    settings.customSkin ? "Custom Skin ID" : "Official Skin Name or ID",
-                    settings.skin || undefined,
-                    settings.customSkin ? "1234" : "Skin name or ID",
+                    "Official Skin Name",
+                    !settings.customSkin ? settings.skin || undefined : undefined,
+                    "e.g. - a t m o s p h e r e -",
                     100,
                 );
                 break;
+            case "skin_custom":
+                modal.setTitle("Custom Render Skin");
 
+                this.addInput(
+                    modal,
+                    "skin",
+                    "Custom Skin ID",
+                    settings.customSkin ? settings.skin || undefined : undefined,
+                    "e.g. 1234",
+                    20,
+                );
+                break;
             case "audio":
                 modal.setTitle("Render Audio");
                 this.addInput(modal, "global_volume", "Global Volume", settings.globalVolume, "0-100", 3);
                 this.addInput(modal, "music_volume", "Music Volume", settings.musicVolume, "0-100", 3);
                 this.addInput(modal, "hitsound_volume", "Hitsound Volume", settings.hitsoundVolume, "0-100", 3);
                 break;
-
             case "cursor":
                 modal.setTitle("Render Cursor");
                 this.addInput(modal, "cursor_size", "Cursor Size", settings.cursorSize, "0.50-2.00", 4);
                 break;
-
             case "background":
                 modal.setTitle("Background Dimming");
                 this.addInput(modal, "intro_dim", "Intro Dim", settings.introBGDim, "0-100", 3);
@@ -614,7 +674,9 @@ class OrdrConfigModalFactory {
             .setMaxLength(maxLength)
             .setPlaceholder(placeholder);
 
-        if (value !== undefined && String(value).length) input.setValue(String(value));
+        if (value !== undefined && String(value).length) {
+            input.setValue(String(value));
+        }
 
         modal.addLabelComponents(new LabelBuilder().setLabel(label).setTextInputComponent(input));
     }
