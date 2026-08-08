@@ -36,6 +36,7 @@ export class RecentPassSubcommand extends AbstractRecentCommand {
 @Command({
     name: "recentscore",
     description: "Shows most recent play of an osu! player.",
+    prefixOnly: true,
     aliases: ["rs", "r", "recent"],
 })
 export class RecentScoreCommand extends AbstractRecentCommand {
@@ -45,6 +46,7 @@ export class RecentScoreCommand extends AbstractRecentCommand {
 @Command({
     name: "recentpass",
     description: "Shows most recent passed play of an osu! player.",
+    prefixOnly: true,
     aliases: ["rp"],
 })
 export class RecentPassCommand extends AbstractRecentCommand {
