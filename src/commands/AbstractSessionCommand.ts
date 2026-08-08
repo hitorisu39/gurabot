@@ -9,7 +9,7 @@ import { AbstractViewService } from "@/modules/AbstractViewService";
 export abstract class AbstractSessionCommand extends AbstractCommand {
     @Import() declare protected readonly sessionService: SessionService;
 
-    @Trace("respond_with_session")
+    @Trace()
     protected async respondWithSession<K extends keyof ICacheSchema, TOptions>(
         ctx: CommandContext,
         sessionType: K,

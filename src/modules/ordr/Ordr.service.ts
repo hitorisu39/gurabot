@@ -85,7 +85,7 @@ export class OrdrService extends AbstractService {
         await this.socket.connect();
     }
 
-    @Trace("ordr_preset")
+    @Trace()
     public async preset(discordID: string): Promise<OrdrPresetDto | null> {
         const response = await this.http.getResponse<OrdrPresetDto>("/ordr/presets/bot", {
             params: {
@@ -99,7 +99,7 @@ export class OrdrService extends AbstractService {
         return response.data;
     }
 
-    @Trace("ordr_custom_skin")
+    @Trace()
     public async customSkin(id: number): Promise<OrdrCustomSkinDto | null> {
         const response = await this.http.getResponse<OrdrCustomSkinDto>("/ordr/skins/custom", {
             params: { id },
@@ -114,7 +114,7 @@ export class OrdrService extends AbstractService {
         return data;
     }
 
-    @Trace("ordr_render")
+    @Trace()
     public async render(
         discordUserID: string,
         replay: OrdrReplayFileDto,
@@ -151,7 +151,7 @@ export class OrdrService extends AbstractService {
         return plainToInstance(OrdrRenderCreateDto, data);
     }
 
-    @Trace("ordr_official_skins")
+    @Trace()
     public async officialSkins(search?: string, pageSize: number = 5, page: number = 1): Promise<OrdrOfficialSkinsDto> {
         return await this.http.get<OrdrOfficialSkinsDto>("/ordr/skins", {
             params: {

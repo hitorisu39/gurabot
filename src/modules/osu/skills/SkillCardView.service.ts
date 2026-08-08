@@ -55,7 +55,7 @@ export class SkillCardViewService extends AbstractService {
         this.http = new HttpClient(this.logger, { name: "OsuSkillCard" });
     }
 
-    @Trace("osu_skill_card")
+    @Trace()
     public async build(data: SkillStatsViewDto): Promise<TMessagePayload> {
         const skillRank = this.skillRankService.calculate(data.profile.mode, data.categories);
         const image = await this.generate(data, skillRank);

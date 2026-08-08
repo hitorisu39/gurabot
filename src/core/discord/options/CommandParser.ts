@@ -1,4 +1,4 @@
-import { EOptionType, IOptionMetadata } from "@/core/decorators";
+import { EOptionType, IOptionMetadata, Trace } from "@/core/decorators";
 import { CommandContext } from "../context/CommandContext";
 import { MessageContext } from "../context/MessageContext";
 import { SlashContext } from "../context/SlashContext";
@@ -18,6 +18,7 @@ import { EApplicationError, Exception } from "@domain/core/Exception";
  * The class responsible for parsing command options.
  */
 export class CommandParser {
+    @Trace()
     public static async parseAndValidate(
         ctx: CommandContext,
         optionsMeta: Array<IOptionMetadata>,

@@ -76,7 +76,7 @@ export class OsuService extends AbstractService {
 
     //#region API
 
-    @Trace("osu_user")
+    @Trace()
     public async user(
         nameOrID: string | number,
         mode: GameMode,
@@ -131,7 +131,7 @@ export class OsuService extends AbstractService {
         return populatedUser;
     }
 
-    @Trace("osu_user_with_scores")
+    @Trace()
     public async userWithScores(data: IUserWithScoresInput): Promise<{
         user: PopulatedUser;
         scores: Array<Score>;
@@ -199,7 +199,7 @@ export class OsuService extends AbstractService {
         };
     }
 
-    @Trace("osu_best")
+    @Trace()
     public async best(
         id: number,
         mode: GameMode,
@@ -213,7 +213,7 @@ export class OsuService extends AbstractService {
         });
     }
 
-    @Trace("osu_recent")
+    @Trace()
     public async recent(
         id: number,
         mode: GameMode,
@@ -229,7 +229,7 @@ export class OsuService extends AbstractService {
         });
     }
 
-    @Trace("osu_beatmap")
+    @Trace()
     public async beatmap(
         id: number,
         provider: AdapterProvider = AdapterProvider.Bancho,
@@ -271,7 +271,7 @@ export class OsuService extends AbstractService {
         return apiData;
     }
 
-    @Trace("osu_beatmaps")
+    @Trace()
     public async beatmaps(
         ids: Array<number>,
         provider: AdapterProvider = AdapterProvider.Bancho,
@@ -338,7 +338,7 @@ export class OsuService extends AbstractService {
         return ids.map((id) => mapsByID.get(id)).filter((map): map is Beatmap => map !== undefined);
     }
 
-    @Trace("osu_beatmapset")
+    @Trace()
     public async beatmapset(
         id: number,
         provider: AdapterProvider = AdapterProvider.Bancho,
@@ -408,7 +408,7 @@ export class OsuService extends AbstractService {
         return apiData;
     }
 
-    @Trace("osu_user_beatmap_scores")
+    @Trace()
     public async userBeatmapScores(
         id: number,
         mode: GameMode,
@@ -422,7 +422,7 @@ export class OsuService extends AbstractService {
         });
     }
 
-    @Trace("osu_user_beatmap_score_context")
+    @Trace()
     public async userBeatmapScoreContext(
         id: number,
         mode: GameMode,
@@ -446,7 +446,7 @@ export class OsuService extends AbstractService {
         };
     }
 
-    @Trace("osu_beatmap_scores")
+    @Trace()
     public async beatmapScores(
         beatmapID: number,
         mode: GameMode,
@@ -462,7 +462,7 @@ export class OsuService extends AbstractService {
         });
     }
 
-    @Trace("osu_populate_maps")
+    @Trace()
     public async populateMaps(
         scores: Array<Score>,
         provider: AdapterProvider = AdapterProvider.Bancho,
@@ -488,7 +488,7 @@ export class OsuService extends AbstractService {
         return plainToInstance(ScoreWithMaps, populated);
     }
 
-    @Trace("osu_populate_calculations")
+    @Trace()
     public async populateCalculations<M extends GameMode>(
         scores: Array<ScoreWithMaps>,
         mode: M,
@@ -497,7 +497,7 @@ export class OsuService extends AbstractService {
         return await this.calculatorService.scores(scores, mode, includeFC);
     }
 
-    @Trace("osu_populate_all")
+    @Trace()
     public async populateAll<M extends GameMode>(
         scores: Array<Score>,
         mode: M,
@@ -509,7 +509,7 @@ export class OsuService extends AbstractService {
         return populated;
     }
 
-    @Trace("osu_populate_score_placements")
+    @Trace()
     public async populateScorePlacements<T extends Score>(
         data: IPopulateScorePlacementsInput<T>,
     ): Promise<Array<T & ScoreWithPlacement>> {
@@ -536,7 +536,7 @@ export class OsuService extends AbstractService {
         return new ScorePlacementEvaluator(data.beatmap, personalScores, globalScores).evaluate(data.scores);
     }
 
-    @Trace("osu_resolve_cached_id")
+    @Trace()
     public async resolveCachedID(nameOrID: string | number, provider: AdapterProvider): Promise<number | null> {
         if (typeof nameOrID === "number") {
             return nameOrID;
@@ -678,7 +678,7 @@ export class OsuService extends AbstractService {
         }
     }
 
-    @Trace("osu_upsert_beatmapset")
+    @Trace()
     private async upsertBeatmapset(data: Beatmapset, repository?: TRepository): Promise<void> {
         const { covers, ...rest } = data;
 
@@ -714,7 +714,7 @@ export class OsuService extends AbstractService {
         return repository ? cb(repository) : this.repository.$transaction(cb);
     }
 
-    @Trace("osu_upsert_beatmaps")
+    @Trace()
     private async upsertBeatmaps(maps: Array<Beatmap>): Promise<void> {
         if (maps.length === 0) {
             return;
@@ -799,7 +799,7 @@ export class OsuService extends AbstractService {
         });
     }
 
-    @Trace("osu_upsert_beatmap")
+    @Trace()
     private async upsertBeatmap(data: Beatmap, repository?: TRepository): Promise<void> {
         const { beatmapset, owners, ...rest } = data;
 
@@ -841,7 +841,7 @@ export class OsuService extends AbstractService {
         return repository ? cb(repository) : this.repository.$transaction(cb);
     }
 
-    @Trace("osu_fetch_scores_by_type")
+    @Trace()
     private async fetchScoresByType(
         id: number,
         mode: GameMode,
