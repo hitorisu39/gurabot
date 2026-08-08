@@ -1,6 +1,6 @@
-import { ChannelType, InteractionReplyOptions, Message, MessagePayload, MessageReplyOptions } from "discord.js";
-
-import { CommandContext, TMessagePayload } from "./CommandContext";
+import { Message } from "discord.js";
+import { CommandContext, type TMessagePayload } from "./CommandContext";
+import { Trace } from "@/core/decorators";
 
 export class MessageContext extends CommandContext {
     public readonly isSlash = false;
@@ -43,6 +43,7 @@ export class MessageContext extends CommandContext {
         this.isDeferred = true;
     }
 
+    @Trace()
     public async respond(options: TMessagePayload): Promise<Message | null> {
         const payload = this.normalizePayload(options);
 
@@ -68,6 +69,7 @@ export class MessageContext extends CommandContext {
         return "https://discord.com";
     }
 
+    @Trace()
     public async reply(options: TMessagePayload): Promise<Message> {
         const payload = this.normalizePayload(options);
 
@@ -77,6 +79,7 @@ export class MessageContext extends CommandContext {
         return this.responseMessage;
     }
 
+    @Trace()
     public async followUp(options: TMessagePayload): Promise<Message | null> {
         const payload = this.normalizePayload(options);
         if (this.channel.isSendable()) return await this.channel.send(payload);

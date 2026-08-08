@@ -1,12 +1,7 @@
-import {
-    ChatInputCommandInteraction,
-    InteractionReplyOptions,
-    InteractionResponse,
-    Message,
-    MessageFlags,
-} from "discord.js";
+import { ChatInputCommandInteraction, InteractionResponse, Message, MessageFlags } from "discord.js";
 
-import { CommandContext, TMessagePayload } from "./CommandContext";
+import { CommandContext, type TMessagePayload } from "./CommandContext";
+import { Trace } from "@/core/decorators";
 
 export class SlashContext extends CommandContext {
     public readonly isSlash = true;
@@ -41,6 +36,7 @@ export class SlashContext extends CommandContext {
         return this.interaction.options.getSubcommand(false);
     }
 
+    @Trace()
     public async defer(ephemeral?: boolean): Promise<void> {
         if (this.isDeferred) return;
         await this.interaction.deferReply({ flags: ephemeral ? MessageFlags.Ephemeral : undefined });
@@ -63,6 +59,7 @@ export class SlashContext extends CommandContext {
         return "https://discord.com";
     }
 
+    @Trace()
     public async reply(options: TMessagePayload): Promise<Message | InteractionResponse> {
         const payload = this.normalizePayload(options);
         const fetchReply = payload.fetch ?? false;
@@ -75,6 +72,7 @@ export class SlashContext extends CommandContext {
         return response;
     }
 
+    @Trace()
     public async followUp(options: TMessagePayload): Promise<Message | InteractionResponse | null> {
         const payload = this.normalizePayload(options);
 

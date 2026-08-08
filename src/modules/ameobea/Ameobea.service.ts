@@ -17,7 +17,7 @@ export class AmeobeaService extends AbstractService {
         this.http = new HttpClient(this.logger, { name: this.name, baseURL: this.base });
     }
 
-    @Trace("ameobea_peak")
+    @Trace()
     public async peak(userID: number, mode: GameMode, provider: AdapterProvider): Promise<AmeobeaPeakDto> {
         if (provider !== AdapterProvider.Bancho) throw new Exception(EApplicationError.INTERNAL_ERROR);
 

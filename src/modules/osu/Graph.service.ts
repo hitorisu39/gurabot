@@ -41,7 +41,7 @@ export class GraphService extends AbstractService {
         });
     }
 
-    @Trace("osu_graph_strains")
+    @Trace()
     public async strains<M extends GameMode>(
         rawStrains: Array<ISkillStrain<M>>,
         mode: M,

@@ -20,13 +20,13 @@ export class OsuDailyService extends AbstractService {
         });
     }
 
-    @Trace("osudaily_rank_by_pp")
+    @Trace()
     public async rankByPP(pp: number, mode: GameMode, provider: AdapterProvider): Promise<number> {
         const rank = await this.lookup("pp", pp, mode, provider);
         return rank;
     }
 
-    @Trace("osudaily_pp_by_rank")
+    @Trace()
     public async ppByRank(rank: number, mode: GameMode, provider: AdapterProvider): Promise<number> {
         const pp = await this.lookup("rank", rank, mode, provider);
         return pp;

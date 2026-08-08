@@ -350,7 +350,7 @@ export function Modal(customID: string | RegExp): ClassDecorator {
 export function Trace(stepName?: string) {
     return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
         const originalMethod = descriptor.value;
-        const name = stepName || propertyKey;
+        const name = stepName ?? `${target.constructor.name}.${propertyKey}`;
 
         descriptor.value = function (...args: any[]) {
             const profiler = ProfilerStorage.getStore();
