@@ -1,8 +1,10 @@
-import { Command } from "@/core/decorators";
+import { Category, Command } from "@/core/decorators";
 import { AbstractCommand } from "@/core/discord/AbstractCommand";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { Embed } from "@/core/discord/ui/Embed";
+import { ECommandCategory } from "@domain/core/Command";
 
+@Category(ECommandCategory.General)
 @Command({
     name: "invite",
     description: "Sends an invite link to invite the bot to your server with support server invite link.",

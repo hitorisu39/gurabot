@@ -1,4 +1,4 @@
-import { Import } from "@/core/decorators";
+import { Category, Import } from "@/core/decorators";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { SkillStatsViewDto } from "@domain/osu/views/SkillStats.view";
@@ -6,7 +6,9 @@ import { ProviderMeta } from "@generated/adapter";
 import { OsuService } from "@/modules/osu/Osu.service";
 import { SkillCalculatorService } from "@/modules/osu/skills/SkillCalculator.service";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
+import { ECommandCategory } from "@domain/core/Command";
 
+@Category(ECommandCategory.Osu)
 export abstract class AbstractSkillCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
     @Import() declare private readonly skillCalculatorService: SkillCalculatorService;

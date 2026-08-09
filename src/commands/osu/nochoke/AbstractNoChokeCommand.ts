@@ -1,10 +1,10 @@
-import { Aliases, Examples, Help, Import, IsInteger, Option } from "@/core/decorators";
+import { Aliases, Category, Examples, Help, Import, IsInteger, Option } from "@/core/decorators";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { Embed } from "@/core/discord/ui/Embed";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
 import { OsuService } from "@/modules/osu/Osu.service";
 import { NoChokeViewService } from "@/modules/osu/nochoke/NoChokeView.service";
-import { CommandOption } from "@domain/core/Command";
+import { CommandOption, ECommandCategory } from "@domain/core/Command";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { NoChokeProjectionDto, NoChokeScore } from "@domain/osu/NoChoke.dto";
 import { PopulatedScore } from "@domain/osu/Score.dto";
@@ -26,6 +26,7 @@ import { plainToInstance } from "class-transformer";
     For example, \`miss=2\` only unchokes scores containing two or fewer misses.
 `)
 @Examples("nochoke", "nochoke mrekk", "nochoke mrekk miss=2", "nochoke miss=1")
+@Category(ECommandCategory.Osu)
 export abstract class AbstractNoChokeCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
     @Import() declare private readonly noChokeViewService: NoChokeViewService;

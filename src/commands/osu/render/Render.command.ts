@@ -1,11 +1,11 @@
 import { AbstractSessionCommand } from "@/commands/AbstractSessionCommand";
 import { CommandContext } from "@/core/discord/context/CommandContext";
-import { Command, Import, IsAttachment, NoUserInstall, Option, Required } from "@/core/decorators";
+import { Category, Command, Import, IsAttachment, NoUserInstall, Option, Required } from "@/core/decorators";
 import { OrdrService } from "@/modules/ordr/Ordr.service";
 import { OrdrConfigService } from "@/modules/ordr/OrdrConfig.service";
 import { IRecentOrdrSkin, OrdrRenderService } from "@/modules/ordr/OrdrRender.service";
 import { OrdrRenderViewService } from "@/modules/ordr/OrdrRenderView.service";
-import { CommandOption } from "@domain/core/Command";
+import { CommandOption, ECommandCategory } from "@domain/core/Command";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { OrdrReplayFileDto } from "@domain/ordr/Ordr.dto";
 import { EOrdrConfigSource, OrdrConfigDto } from "@domain/ordr/OrdrConfig.dto";
@@ -13,6 +13,7 @@ import { EOrdrRenderStage, OrdrRenderViewDto, OrdrSkinChoiceDto } from "@domain/
 import { Attachment } from "discord.js";
 import { plainToInstance } from "class-transformer";
 
+@Category(ECommandCategory.Osu)
 @Command({
     name: "render",
     description: "Renders an osu! replay using o!rdr.",

@@ -1,7 +1,8 @@
-import { Command, Subcommand } from "@/core/decorators";
+import { Category, Command, Subcommand } from "@/core/decorators";
 import { AbstractTopCommand } from "../top/AbstractTopCommand";
 import { EScoreQuerySort } from "@domain/osu/enums/Score.enum";
 import { GameMode } from "@generated/adapter/types";
+import { ECommandCategory } from "@domain/core/Command";
 
 // Slash
 @Subcommand({
@@ -25,39 +26,42 @@ export class RecentBestCommand extends AbstractTopCommand {
 
 // Taiko
 
+@Category(ECommandCategory.Taiko)
 @Command({
-    name: "recentbesttaiko",
+    name: "taikorecentbest",
     description: "Shows an osu!taiko player's top plays sorted by most recently achieved.",
     prefixOnly: true,
-    aliases: ["recenttaikobest", "rbt", "trb"],
+    aliases: ["recenttaikobest", "rbt", "trb", "recentbesttaiko"],
 })
-export class RecentBestTaikoCommand extends AbstractTopCommand {
+export class TaikoRecentBestCommand extends AbstractTopCommand {
     protected forcedMode = GameMode.Taiko;
     protected forcedSort = EScoreQuerySort.Date;
 }
 
 // Catch
 
+@Category(ECommandCategory.Catch)
 @Command({
-    name: "recentbestcatch",
+    name: "catchrecentbest",
     description: "Shows an osu!catch player's top plays sorted by most recently achieved.",
     prefixOnly: true,
-    aliases: ["recentcatchbest", "rbc", "crb"],
+    aliases: ["recentcatchbest", "rbc", "crb", "recentbestcatch"],
 })
-export class RecentBestCatchCommand extends AbstractTopCommand {
+export class CatchRecentBestCommand extends AbstractTopCommand {
     protected forcedMode = GameMode.Catch;
     protected forcedSort = EScoreQuerySort.Date;
 }
 
 // Mania
 
+@Category(ECommandCategory.Mania)
 @Command({
-    name: "recentbestmania",
+    name: "maniarecentbest",
     description: "Shows an osu!mania player's top plays sorted by most recently achieved.",
     prefixOnly: true,
-    aliases: ["recentmaniabest", "rbm", "mrb"],
+    aliases: ["recentmaniabest", "rbm", "mrb", "recentbestmania"],
 })
-export class RecentBestManiaCommand extends AbstractTopCommand {
+export class ManiaRecentBestCommand extends AbstractTopCommand {
     protected forcedMode = GameMode.Mania;
     protected forcedSort = EScoreQuerySort.Date;
 }

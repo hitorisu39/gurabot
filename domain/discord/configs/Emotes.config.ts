@@ -79,6 +79,9 @@ export const modeEmoteKeys: Record<GameMode, string> = {
     [GameMode.Mania]: "mania",
 };
 
+export const discordEmoteGurabot = "<:gurabot:1536113796139982980>";
+export const discordEmoteGurabotUrl = "https://cdn.discordapp.com/emojis/1536113796139982980.webp?size=96";
+
 export const discordEmoteMiss = "<:miss:1066017215398297670>";
 export const discordEmoteTwitch = "<:twitch:1107316073642074202>";
 export const discordEmoteProcessing = "<:still_processing:1205488634040422441>";

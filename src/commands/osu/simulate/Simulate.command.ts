@@ -1,10 +1,22 @@
 import { AbstractSessionCommand } from "@/commands/AbstractSessionCommand";
 import { CommandContext } from "@/core/discord/context/CommandContext";
-import { Aliases, Command, Examples, Help, Import, Inject, IsMods, IsQuery, IsString, Option } from "@/core/decorators";
+import {
+    Aliases,
+    Category,
+    Command,
+    Examples,
+    Help,
+    Import,
+    Inject,
+    IsMods,
+    IsQuery,
+    IsString,
+    Option,
+} from "@/core/decorators";
 import { BeatmapResolverService } from "@/modules/osu/BeatmapResolver.service";
 import { OsuService } from "@/modules/osu/Osu.service";
 import { SimulateViewService } from "@/modules/osu/simulate/SimulateView.service";
-import { CommandOption, ICommandMods, ICommandQueryData } from "@domain/core/Command";
+import { CommandOption, ECommandCategory, ICommandMods, ICommandQueryData } from "@domain/core/Command";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { ESimulateScoringMode } from "@domain/osu/enums/Simulate.enum";
 import { SimulateViewDto } from "@domain/osu/views/Simulate.view";
@@ -50,6 +62,7 @@ import { BeatmapUtils } from "@domain/osu/utils/BeatmapUtils";
     "simulate stable=true score=987654",
     "simulate 4x100 1m",
 )
+@Category(ECommandCategory.Osu)
 @Command({
     name: "simulate",
     description: "Simulates a score on a beatmap.",
