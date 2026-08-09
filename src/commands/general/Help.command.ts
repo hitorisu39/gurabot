@@ -1,7 +1,7 @@
-import { Command, Help, Examples, Import, Inject, IsString, Option } from "@/core/decorators";
+import { Command, Help, Examples, Import, Inject, IsString, Option, Category } from "@/core/decorators";
 import { AbstractCommand } from "@/core/discord/AbstractCommand";
 import { CommandContext } from "@/core/discord/context/CommandContext";
-import { CommandOption } from "@domain/core/Command";
+import { CommandOption, ECommandCategory } from "@domain/core/Command";
 import { Embed } from "@/core/discord/ui/Embed";
 import { GuildService } from "@/modules/guild/Guild.service";
 import {
@@ -14,6 +14,7 @@ import {
 import { ICommandOptions, ISubcommandOptions } from "@/core/decorators";
 import { levenshtein } from "@domain/utils";
 
+@Category(ECommandCategory.General)
 @Command({
     name: "help",
     description: "Shows help for commands.",

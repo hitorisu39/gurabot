@@ -8,6 +8,7 @@ import {
 
 import {
     METAKEY_BOT_PERMISSIONS,
+    METAKEY_COMMAND_CATEGORY,
     METAKEY_COMMAND_OPTIONS,
     METAKEY_COMMAND_PROPERTIES,
     METAKEY_GUILD_ONLY,
@@ -16,6 +17,7 @@ import {
     METAKEY_SUBCOMMAND_OPTIONS,
     METAKEY_USER_PERMISSIONS,
 } from "../metakeys";
+
 import { TDispatcher, TLogger, TMetrics } from "../types";
 import { AbstractCommand } from "./AbstractCommand";
 import { CommandContext } from "./context/CommandContext";
@@ -25,16 +27,31 @@ import { EApplicationError, Exception } from "@domain/core/Exception";
 import { AbstractMiddleware } from "./middleware/AbstractMiddleware";
 import { Embed } from "./ui/Embed";
 import { InteractionProfiler, ProfilerStorage } from "../profiler";
+import { ECommandCategory } from "@domain/core/Command";
 
 export class CommandRouter {
     /**
-     * Slash Command routing.
+     * Command registry.
+     *
+     * These contain every registered command regardless of whether
+     * the command is available through slash commands, prefix commands,
+     * or both.
+     */
+    private readonly rootCommands = new Map<string, AbstractCommand>();
+    private readonly subcommands = new Map<string, AbstractCommand>();
+
+    /**
+     * Slash command routing.
+     *
+     * Derived from the command registry.
      */
     private readonly slashRootCommands = new Map<string, AbstractCommand>();
     private readonly slashSubcommands = new Map<string, AbstractCommand>();
 
     /**
-     * Prefix Command routing.
+     * Prefix command routing.
+     *
+     * Derived from the command registry.
      */
     private readonly prefixCommands = new Map<string, AbstractCommand>();
 
@@ -42,7 +59,11 @@ export class CommandRouter {
      * Middleware that is called before command execution.
      * May interrupt execution or inject data into the command context.
      */
-    private readonly middlewares: Array<{ instance: AbstractMiddleware; priority: number }> = [];
+    private readonly middlewares: Array<{
+        instance: AbstractMiddleware;
+        priority: number;
+    }> = [];
+
     private readonly middlewareDefaultPriority = 50;
 
     constructor(
@@ -50,89 +71,281 @@ export class CommandRouter {
         private readonly dispatcher: TDispatcher,
         private readonly metrics: TMetrics,
     ) {
-        this.logger = this.logger.child({ name: "CommandRouter" });
+        this.logger = this.logger.child({
+            name: "CommandRouter",
+        });
+
         this.dispatcher.on("discord", "command", this.handleCommand.bind(this));
     }
 
+    //#region Registration
+
     public register(command: AbstractCommand): void {
-        const commandOptions: ICommandOptions = Reflect.getMetadata(METAKEY_COMMAND_OPTIONS, command.constructor);
-        const subcommandOptions: ISubcommandOptions = Reflect.getMetadata(
+        const commandOptions: ICommandOptions | undefined = Reflect.getMetadata(
+            METAKEY_COMMAND_OPTIONS,
+            command.constructor,
+        );
+
+        const subcommandOptions: ISubcommandOptions | undefined = Reflect.getMetadata(
             METAKEY_SUBCOMMAND_OPTIONS,
             command.constructor,
         );
 
-        const userInstallable = this.isCommandUserInstallable(command);
-        if (subcommandOptions && !userInstallable) {
+        if (subcommandOptions) {
+            this.registerSubcommand(command, subcommandOptions);
+        } else if (commandOptions) {
+            this.registerRootCommand(command, commandOptions);
+        } else {
+            this.logger.warn(`Tried to register a command ${command.constructor} without metadata.`);
+
+            return;
+        }
+
+        this.rebuildRoutes();
+    }
+
+    private registerRootCommand(command: AbstractCommand, options: ICommandOptions): void {
+        if (options.prefixOnly && options.slashOnly) {
             throw new Exception(
                 EApplicationError.INTERNAL_ERROR,
-                `@NoUserInstall() cannot be applied to subcommand '${subcommandOptions.root}:${subcommandOptions.name}'. Discord installation types are configured on the root command.`,
+                `Command '${options.name}' cannot be both prefix-only and slash-only.`,
             );
         }
 
-        if (subcommandOptions) {
-            const key = subcommandOptions.group
-                ? `${subcommandOptions.root}:${subcommandOptions.group}:${subcommandOptions.name}`
-                : `${subcommandOptions.root}:${subcommandOptions.name}`;
+        const name = options.name.toLowerCase();
+        this.rootCommands.set(name, command);
+        this.logger.debug(`Registered root command: ${options.name}`);
+    }
 
-            this.slashSubcommands.set(key.toLowerCase(), command);
+    private registerSubcommand(command: AbstractCommand, options: ISubcommandOptions): void {
+        if (!this.isCommandUserInstallable(command)) {
+            throw new Exception(
+                EApplicationError.INTERNAL_ERROR,
+                `@NoUserInstall() cannot be applied to subcommand '${options.root}:${options.name}'. Discord installation types are configured on the root command.`,
+            );
+        }
 
-            const prefixName =
-                `${subcommandOptions.root}${subcommandOptions.group || ""}${subcommandOptions.name}`.toLowerCase();
-            this.prefixCommands.set(prefixName, command);
+        const key = this.getSubcommandKey(options);
+        this.subcommands.set(key, command);
+        this.logger.debug(`Registered subcommand: ${key}`);
+    }
 
-            subcommandOptions.aliases?.forEach((alias) => this.prefixCommands.set(alias.toLowerCase(), command));
+    /**
+     * Rebuilds all transport-specific routing maps from the command registry.
+     */
+    private rebuildRoutes(): void {
+        this.slashRootCommands.clear();
+        this.slashSubcommands.clear();
+        this.prefixCommands.clear();
 
-            this.logger.debug(`Registered subcommand: ${key}`);
-        } else if (commandOptions) {
-            if (commandOptions.prefixOnly && commandOptions.slashOnly) {
-                throw new Exception(
-                    EApplicationError.INTERNAL_ERROR,
-                    `Command '${commandOptions.name}' cannot be both prefix-only and slash-only.`,
-                );
+        this.buildRootRoutes();
+        this.buildSubcommandRoutes();
+    }
+
+    private buildRootRoutes(): void {
+        for (const [name, command] of this.rootCommands) {
+            const options: ICommandOptions | undefined = Reflect.getMetadata(
+                METAKEY_COMMAND_OPTIONS,
+                command.constructor,
+            );
+
+            if (!options) {
+                continue;
             }
 
-            if (!commandOptions.prefixOnly) {
-                this.slashRootCommands.set(commandOptions.name.toLowerCase(), command);
+            if (!options.prefixOnly) {
+                this.slashRootCommands.set(name, command);
             }
 
-            if (!commandOptions.slashOnly) {
-                this.prefixCommands.set(commandOptions.name.toLowerCase(), command);
+            if (!options.slashOnly) {
+                this.prefixCommands.set(name, command);
 
-                commandOptions.aliases?.forEach((alias) => {
+                options.aliases?.forEach((alias) => {
                     this.prefixCommands.set(alias.toLowerCase(), command);
                 });
             }
-
-            this.logger.debug(`Registered root command: ${commandOptions.name}`);
-        } else {
-            this.logger.warn(`Tried to register a command ${command.constructor} without metadata.`);
         }
     }
+
+    private buildSubcommandRoutes(): void {
+        for (const [key, command] of this.subcommands) {
+            const options: ISubcommandOptions | undefined = Reflect.getMetadata(
+                METAKEY_SUBCOMMAND_OPTIONS,
+                command.constructor,
+            );
+
+            if (!options) {
+                continue;
+            }
+
+            /**
+             * The root may not have been registered yet due to init order.
+             */
+            const rootCommand = this.rootCommands.get(options.root.toLowerCase());
+            if (!rootCommand) {
+                continue;
+            }
+
+            const rootOptions: ICommandOptions | undefined = Reflect.getMetadata(
+                METAKEY_COMMAND_OPTIONS,
+                rootCommand.constructor,
+            );
+
+            if (!rootOptions) {
+                continue;
+            }
+
+            if (rootOptions.slashOnly && options.prefixOnly) {
+                throw new Exception(
+                    EApplicationError.INTERNAL_ERROR,
+                    `Subcommand '${key}' cannot be prefix-only because root command '${rootOptions.name}' is slash-only.`,
+                );
+            }
+
+            if (!rootOptions.prefixOnly && !options.prefixOnly) {
+                this.slashSubcommands.set(key, command);
+            }
+
+            if (!rootOptions.slashOnly) {
+                const prefixName = `${options.root}${options.group ?? ""}${options.name}`.toLowerCase();
+                this.prefixCommands.set(prefixName, command);
+
+                options.aliases?.forEach((alias) => {
+                    this.prefixCommands.set(alias.toLowerCase(), command);
+                });
+            }
+        }
+    }
+
+    private getSubcommandKey(options: ISubcommandOptions): string {
+        return (
+            options.group ? `${options.root}:${options.group}:${options.name}` : `${options.root}:${options.name}`
+        ).toLowerCase();
+    }
+
+    /**
+     * Validates relationships that cannot safely be validated while
+     * commands are still being registered.
+     *
+     * This should be called only once registration is expected to be
+     * complete.
+     */
+    private validateCommandGraph(): void {
+        for (const [key, command] of this.subcommands) {
+            const options: ISubcommandOptions | undefined = Reflect.getMetadata(
+                METAKEY_SUBCOMMAND_OPTIONS,
+                command.constructor,
+            );
+
+            if (!options) {
+                continue;
+            }
+
+            const rootCommand = this.rootCommands.get(options.root.toLowerCase());
+
+            if (!rootCommand) {
+                throw new Exception(
+                    EApplicationError.INTERNAL_ERROR,
+                    `Subcommand '${key}' references missing root command '${options.root}'.`,
+                );
+            }
+
+            const rootOptions: ICommandOptions | undefined = Reflect.getMetadata(
+                METAKEY_COMMAND_OPTIONS,
+                rootCommand.constructor,
+            );
+
+            if (!rootOptions) {
+                throw new Exception(
+                    EApplicationError.INTERNAL_ERROR,
+                    `Root command '${options.root}' has no command metadata.`,
+                );
+            }
+
+            if (rootOptions.slashOnly && options.prefixOnly) {
+                throw new Exception(
+                    EApplicationError.INTERNAL_ERROR,
+                    `Subcommand '${key}' cannot be prefix-only because root command '${rootOptions.name}' is slash-only.`,
+                );
+            }
+        }
+    }
+
+    //#endregion
+
+    //#region Metadata
 
     public isCommandUserInstallable(command: AbstractCommand): boolean {
         return Reflect.getMetadata(METAKEY_NO_USER_INSTALL, command.constructor) !== true;
     }
 
+    public getCommandOptions(command: AbstractCommand): ICommandOptions | ISubcommandOptions | undefined {
+        return (
+            Reflect.getMetadata(METAKEY_SUBCOMMAND_OPTIONS, command.constructor) ||
+            Reflect.getMetadata(METAKEY_COMMAND_OPTIONS, command.constructor)
+        );
+    }
+
+    public getCommandProperties(command: AbstractCommand): Array<IOptionMetadata> {
+        return Reflect.getMetadata(METAKEY_COMMAND_PROPERTIES, command.constructor.prototype) || [];
+    }
+
+    public getCommandCategory(command: AbstractCommand): ECommandCategory {
+        return Reflect.getMetadata(METAKEY_COMMAND_CATEGORY, command.constructor) ?? ECommandCategory.General;
+    }
+
+    public isCommandGuildOnly(command: AbstractCommand): boolean {
+        return Reflect.getMetadata(METAKEY_GUILD_ONLY, command.constructor) || false;
+    }
+
+    public getCommandUserPermissions(command: AbstractCommand): Array<PermissionResolvable> {
+        return Reflect.getMetadata(METAKEY_USER_PERMISSIONS, command.constructor) || [];
+    }
+
+    public getCommandBotPermissions(command: AbstractCommand): Array<PermissionResolvable> {
+        return Reflect.getMetadata(METAKEY_BOT_PERMISSIONS, command.constructor) || [];
+    }
+
+    //#endregion
+
+    //#region Middleware
+
     public registerMiddleware(middleware: AbstractMiddleware): void {
         const options: IMiddlewareOptions =
             Reflect.getMetadata(METAKEY_MIDDLEWARE_OPTIONS, middleware.constructor) || {};
+
         const priority = options.priority ?? this.middlewareDefaultPriority;
 
-        this.middlewares.push({ instance: middleware, priority });
-        this.middlewares.sort((a, b) => a.priority - b.priority);
+        this.middlewares.push({
+            instance: middleware,
+            priority,
+        });
 
+        this.middlewares.sort((a, b) => a.priority - b.priority);
         this.logger.debug(`Registered middleware: ${middleware.constructor.name} (Priority: ${priority})`);
     }
 
+    //#endregion
+
+    //#region Discord application commands
+
     public getApplicationCommandData(): Array<ApplicationCommandDataResolvable> {
+        /*
+         * By the time Discord application command data is generated,
+         * registration is expected to be complete.
+         */
+        this.validateCommandGraph();
+
         const payload = new Map<string, any>();
 
         for (const [name, command] of this.slashRootCommands.entries()) {
             const options: ICommandOptions = Reflect.getMetadata(METAKEY_COMMAND_OPTIONS, command.constructor);
+
             const properties: Array<IOptionMetadata> =
                 Reflect.getMetadata(METAKEY_COMMAND_PROPERTIES, command.constructor.prototype) || [];
 
             const userInstallable = this.isCommandUserInstallable(command);
+
             const guildOnly = this.isCommandGuildOnly(command);
 
             payload.set(name, {
@@ -157,15 +370,20 @@ export class CommandRouter {
                 METAKEY_SUBCOMMAND_OPTIONS,
                 command.constructor,
             );
+
             const subcommandProperties: Array<IOptionMetadata> =
                 Reflect.getMetadata(METAKEY_COMMAND_PROPERTIES, command.constructor.prototype) || [];
 
             const rootPayload = payload.get(subcommandOptions.root.toLowerCase());
+
+            /**
+             * This exception is unreachable, in theory.
+             */
             if (!rootPayload) {
-                this.logger.warn(
-                    `Subcommand '${subcommandOptions.name}' registered for missing root command '${subcommandOptions.root}'.`,
+                throw new Exception(
+                    EApplicationError.INTERNAL_ERROR,
+                    `Slash subcommand '${key}' has no slash-capable root command '${subcommandOptions.root}'.`,
                 );
-                continue;
             }
 
             const data = {
@@ -177,9 +395,11 @@ export class CommandRouter {
 
             if (subcommandOptions.group) {
                 let group = rootPayload.options.find(
-                    (o: any) =>
-                        o.name === subcommandOptions.group && o.type === ApplicationCommandOptionType.SubcommandGroup,
+                    (option: any) =>
+                        option.name === subcommandOptions.group &&
+                        option.type === ApplicationCommandOptionType.SubcommandGroup,
                 );
+
                 if (!group) {
                     group = {
                         type: ApplicationCommandOptionType.SubcommandGroup,
@@ -187,6 +407,7 @@ export class CommandRouter {
                         description: `Group ${subcommandOptions.group}`,
                         options: [],
                     };
+
                     rootPayload.options.push(group);
                 }
 
@@ -198,6 +419,10 @@ export class CommandRouter {
 
         return Array.from(payload.values());
     }
+
+    //#endregion
+
+    //#region Command lookup
 
     public getCommand(name: string): AbstractCommand | undefined {
         const lower = name.toLowerCase().trim();
@@ -212,19 +437,34 @@ export class CommandRouter {
 
     public getAllCommandNames(): Array<string> {
         const names = new Set<string>();
-        for (const key of this.prefixCommands.keys()) names.add(key);
-        for (const key of this.slashRootCommands.keys()) names.add(key);
+
+        for (const key of this.prefixCommands.keys()) {
+            names.add(key);
+        }
+
+        for (const key of this.slashRootCommands.keys()) {
+            names.add(key);
+        }
+
         for (const key of this.slashSubcommands.keys()) {
             names.add(key.replace(/:/g, " "));
         }
+
         return Array.from(names);
     }
 
-    public getPrefixCommandEntries(): Array<{ name: string; command: AbstractCommand }> {
+    public getPrefixCommandEntries(category?: ECommandCategory): Array<{
+        name: string;
+        command: AbstractCommand;
+    }> {
         return Array.from(this.prefixCommands.entries())
             .filter(([name, command]) => {
                 const aliases = this.getCommandOptions(command)?.aliases ?? [];
+
                 return !aliases.some((alias) => alias.toLowerCase() === name);
+            })
+            .filter(([, command]) => {
+                return category === undefined || this.getCommandCategory(command) === category;
             })
             .map(([name, command]) => ({
                 name,
@@ -232,86 +472,85 @@ export class CommandRouter {
             }));
     }
 
-    public getCommandOptions(command: AbstractCommand): ICommandOptions | ISubcommandOptions | undefined {
-        const options: ICommandOptions | ISubcommandOptions | undefined =
-            Reflect.getMetadata(METAKEY_SUBCOMMAND_OPTIONS, command.constructor) ||
-            Reflect.getMetadata(METAKEY_COMMAND_OPTIONS, command.constructor);
+    //#endregion
 
-        return options;
-    }
-
-    public getCommandProperties(command: AbstractCommand): Array<IOptionMetadata> {
-        return Reflect.getMetadata(METAKEY_COMMAND_PROPERTIES, command.constructor.prototype) || [];
-    }
-
-    public isCommandGuildOnly(command: AbstractCommand): boolean {
-        return Reflect.getMetadata(METAKEY_GUILD_ONLY, command.constructor) || false;
-    }
-
-    public getCommandUserPermissions(command: AbstractCommand): Array<PermissionResolvable> {
-        return Reflect.getMetadata(METAKEY_USER_PERMISSIONS, command.constructor) || [];
-    }
-
-    public getCommandBotPermissions(command: AbstractCommand): Array<PermissionResolvable> {
-        return Reflect.getMetadata(METAKEY_BOT_PERMISSIONS, command.constructor) || [];
-    }
+    //#region Execution
 
     private async handleCommand(ctx: CommandContext): Promise<void> {
         let targetCommand: AbstractCommand | undefined;
+
         let targetCommandName: string;
 
-        // Resolve command
+        /*
+         * Resolve command.
+         */
         if (ctx.isSlash) {
             const commandName = ctx.commandName.toLowerCase();
+
             const groupName = ctx.getSubcommandGroup();
+
             const subName = ctx.getSubcommand();
 
             if (groupName && subName) {
                 targetCommandName = `${commandName}:${groupName}:${subName}`;
+
                 targetCommand = this.slashSubcommands.get(targetCommandName);
             } else if (subName) {
                 targetCommandName = `${commandName}:${subName}`;
+
                 targetCommand = this.slashSubcommands.get(targetCommandName);
             }
 
             if (!targetCommand) {
                 targetCommandName = commandName;
+
                 targetCommand = this.slashRootCommands.get(targetCommandName);
             }
         } else {
             targetCommandName = ctx.commandName.toLowerCase();
+
             targetCommand = this.prefixCommands.get(targetCommandName);
 
-            // Support index input as part of the command name.
+            /*
+             * Support index input as part of the command name.
+             */
             if (!targetCommand) {
                 const match = targetCommandName.match(/^([a-z0-9_-]+?)(\d+)$/i);
+
                 if (match) {
                     const baseCommand = match[1]!;
+
                     const inlineIndex = parseInt(match[2]!, 10);
 
                     targetCommand = this.prefixCommands.get(baseCommand);
+
                     if (targetCommand) {
                         targetCommandName = baseCommand;
+
                         ctx.state.inlineIndex = inlineIndex;
                     }
                 }
             }
         }
 
-        if (!targetCommand) return;
+        if (!targetCommand) {
+            return;
+        }
 
         const options = this.getCommandOptions(targetCommand);
-        if (!options) return;
+        if (!options) {
+            return;
+        }
 
         const guildOnly = this.isCommandGuildOnly(targetCommand);
         const userPermissions = this.getCommandUserPermissions(targetCommand);
         const botPermissions = this.getCommandBotPermissions(targetCommand);
 
         ctx.metadata = {
-            options: options,
-            guildOnly: guildOnly,
-            userPermissions: userPermissions,
-            botPermissions: botPermissions,
+            options,
+            guildOnly,
+            userPermissions,
+            botPermissions,
         };
 
         const executeChain = async (index: number): Promise<void> => {
@@ -330,25 +569,38 @@ export class CommandRouter {
                 .labels(targetCommandName, "success", commandType)
                 .startTimer();
 
-            this.logger.debug({ user: ctx.author.id, guild: ctx.guild?.id }, `Executing command "${ctx.commandName}"`);
+            this.logger.debug(
+                {
+                    user: ctx.author.id,
+                    guild: ctx.guild?.id,
+                },
+                `Executing command "${ctx.commandName}"`,
+            );
 
             try {
                 await executeChain(0);
+
                 const stats = profiler.end();
                 startTimer();
 
                 this.logger.debug(
-                    { performance: stats },
+                    {
+                        performance: stats,
+                    },
                     `Command "${ctx.commandName}" executed in ${stats.total.toFixed(2)}ms`,
                 );
             } catch (error) {
                 const stats = profiler.end();
+
                 this.metrics.commandHistogram
                     .labels(targetCommandName, "error", commandType)
                     .observe(stats.total / 1000);
 
                 this.logger.error(
-                    { error, performance: stats },
+                    {
+                        error,
+                        performance: stats,
+                    },
                     `Command "${ctx.commandName}" failed after ${stats.total.toFixed(2)}ms`,
                 );
             }
@@ -356,13 +608,15 @@ export class CommandRouter {
     }
 
     private async runCommand(ctx: CommandContext, targetCommand: AbstractCommand): Promise<void> {
-        if (ctx.metadata.options.defer !== false) await ctx.defer(ctx.metadata.options.ephemeral).catch(() => {});
+        if (ctx.metadata.options.defer !== false) {
+            await ctx.defer(ctx.metadata.options.ephemeral).catch(() => {});
+        }
 
         try {
             const properties = this.getCommandProperties(targetCommand);
             const parsedOptions = await CommandParser.parseAndValidate(ctx, properties);
-
             const commandInstance = Object.create(targetCommand);
+
             for (const [key, value] of Object.entries(parsedOptions)) {
                 commandInstance[key] = value;
             }
@@ -378,4 +632,6 @@ export class CommandRouter {
             await ctx.respond(Embed.error("Something bad happened.")).catch(() => {});
         }
     }
+
+    //#endregion
 }

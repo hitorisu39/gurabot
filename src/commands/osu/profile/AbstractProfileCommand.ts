@@ -1,11 +1,13 @@
-import { Import } from "@/core/decorators";
+import { Category, Import } from "@/core/decorators";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { OsuService } from "@/modules/osu/Osu.service";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
 import { ProfileViewService } from "@/modules/osu/profile/ProfileView.service";
 import { EProfileView, ProfileViewDto } from "@domain/osu/views/Profile.view";
 import { AmeobeaService } from "@/modules/ameobea/Ameobea.service";
+import { ECommandCategory } from "@domain/core/Command";
 
+@Category(ECommandCategory.Osu)
 export abstract class AbstractProfileCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
     @Import() declare private readonly profileViewService: ProfileViewService;

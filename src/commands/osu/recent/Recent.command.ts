@@ -1,7 +1,8 @@
-import { Command, Subcommand } from "@/core/decorators";
+import { Category, Command, Subcommand } from "@/core/decorators";
 import { AbstractCommand } from "@/core/discord/AbstractCommand";
 import { AbstractRecentCommand } from "./AbstractRecentCommand";
 import { GameMode } from "@generated/adapter/types";
+import { ECommandCategory } from "@domain/core/Command";
 
 @Command({
     name: "recent",
@@ -55,72 +56,78 @@ export class RecentPassCommand extends AbstractRecentCommand {
 
 // Taiko
 
+@Category(ECommandCategory.Taiko)
 @Command({
-    name: "recenttaiko",
+    name: "taikorecent",
     description: "Shows most recent play of an osu!taiko player.",
     prefixOnly: true,
-    aliases: ["tr", "rt"],
+    aliases: ["tr", "rt", "recenttaiko"],
 })
-export class RecentTaikoCommand extends AbstractRecentCommand {
+export class TaikoRecentCommand extends AbstractRecentCommand {
     protected forcedMode = GameMode.Taiko;
     protected forcedPassed = false;
 }
 
+@Category(ECommandCategory.Taiko)
 @Command({
-    name: "recentpasstaiko",
+    name: "taikorecentpass",
     description: "Shows most recent passed play of an osu!taiko player.",
     prefixOnly: true,
-    aliases: ["rpt", "trp"],
+    aliases: ["rpt", "trp", "recentpasstaiko"],
 })
-export class RecentPassTaikoCommand extends AbstractRecentCommand {
+export class TaikoRecentPassCommand extends AbstractRecentCommand {
     protected forcedMode = GameMode.Taiko;
     protected forcedPassed = true;
 }
 
 // Catch
 
+@Category(ECommandCategory.Catch)
 @Command({
-    name: "recentcatch",
+    name: "catchrecent",
     description: "Shows most recent play of an osu!catch player.",
     prefixOnly: true,
-    aliases: ["cr", "rc"],
+    aliases: ["cr", "rc", "recentcatch"],
 })
-export class RecentCatchCommand extends AbstractRecentCommand {
+export class CatchRecentCommand extends AbstractRecentCommand {
     protected forcedMode = GameMode.Catch;
     protected forcedPassed = false;
 }
 
+@Category(ECommandCategory.Catch)
 @Command({
-    name: "recentpasscatch",
+    name: "catchrecentpass",
     description: "Shows most recent passed play of an osu!catch player.",
     prefixOnly: true,
-    aliases: ["rpc", "crp"],
+    aliases: ["rpc", "crp", "recentpasscatch"],
 })
-export class RecentPassCatchCommand extends AbstractRecentCommand {
+export class CatchRecentPassCommand extends AbstractRecentCommand {
     protected forcedMode = GameMode.Catch;
     protected forcedPassed = true;
 }
 
 // Mania
 
+@Category(ECommandCategory.Mania)
 @Command({
-    name: "recentmania",
+    name: "maniarecent",
     description: "Shows most recent play of an osu!mania player.",
     prefixOnly: true,
-    aliases: ["mr", "rm"],
+    aliases: ["mr", "rm", "recentmania"],
 })
-export class RecentManiaCommand extends AbstractRecentCommand {
+export class ManiaRecentCommand extends AbstractRecentCommand {
     protected forcedMode = GameMode.Mania;
     protected forcedPassed = false;
 }
 
+@Category(ECommandCategory.Mania)
 @Command({
-    name: "recentpassmania",
+    name: "maniarecentpass",
     description: "Shows most recent passed play of an osu!mania player.",
     prefixOnly: true,
-    aliases: ["rpm", "mrp"],
+    aliases: ["rpm", "mrp", "recentpassmania"],
 })
-export class RecentPassManiaCommand extends AbstractRecentCommand {
+export class ManiaRecentPassCommand extends AbstractRecentCommand {
     protected forcedMode = GameMode.Mania;
     protected forcedPassed = true;
 }

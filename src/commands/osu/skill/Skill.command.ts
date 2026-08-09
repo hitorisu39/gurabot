@@ -1,8 +1,9 @@
-import { Command, Subcommand } from "@/core/decorators";
+import { Category, Command, Subcommand } from "@/core/decorators";
 import { AbstractCommand } from "@/core/discord/AbstractCommand";
 import { GameMode } from "@generated/adapter/types";
 import { AbstractSkillStatsCommand } from "./AbstractSkillStatsCommand";
 import { AbstractSkillCardCommand } from "./AbstractSkillCardCommand";
+import { ECommandCategory } from "@domain/core/Command";
 
 @Command({
     name: "skill",
@@ -44,6 +45,7 @@ export class SkillsCommand extends AbstractSkillStatsCommand {}
 
 // Taiko
 
+@Category(ECommandCategory.Taiko)
 @Command({
     name: "taikoskills",
     description: "Calculates skill statistics from an osu!taiko player's top plays.",
@@ -56,18 +58,20 @@ export class TaikoSkillsCommand extends AbstractSkillStatsCommand {
 
 // Catch
 
+@Category(ECommandCategory.Catch)
 @Command({
-    name: "ctbskills",
+    name: "catchskills",
     description: "Calculates skill statistics from an osu!catch player's top plays.",
-    aliases: ["skillsctb", "catchskills", "skillscatch", "cskills", "skillsc"],
+    aliases: ["skillsctb", "ctbskills", "skillscatch", "cskills", "skillsc"],
     prefixOnly: true,
 })
-export class CtbSkillsCommand extends AbstractSkillStatsCommand {
+export class CatchSkillsCommand extends AbstractSkillStatsCommand {
     protected forcedMode = GameMode.Catch;
 }
 
 // Mania
 
+@Category(ECommandCategory.Mania)
 @Command({
     name: "maniaskills",
     description: "Calculates skill statistics from an osu!mania player's top plays.",
@@ -88,6 +92,7 @@ export class ManiaSkillsCommand extends AbstractSkillStatsCommand {
 })
 export class SkillCardCommand extends AbstractSkillCardCommand {}
 
+@Category(ECommandCategory.Taiko)
 @Command({
     name: "taikocard",
     description: "Generates a skill card from an osu!taiko player's top plays.",
@@ -98,16 +103,18 @@ export class TaikoCardCommand extends AbstractSkillCardCommand {
     protected forcedMode = GameMode.Taiko;
 }
 
+@Category(ECommandCategory.Catch)
 @Command({
-    name: "ctbcard",
+    name: "catchcard",
     description: "Generates a skill card from an osu!catch player's top plays.",
-    aliases: ["cardctb", "catchcard", "cardcatch", "ccard", "cardc"],
+    aliases: ["cardctb", "ctbcard", "cardcatch", "ccard", "cardc"],
     prefixOnly: true,
 })
-export class CtbCardCommand extends AbstractSkillCardCommand {
+export class CatchCardCommand extends AbstractSkillCardCommand {
     protected forcedMode = GameMode.Catch;
 }
 
+@Category(ECommandCategory.Mania)
 @Command({
     name: "maniacard",
     description: "Generates a skill card from an osu!mania player's top plays.",

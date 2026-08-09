@@ -1,6 +1,7 @@
-import { Command } from "@/core/decorators";
+import { Category, Command } from "@/core/decorators";
 import { GameMode } from "@generated/adapter/types";
 import { AbstractCompareCommand } from "./AbstractCompareCommand";
+import { ECommandCategory } from "@domain/core/Command";
 
 @Command({
     name: "compare",
@@ -9,6 +10,7 @@ import { AbstractCompareCommand } from "./AbstractCompareCommand";
 })
 export class CompareCommand extends AbstractCompareCommand {}
 
+@Category(ECommandCategory.Taiko)
 @Command({
     name: "taikocompare",
     description: "Compares your taiko scores on a specific beatmap.",
@@ -19,16 +21,18 @@ export class TaikoCompareCommand extends AbstractCompareCommand {
     protected forcedMode = GameMode.Taiko;
 }
 
+@Category(ECommandCategory.Catch)
 @Command({
-    name: "ctbcompare",
+    name: "catchcompare",
     description: "Compares your catch scores on a specific beatmap.",
-    aliases: ["comparectb", "catchcompare", "comparecatch", "ccompare", "cc"],
+    aliases: ["comparectb", "ctbcompare", "comparecatch", "ccompare", "cc"],
     prefixOnly: true,
 })
-export class CtbCompareCommand extends AbstractCompareCommand {
+export class CatchCompareCommand extends AbstractCompareCommand {
     protected forcedMode = GameMode.Catch;
 }
 
+@Category(ECommandCategory.Mania)
 @Command({
     name: "maniacompare",
     description: "Compares your mania scores on a specific beatmap.",

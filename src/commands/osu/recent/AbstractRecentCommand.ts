@@ -1,8 +1,19 @@
-import { Aliases, Examples, Help, Import, IsEnum, IsInlineIndex, IsMods, IsRange, Option } from "@/core/decorators";
+import {
+    Aliases,
+    Category,
+    Examples,
+    Help,
+    Import,
+    IsEnum,
+    IsInlineIndex,
+    IsMods,
+    IsRange,
+    Option,
+} from "@/core/decorators";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { OsuService } from "@/modules/osu/Osu.service";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
-import { CommandOption, ICommandMods, ICommandRange } from "@domain/core/Command";
+import { CommandOption, ECommandCategory, ICommandMods, ICommandRange } from "@domain/core/Command";
 import { Grade, Score } from "@generated/adapter/types";
 import { Embed } from "@/core/discord/ui/Embed";
 import { ProviderMeta } from "@generated/adapter";
@@ -18,6 +29,7 @@ import { ScoresViewDto } from "@domain/osu/views/Scores.view";
     Available grades are \`SSH\`, \`SS\`, \`SH\`, \`S\`, \`A\`, \`B\`, \`C\` and \`D\`.
 `)
 @Examples("recent hitorisu", "recent hitorisu +HDHR!", "recent hitorisu grade=S")
+@Category(ECommandCategory.Osu)
 export abstract class AbstractRecentCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
     @Import() declare private readonly scoreViewService: ScoreViewService;

@@ -1,5 +1,6 @@
 import {
     Aliases,
+    Category,
     Command,
     Examples,
     Help,
@@ -16,7 +17,7 @@ import { OsuService } from "@/modules/osu/Osu.service";
 import { CalculatorService } from "@/modules/osu/calculator/Calculator.service";
 import { BeatmapResolverService } from "@/modules/osu/BeatmapResolver.service";
 import { LeaderboardViewService } from "@/modules/osu/leaderboard/LeaderboardView.service";
-import { CommandOption, ICommandMods } from "@domain/core/Command";
+import { CommandOption, ECommandCategory, ICommandMods } from "@domain/core/Command";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { LeaderboardViewDto } from "@domain/osu/views/Leaderboard.view";
 import { AdapterProvider } from "@generated/adapter/types";
@@ -37,6 +38,7 @@ import { ModUtils } from "@generated/adapter/mods";
     Legacy scores only: \`legacy_only=true\`.
 `)
 @Examples("leaderboard https://osu.ppy.sh/beatmaps/123456", "leaderboard 123456 +hddt")
+@Category(ECommandCategory.Osu)
 @Command({
     name: "leaderboard",
     description: "Shows the global leaderboard for an osu! beatmap.",

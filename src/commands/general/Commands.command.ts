@@ -1,9 +1,12 @@
-import { Command, Examples, Help, Import } from "@/core/decorators";
-import { AbstractCommand } from "@/core/discord/AbstractCommand";
+import { Category, Command, Examples, Help, Import } from "@/core/decorators";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { Embed } from "@/core/discord/ui/Embed";
-import { GuildService } from "@/modules/guild/Guild.service";
+import { AbstractSessionCommand } from "@/commands/AbstractSessionCommand";
+import { ECommandCategory } from "@domain/core/Command";
+import { CommandsViewService } from "@/modules/general/commands/CommandsView.service";
+import { CommandsViewDto } from "@domain/general/views/Commands.view";
 
+@Category(ECommandCategory.General)
 @Command({
     name: "commands",
     description: "Sends you a list of available prefix commands.",
@@ -14,30 +17,23 @@ import { GuildService } from "@/modules/guild/Guild.service";
     prefix commands and their descriptions.
 `)
 @Examples("commands", "cmds")
-export class CommandsCommand extends AbstractCommand {
-    @Import() declare private readonly guildService: GuildService;
+export class CommandsCommand extends AbstractSessionCommand {
+    @Import() declare private readonly commandsViewService: CommandsViewService;
 
     public async execute(ctx: CommandContext): Promise<void> {
-        const prefix = await this.guildService.getPrefix(ctx.guild?.id ?? null);
-        const pages = this.createCommandPages();
+        const data: CommandsViewDto = {
+            authorID: ctx.author.id,
+            category: ECommandCategory.General,
+        };
+
+        if (!ctx.guild) {
+            await this.respondWithSession(ctx, "general_commands_view", data, this.commandsViewService);
+            return;
+        }
 
         try {
-            for (const [index, page] of pages.entries()) {
-                const title = pages.length > 1 ? `Command List | ${index + 1}/${pages.length}` : "Command List";
-
-                const embed = new Embed()
-                    .setAuthor({ name: title })
-                    .setDescription(page)
-                    .setFooter({
-                        text: `Use ${prefix}help [command] for more information.`,
-                    });
-
-                await ctx.author.send({
-                    embeds: [embed],
-                });
-            }
-
-            if (ctx.guild) await ctx.respond(Embed.general("Check your DMs for the command list."));
+            await this.sendToWithSession(ctx, ctx.author, "general_commands_view", data, this.commandsViewService);
+            await ctx.respond(Embed.general("Check your DMs for the command list."));
         } catch {
             await ctx.respond(
                 Embed.error(
@@ -45,58 +41,5 @@ export class CommandsCommand extends AbstractCommand {
                 ),
             );
         }
-    }
-
-    private createCommandPages(): Array<string> {
-        const router = this.discord.commandRouter;
-
-        const lines = router
-            .getPrefixCommandEntries()
-            .map(({ name, command }) => {
-                const options = router.getCommandOptions(command);
-                const description = this.normalizeDescription(options?.description);
-                return `\`${name}\`: ${description}`;
-            })
-            .sort((a, b) => a.localeCompare(b));
-
-        if (lines.length === 0) {
-            return ["No prefix commands are currently available."];
-        }
-
-        const pages: Array<string> = [];
-        const maxPageLength = 3_900;
-
-        let currentPage = "";
-
-        for (const line of lines) {
-            const nextPage = currentPage ? `${currentPage}\n${line}` : line;
-
-            if (currentPage && nextPage.length > maxPageLength) {
-                pages.push(currentPage);
-                currentPage = line;
-            } else {
-                currentPage = nextPage;
-            }
-        }
-
-        if (currentPage) {
-            pages.push(currentPage);
-        }
-
-        return pages;
-    }
-
-    private normalizeDescription(description: string | undefined): string {
-        const normalized = description?.replace(/\s+/g, " ").trim();
-
-        if (!normalized) {
-            return "No description provided.";
-        }
-
-        if (normalized.length > 500) {
-            return `${normalized.slice(0, 497)}...`;
-        }
-
-        return normalized;
     }
 }

@@ -1,4 +1,5 @@
 import { AuthOsuStateDto } from "@domain/auth/Auth.dto";
+import { CommandsViewDto } from "@domain/general/views/Commands.view";
 import { GuildDto } from "@domain/guild/Guild.dto";
 import { OrdrConfigViewDto } from "@domain/ordr/views/OrdrConfig.view";
 import { OrdrRenderViewDto } from "@domain/ordr/views/OrdrRender.view";
@@ -25,6 +26,8 @@ export interface ICacheSchema {
 
     ordr_config_view: OrdrConfigViewDto;
     ordr_render_view: OrdrRenderViewDto;
+
+    general_commands_view: CommandsViewDto;
 
     // Osu
     osu_user_profile: PopulatedUser;

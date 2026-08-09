@@ -1,10 +1,12 @@
-import { Command, Import } from "@/core/decorators";
+import { Category, Command, Import } from "@/core/decorators";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
 import { ProfileViewService } from "@/modules/osu/profile/ProfileView.service";
 import { OsuService } from "@/modules/osu/Osu.service";
 import { ProfileFormatter } from "@domain/osu/formatters/Profile.formatter";
+import { ECommandCategory } from "@domain/core/Command";
 
+@Category(ECommandCategory.Osu)
 @Command({
     name: "avatar",
     description: "Sends player's osu! profile picture.",

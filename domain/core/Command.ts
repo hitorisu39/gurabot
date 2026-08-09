@@ -6,6 +6,14 @@ export interface ICommandState {
     inlineIndex?: number;
 }
 
+export enum ECommandCategory {
+    General = "General",
+    Osu = "Osu",
+    Taiko = "Taiko",
+    Catch = "Catch",
+    Mania = "Mania",
+}
+
 export enum EModMatchType {
     Include = "Include",
     Match = "Match",
