@@ -1,4 +1,4 @@
-import { Command, Examples, Import } from "@/core/decorators";
+import { Category, Command, Examples, Import } from "@/core/decorators";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
 import { OsuService } from "@/modules/osu/Osu.service";
@@ -6,8 +6,10 @@ import { ProfileViewService } from "@/modules/osu/profile/ProfileView.service";
 import { FarmerEvaluator, IFarmerAnalysis } from "@domain/osu/utils/FarmerEvaluator";
 import { GameMode } from "@generated/adapter/types";
 import { Embed } from "@/core/discord/ui/Embed";
+import { ECommandCategory } from "@domain/core/Command";
 
 @Examples("amifarmer", "amifarmer mrekk", "aif whitecat")
+@Category(ECommandCategory.Osu)
 @Command({
     name: "amifarmer",
     description: "Tells you whether an osu!standard player is a dirty farmer.",

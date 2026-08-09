@@ -1,9 +1,20 @@
-import { Aliases, Import, IsEnum, IsInlineIndex, IsMods, IsQuery, IsRange, Option } from "@/core/decorators";
+import {
+    Aliases,
+    Category,
+    Help,
+    Import,
+    IsEnum,
+    IsInlineIndex,
+    IsMods,
+    IsQuery,
+    IsRange,
+    Option,
+} from "@/core/decorators";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { OsuService } from "@/modules/osu/Osu.service";
 import { Grade, Score } from "@generated/adapter/types";
 import { PopulatedScoresQueryDto } from "@domain/osu/Score.dto";
-import { CommandOption, ICommandMods, ICommandQueryData, ICommandRange } from "@domain/core/Command";
+import { CommandOption, ECommandCategory, ICommandMods, ICommandQueryData, ICommandRange } from "@domain/core/Command";
 import { EScoreListSize, EScoreQuerySort, ESortOrder } from "@domain/osu/enums/Score.enum";
 import { PopulatedScoreEvaluator } from "@domain/osu/utils/PopulatedScoreEvaluator";
 import { ScoresViewDto } from "@domain/osu/views/Scores.view";
@@ -12,6 +23,13 @@ import { Embed } from "@/core/discord/ui/Embed";
 import { ProviderMeta } from "@generated/adapter";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
 
+@Help(`
+    Shows most recent {passed}{mode} scores of the specified player.
+    You can filter scores by their specific details such as \`accuracy, combo, index, misses, pp\`. All of them support range.
+    For mods use this format: \`+mods!\` - exact match, \`+mods\` - includes mods, \`-mods!\` - excludes mods. To show only passes use \`recentpasslist\` command. To filter scores out by grade use \`grade\` option.
+    Available grades are \`SSH\`, \`SS\`, \`SH\`, \`S\`, \`A\`, \`B\`, \`C\` and \`D\`.
+`)
+@Category(ECommandCategory.Osu)
 export abstract class AbstractRecentListCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
     @Import() declare private readonly scoreViewService: ScoreViewService;

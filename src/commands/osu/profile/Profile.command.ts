@@ -1,6 +1,7 @@
-import { Command } from "@/core/decorators";
+import { Category, Command } from "@/core/decorators";
 import { AbstractProfileCommand } from "./AbstractProfileCommand";
 import { GameMode } from "@generated/adapter/types";
+import { ECommandCategory } from "@domain/core/Command";
 
 @Command({
     name: "profile",
@@ -9,6 +10,7 @@ import { GameMode } from "@generated/adapter/types";
 })
 export class ProfileCommand extends AbstractProfileCommand {}
 
+@Category(ECommandCategory.Taiko)
 @Command({
     name: "taiko",
     description: "Shows user information of an osu!taiko player.",
@@ -18,16 +20,18 @@ export class TaikoProfileCommand extends AbstractProfileCommand {
     protected forcedMode = GameMode.Taiko;
 }
 
+@Category(ECommandCategory.Catch)
 @Command({
-    name: "ctb",
+    name: "catch",
     description: "Shows user information of an osu!catch player.",
-    aliases: ["catch"],
+    aliases: ["ctb"],
     prefixOnly: true,
 })
-export class CtbProfileCommand extends AbstractProfileCommand {
+export class CatchProfileCommand extends AbstractProfileCommand {
     protected forcedMode = GameMode.Catch;
 }
 
+@Category(ECommandCategory.Mania)
 @Command({
     name: "mania",
     description: "Shows user information of an osu!mania player.",

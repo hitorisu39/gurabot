@@ -127,6 +127,26 @@ export abstract class CommandContext {
     public abstract followUp(options: TMessagePayload): Promise<Message | InteractionResponse | null>;
 
     /**
+     * Sends a new message to a specific user or channel.
+     *
+     * Unlike respond/reply/followUp, this message is not tied to the
+     * command's original response.
+     */
+    public async sendTo(target: User | TextBasedChannel, options: TMessagePayload): Promise<Message | null> {
+        const payload = this.normalizePayload(options);
+
+        if (target instanceof User) {
+            return target.send(payload);
+        }
+
+        if (target.isSendable()) {
+            return target.send(payload);
+        }
+
+        return null;
+    }
+
+    /**
      * Retrieves the message object for the initial reply sent by the bot.
      * Caches the result to avoid repeated API calls.
      */

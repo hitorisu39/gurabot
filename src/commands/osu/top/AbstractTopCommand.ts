@@ -1,5 +1,6 @@
 import {
     Aliases,
+    Category,
     Examples,
     Help,
     Import,
@@ -16,7 +17,7 @@ import { AbstractOsuCommand } from "../AbstractOsuCommand";
 import { ProfileViewService } from "@/modules/osu/profile/ProfileView.service";
 import { Grade } from "@generated/adapter/types";
 import { PopulatedScoresQueryDto } from "@domain/osu/Score.dto";
-import { CommandOption, ICommandMods, ICommandQueryData, ICommandRange } from "@domain/core/Command";
+import { CommandOption, ECommandCategory, ICommandMods, ICommandQueryData, ICommandRange } from "@domain/core/Command";
 import { EScoreListSize, EScoreQuerySort, ESortOrder } from "@domain/osu/enums/Score.enum";
 import { PopulatedScoreEvaluator } from "@domain/osu/utils/PopulatedScoreEvaluator";
 import { ScoresViewDto } from "@domain/osu/views/Scores.view";
@@ -45,6 +46,7 @@ import { ScoreViewService } from "@/modules/osu/scores/ScoreView.service";
     "top creator=sotarks +dt bpm>215 sort=date order=asc",
     'top spaced name query="hatsune miku cs>=4"',
 )
+@Category(ECommandCategory.Osu)
 export abstract class AbstractTopCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
     @Import() declare private readonly profileViewService: ProfileViewService;

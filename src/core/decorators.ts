@@ -3,6 +3,7 @@ import "reflect-metadata";
 
 import {
     METAKEY_BOT_PERMISSIONS,
+    METAKEY_COMMAND_CATEGORY,
     METAKEY_COMMAND_EXAMPLES,
     METAKEY_COMMAND_HELP,
     METAKEY_COMMAND_OPTIONS,
@@ -19,6 +20,7 @@ import {
 import { PermissionResolvable } from "discord.js";
 import { EComponentType } from "@domain/core/Component";
 import { ProfilerStorage } from "./profiler";
+import { ECommandCategory } from "@domain/core/Command";
 
 type Awaitable<T> = T | Promise<T>;
 type EventHandler<T> = T extends (...args: infer A) => infer R ? (...args: A) => Awaitable<R> : never;
@@ -97,6 +99,12 @@ export function Help(text: string): ClassDecorator {
 export function Examples(...examples: Array<string>): ClassDecorator {
     return (target: Function) => {
         Reflect.defineMetadata(METAKEY_COMMAND_EXAMPLES, examples, target);
+    };
+}
+
+export function Category(category: ECommandCategory): ClassDecorator {
+    return (target: Function) => {
+        Reflect.defineMetadata(METAKEY_COMMAND_CATEGORY, category, target);
     };
 }
 

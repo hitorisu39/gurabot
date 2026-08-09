@@ -1,8 +1,10 @@
-import { Command } from "@/core/decorators";
+import { Category, Command } from "@/core/decorators";
 import { AbstractCommand } from "@/core/discord/AbstractCommand";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { Embed } from "@/core/discord/ui/Embed";
+import { ECommandCategory } from "@domain/core/Command";
 
+@Category(ECommandCategory.General)
 @Command({
     name: "donate",
     description: "Sends a ko-fi link to support the project.",

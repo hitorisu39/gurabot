@@ -1,10 +1,10 @@
-import { Aliases, Examples, Help, Import, Inject, IsNumber, Option } from "@/core/decorators";
+import { Aliases, Category, Examples, Help, Import, Inject, IsNumber, Option } from "@/core/decorators";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
 import { OsuService } from "@/modules/osu/Osu.service";
 import { OsuDailyService } from "@/modules/osudaily/OsuDaily.service";
 import { WhatIfViewService } from "@/modules/osu/whatif/WhatIfView.service";
-import { CommandOption } from "@domain/core/Command";
+import { CommandOption, ECommandCategory } from "@domain/core/Command";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { ScoreUtils } from "@domain/osu/utils/ScoreUtils";
 import { AdapterProvider } from "@generated/adapter/types";
@@ -16,6 +16,7 @@ import { WhatIfViewDataDto } from "@domain/osu/views/WhatIf.view";
     Global rank changes are approximate and are only available on Bancho.
 `)
 @Examples("whatif 500", "whatif 500 WhiteCat", "mwi 750 drusserf")
+@Category(ECommandCategory.Osu)
 export abstract class AbstractWhatIfCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
     @Import() declare private readonly osuDailyService: OsuDailyService;

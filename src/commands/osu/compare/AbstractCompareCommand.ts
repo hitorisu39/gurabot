@@ -1,6 +1,7 @@
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import {
     Aliases,
+    Category,
     Examples,
     Help,
     Import,
@@ -12,7 +13,7 @@ import {
     Option,
 } from "@/core/decorators";
 import { OsuService } from "@/modules/osu/Osu.service";
-import { CommandOption, ICommandMods, ICommandRange } from "@domain/core/Command";
+import { CommandOption, ECommandCategory, ICommandMods, ICommandRange } from "@domain/core/Command";
 import { CalculatorService } from "@/modules/osu/calculator/Calculator.service";
 import { Grade } from "@generated/adapter/types";
 import { EApplicationError, Exception } from "@domain/core/Exception";
@@ -25,6 +26,7 @@ import { ScoreViewService } from "@/modules/osu/scores/ScoreView.service";
 import { BaseScoreEvaluator } from "@domain/osu/utils/BaseScoreEvaluator";
 import { ProviderMeta } from "@generated/adapter";
 
+@Category(ECommandCategory.Osu)
 @Help(`
     Compares your {mode} scores on a specific beatmap.
 

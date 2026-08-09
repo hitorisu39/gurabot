@@ -1,7 +1,18 @@
 import { CommandContext } from "@/core/discord/context/CommandContext";
-import { Aliases, Command, Examples, Help, Import, Inject, IsMods, IsString, Option } from "@/core/decorators";
+import {
+    Aliases,
+    Category,
+    Command,
+    Examples,
+    Help,
+    Import,
+    Inject,
+    IsMods,
+    IsString,
+    Option,
+} from "@/core/decorators";
 import { OsuService } from "@/modules/osu/Osu.service";
-import { CommandOption, ICommandMods } from "@domain/core/Command";
+import { CommandOption, ECommandCategory, ICommandMods } from "@domain/core/Command";
 import { CalculatorService } from "@/modules/osu/calculator/Calculator.service";
 import { AdapterProvider } from "@generated/adapter/types";
 import { ModUtils } from "@generated/adapter/mods";
@@ -29,6 +40,7 @@ import { AbstractSessionCommand } from "@/commands/AbstractSessionCommand";
     and the displayed performance values.
 `)
 @Examples("map https://osu.ppy.sh/beatmaps/123456", "map 123456 +hddt")
+@Category(ECommandCategory.Osu)
 @Command({
     name: "map",
     description: "Shows beatmap(set) stats from map url / id.",

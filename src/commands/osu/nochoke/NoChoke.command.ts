@@ -1,6 +1,7 @@
-import { Command } from "@/core/decorators";
+import { Category, Command } from "@/core/decorators";
 import { GameMode } from "@generated/adapter/types";
 import { AbstractNoChokeCommand } from "./AbstractNoChokeCommand";
+import { ECommandCategory } from "@domain/core/Command";
 
 @Command({
     name: "nochoke",
@@ -11,34 +12,37 @@ export class NoChokeCommand extends AbstractNoChokeCommand {}
 
 // Taiko
 
+@Category(ECommandCategory.Taiko)
 @Command({
-    name: "nochoketaiko",
+    name: "taikonochoke",
     description: "Shows projected osu!taiko top plays with misses removed.",
-    aliases: ["nct", "tnc"],
+    aliases: ["nct", "tnc", "nochoketaiko"],
     prefixOnly: true,
 })
-export class NoChokeTaikoCommand extends AbstractNoChokeCommand {
+export class TaikoNoChokeCommand extends AbstractNoChokeCommand {
     protected forcedMode = GameMode.Taiko;
 }
 
 // Catch
 
+@Category(ECommandCategory.Catch)
 @Command({
-    name: "nochokecatch",
+    name: "catchnochoke",
     description: "Shows projected osu!catch top plays with misses removed.",
-    aliases: ["ncc", "cnc"],
+    aliases: ["ncc", "cnc", "nochokecatch"],
     prefixOnly: true,
 })
-export class NoChokeCatchCommand extends AbstractNoChokeCommand {
+export class CatchNoChokeCommand extends AbstractNoChokeCommand {
     protected forcedMode = GameMode.Catch;
 }
 
 // Mania
 
+@Category(ECommandCategory.Mania)
 @Command({
-    name: "nochokemania",
+    name: "manianochoke",
     description: "Shows projected osu!mania top plays with misses removed.",
-    aliases: ["ncm", "mnc"],
+    aliases: ["ncm", "mnc", "nochokemania"],
     prefixOnly: true,
 })
 export class NoChokeManiaCommand extends AbstractNoChokeCommand {

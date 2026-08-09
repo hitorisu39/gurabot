@@ -16,8 +16,23 @@ export class SelectMenu extends StringSelectMenuBuilder {
             .setValue(stringValue)
             .setDefault(stringValue === this.currentValue);
 
-        if (description) option.setDescription(description);
-        if (emoji) option.setEmoji({ name: emoji });
+        if (description) {
+            option.setDescription(description);
+        }
+
+        if (emoji) {
+            const customEmoji = emoji.match(/^<(a?):([^:]+):(\d+)>$/);
+
+            if (customEmoji) {
+                option.setEmoji({
+                    animated: customEmoji[1] === "a",
+                    name: customEmoji[2],
+                    id: customEmoji[3],
+                });
+            } else {
+                option.setEmoji({ name: emoji });
+            }
+        }
 
         this.addOptions(option);
         return this;
