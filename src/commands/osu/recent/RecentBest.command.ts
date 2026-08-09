@@ -16,6 +16,7 @@ export class RecentBestSubcommand extends AbstractTopCommand {
 @Command({
     name: "recentbest",
     description: "Shows an osu! player's top plays sorted by most recently achieved.",
+    prefixOnly: true,
     aliases: ["rb", "bestrecent"],
 })
 export class RecentBestCommand extends AbstractTopCommand {
@@ -27,8 +28,8 @@ export class RecentBestCommand extends AbstractTopCommand {
 @Command({
     name: "recentbesttaiko",
     description: "Shows an osu!taiko player's top plays sorted by most recently achieved.",
-    aliases: ["recenttaikobest", "rbt", "trb"],
     prefixOnly: true,
+    aliases: ["recenttaikobest", "rbt", "trb"],
 })
 export class RecentBestTaikoCommand extends AbstractTopCommand {
     protected forcedMode = GameMode.Taiko;
@@ -40,8 +41,8 @@ export class RecentBestTaikoCommand extends AbstractTopCommand {
 @Command({
     name: "recentbestcatch",
     description: "Shows an osu!catch player's top plays sorted by most recently achieved.",
-    aliases: ["recentcatchbest", "rbc", "crb"],
     prefixOnly: true,
+    aliases: ["recentcatchbest", "rbc", "crb"],
 })
 export class RecentBestCatchCommand extends AbstractTopCommand {
     protected forcedMode = GameMode.Catch;
@@ -53,8 +54,8 @@ export class RecentBestCatchCommand extends AbstractTopCommand {
 @Command({
     name: "recentbestmania",
     description: "Shows an osu!mania player's top plays sorted by most recently achieved.",
-    aliases: ["recentmaniabest", "rbm", "mrb"],
     prefixOnly: true,
+    aliases: ["recentmaniabest", "rbm", "mrb"],
 })
 export class RecentBestManiaCommand extends AbstractTopCommand {
     protected forcedMode = GameMode.Mania;
