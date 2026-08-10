@@ -191,11 +191,10 @@ export class Client {
             );
 
         const rest = new REST({ version: "10" }).setToken(this.config.discord.token);
+        const data = this.commandRouter.getApplicationCommandData();
 
         try {
-            await rest.put(Routes.applicationCommands(this.client.user.id), {
-                body: this.commandRouter.getApplicationCommandData(),
-            });
+            await rest.put(Routes.applicationCommands(this.client.user.id), { body: data });
         } catch (error) {
             throw new Exception(EApplicationError.INTERNAL_ERROR, `Failed to register application commands: ${error}`);
         }
