@@ -4,7 +4,7 @@ import { Embed } from "@/core/discord/ui/Embed";
 import { SelectMenu } from "@/core/discord/ui/SelectMenu";
 import { AbstractViewService } from "@/modules/AbstractViewService";
 import { ECommandCategory } from "@domain/core/Command";
-import { discordEmoteGurabot, discordEmoteModes } from "@domain/discord/configs/Emotes.config";
+import { discordEmoteBot, discordEmoteModes } from "@domain/discord/configs/Emotes.config";
 import { CommandsViewDto } from "@domain/general/views/Commands.view";
 import { GameMode } from "@generated/adapter/types";
 
@@ -21,7 +21,7 @@ export class CommandsViewService extends AbstractViewService<CommandsViewDto> {
         [ECommandCategory.General]: {
             label: "general",
             description: "general bot commands",
-            emoji: discordEmoteGurabot,
+            emoji: discordEmoteBot,
         },
 
         [ECommandCategory.Osu]: {
