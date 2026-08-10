@@ -269,6 +269,10 @@ export class CommandRouter {
                 );
             }
         }
+
+        for (const command of new Set(this.prefixCommands.values())) {
+            this.getCommandCategory(command);
+        }
     }
 
     //#endregion
@@ -291,7 +295,39 @@ export class CommandRouter {
     }
 
     public getCommandCategory(command: AbstractCommand): ECommandCategory {
-        return Reflect.getMetadata(METAKEY_COMMAND_CATEGORY, command.constructor) ?? ECommandCategory.General;
+        const category: ECommandCategory | undefined = Reflect.getMetadata(
+            METAKEY_COMMAND_CATEGORY,
+            command.constructor,
+        );
+
+        if (category) {
+            return category;
+        }
+
+        const subcommandOptions: ISubcommandOptions | undefined = Reflect.getMetadata(
+            METAKEY_SUBCOMMAND_OPTIONS,
+            command.constructor,
+        );
+
+        if (subcommandOptions) {
+            const rootCommand = this.rootCommands.get(subcommandOptions.root.toLowerCase());
+
+            if (rootCommand) {
+                const rootCategory: ECommandCategory | undefined = Reflect.getMetadata(
+                    METAKEY_COMMAND_CATEGORY,
+                    rootCommand.constructor,
+                );
+
+                if (rootCategory) {
+                    return rootCategory;
+                }
+            }
+        }
+
+        throw new Exception(
+            EApplicationError.INTERNAL_ERROR,
+            `Command '${this.getCommandDisplayName(command)}' has no category.`,
+        );
     }
 
     public isCommandGuildOnly(command: AbstractCommand): boolean {
@@ -435,6 +471,24 @@ export class CommandRouter {
         );
     }
 
+    private getCommandDisplayName(command: AbstractCommand): string {
+        const subcommandOptions: ISubcommandOptions | undefined = Reflect.getMetadata(
+            METAKEY_SUBCOMMAND_OPTIONS,
+            command.constructor,
+        );
+
+        if (subcommandOptions) {
+            return [subcommandOptions.root, subcommandOptions.group, subcommandOptions.name].filter(Boolean).join(" ");
+        }
+
+        const commandOptions: ICommandOptions | undefined = Reflect.getMetadata(
+            METAKEY_COMMAND_OPTIONS,
+            command.constructor,
+        );
+
+        return commandOptions?.name ?? command.constructor.name;
+    }
+
     public getAllCommandNames(): Array<string> {
         const names = new Set<string>();
 
@@ -478,7 +532,6 @@ export class CommandRouter {
 
     private async handleCommand(ctx: CommandContext): Promise<void> {
         let targetCommand: AbstractCommand | undefined;
-
         let targetCommandName: string;
 
         /*
@@ -486,29 +539,23 @@ export class CommandRouter {
          */
         if (ctx.isSlash) {
             const commandName = ctx.commandName.toLowerCase();
-
             const groupName = ctx.getSubcommandGroup();
-
             const subName = ctx.getSubcommand();
 
             if (groupName && subName) {
                 targetCommandName = `${commandName}:${groupName}:${subName}`;
-
                 targetCommand = this.slashSubcommands.get(targetCommandName);
             } else if (subName) {
                 targetCommandName = `${commandName}:${subName}`;
-
                 targetCommand = this.slashSubcommands.get(targetCommandName);
             }
 
             if (!targetCommand) {
                 targetCommandName = commandName;
-
                 targetCommand = this.slashRootCommands.get(targetCommandName);
             }
         } else {
             targetCommandName = ctx.commandName.toLowerCase();
-
             targetCommand = this.prefixCommands.get(targetCommandName);
 
             /*
@@ -519,9 +566,7 @@ export class CommandRouter {
 
                 if (match) {
                     const baseCommand = match[1]!;
-
                     const inlineIndex = parseInt(match[2]!, 10);
-
                     targetCommand = this.prefixCommands.get(baseCommand);
 
                     if (targetCommand) {
@@ -574,7 +619,7 @@ export class CommandRouter {
                     user: ctx.author.id,
                     guild: ctx.guild?.id,
                 },
-                `Executing command "${ctx.commandName}"`,
+                `Executing command "${targetCommandName}"`,
             );
 
             try {
@@ -587,7 +632,7 @@ export class CommandRouter {
                     {
                         performance: stats,
                     },
-                    `Command "${ctx.commandName}" executed in ${stats.total.toFixed(2)}ms`,
+                    `Command "${targetCommandName}" executed in ${stats.total.toFixed(2)}ms`,
                 );
             } catch (error) {
                 const stats = profiler.end();
@@ -601,7 +646,7 @@ export class CommandRouter {
                         error,
                         performance: stats,
                     },
-                    `Command "${ctx.commandName}" failed after ${stats.total.toFixed(2)}ms`,
+                    `Command "${targetCommandName}" failed after ${stats.total.toFixed(2)}ms`,
                 );
             }
         });
