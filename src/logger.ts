@@ -48,7 +48,7 @@ export class Logger {
                     interval: 5,
                     host: config.loki.host,
                     labels: {
-                        app: "gurabot",
+                        app: config.app.name,
                         cluster: clusterId,
                     },
                 },
