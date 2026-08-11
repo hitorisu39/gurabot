@@ -29,7 +29,6 @@ import { BaseScoreEvaluator } from "@domain/osu/utils/BaseScoreEvaluator";
 import { ProviderMeta } from "@generated/adapter";
 import { BeatmapUtils } from "@domain/osu/utils/BeatmapUtils";
 
-@Category(ECommandCategory.Osu)
 @Help(`
     Compares your {mode} scores on a specific beatmap.
 
@@ -46,6 +45,7 @@ import { BeatmapUtils } from "@domain/osu/utils/BeatmapUtils";
     Index: \`index=<index>\` (or shorthand \`i=<index>\`) to view a specific placement.
 `)
 @Examples("compare", "c v=Insane", "c sort=score +hd!", "c grade=S order=asc i=1-5")
+@Category(ECommandCategory.Osu)
 export abstract class AbstractCompareCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
     @Import() declare private readonly graphService: GraphService;
@@ -86,15 +86,18 @@ export abstract class AbstractCompareCommand extends AbstractOsuCommand {
 
     public async execute(ctx: CommandContext): Promise<void> {
         const target = await this.resolveTarget(ctx);
+        const resolved = await this.beatmapResolverService.resolveTargetWithVersion(
+            ctx,
+            this.map,
+            this.version,
+            target.server,
+        );
 
-        const [user, resolved] = await Promise.all([
-            this.osuService.user(target.query, target.mode, target.server),
-            this.beatmapResolverService.resolveTargetWithVersion(ctx, this.map, this.version, target.server),
-        ]);
+        const mode = this.forcedMode ?? this.mode.unwrapUnchecked() ?? resolved.beatmap.mode;
 
-        const context = await this.osuService.userBeatmapScoreContext(
-            user.id,
-            target.mode,
+        const { user, context } = await this.osuService.userWithBeatmapScoreContext(
+            target.query,
+            mode,
             resolved.beatmap,
             target.server,
         );

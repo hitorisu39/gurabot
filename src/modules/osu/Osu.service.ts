@@ -447,6 +447,60 @@ export class OsuService extends AbstractService {
     }
 
     @Trace()
+    public async userWithBeatmapScoreContext(
+        nameOrID: string | number,
+        mode: GameMode,
+        beatmap: Beatmap,
+        provider: AdapterProvider = AdapterProvider.Bancho,
+    ): Promise<{
+        user: PopulatedUser;
+        context: IUserBeatmapScoreContext;
+    }> {
+        if (typeof nameOrID === "number") {
+            const [user, context] = await Promise.all([
+                this.user(nameOrID, mode, provider),
+                this.userBeatmapScoreContext(nameOrID, mode, beatmap, provider),
+            ]);
+
+            return {
+                user,
+                context,
+            };
+        }
+
+        const username = this.normalizeUserLookup(nameOrID);
+        const cachedID = ProviderMeta[provider].cache ? await this.resolveCachedID(username, provider) : null;
+
+        if (cachedID) {
+            const [user, initialContext] = await Promise.all([
+                this.user(username, mode, provider),
+                this.userBeatmapScoreContext(cachedID, mode, beatmap, provider).catch(() => null),
+            ]);
+
+            if (user.id !== cachedID || !initialContext) {
+                const context = await this.userBeatmapScoreContext(user.id, mode, beatmap, provider);
+                return {
+                    user,
+                    context,
+                };
+            }
+
+            return {
+                user,
+                context: initialContext,
+            };
+        }
+
+        const user = await this.user(username, mode, provider);
+        const context = await this.userBeatmapScoreContext(user.id, mode, beatmap, provider);
+
+        return {
+            user,
+            context,
+        };
+    }
+
+    @Trace()
     public async beatmapScores(
         beatmapID: number,
         mode: GameMode,
