@@ -1,5 +1,6 @@
 import { io, ManagerOptions, Socket, SocketOptions } from "socket.io-client";
 import { TLogger } from "./core/types";
+import { EApplicationError, Exception } from "@domain/core/Exception";
 
 type TEventHandler<T, K extends keyof T> = T[K] extends (...args: any[]) => any ? T[K] : never;
 
@@ -53,7 +54,9 @@ export class SocketClient<TListenEvents = Record<string, never>, TEmitEvents = R
 
             const timer = setTimeout(() => {
                 cleanup();
-                reject(new Error(`Socket connection timed out after ${timeout}ms.`));
+                reject(
+                    new Exception(EApplicationError.INTERNAL_ERROR, `Socket connection timed out after ${timeout}ms.`),
+                );
             }, timeout);
 
             this.socket.once("connect", onConnect);

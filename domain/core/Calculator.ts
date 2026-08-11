@@ -101,7 +101,8 @@ export interface ICalculateDifficultyOptions<M extends GameMode> {
     mods?: DifficultyRequest["mods"];
     passedObjects?: DifficultyRequest["passedObjects"];
     clockRate?: DifficultyRequest["clockRate"];
-    calculateStrains?: boolean;
+    calculateStrains?: DifficultyRequest["calculateStrains"];
+    strainPointLimit?: DifficultyRequest["strainPointLimit"];
 }
 
 export interface IDifficultyCalculationResponse<M extends GameMode> {

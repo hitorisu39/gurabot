@@ -30,9 +30,16 @@ export class CalculatorService extends AbstractService {
         mode: M,
         mods: Array<ParsedMod>,
         clockRate?: number,
+        strainPointLimit?: number,
     ): Promise<IDifficultyCalculationResponse<M>> {
         await this.calculatorMapService.download(beatmapID);
-        return this.calculatorAttributesService.getWithStrains(beatmapID, mode, mods, clockRate);
+        return this.calculatorAttributesService.getWithStrains(
+            beatmapID,
+            mode,
+            mods,
+            clockRate,
+            strainPointLimit,
+        );
     }
 
     public async performance<M extends GameMode>(

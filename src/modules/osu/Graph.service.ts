@@ -2,11 +2,12 @@ import { AbstractService } from "@/core/framework/AbstractService";
 import { Trace } from "@/core/decorators";
 import { HttpClient } from "@/http";
 import { ISkillStrain } from "@domain/core/Calculator";
-import { graphFallbackColor, graphStrainColors, graphStrainTargetCount } from "@domain/osu/configs/Graph.config";
+import { graphFallbackColor, graphStrainColors } from "@domain/osu/configs/Graph.config";
 import { GameMode } from "@generated/adapter/types";
 import { ChartConfiguration, Plugin } from "chart.js";
 import { ChartJSNodeCanvas } from "chartjs-node-canvas";
 import { Image, loadImage } from "canvas";
+import { EApplicationError, Exception } from "@domain/core/Exception";
 
 interface IGraphPoint {
     x: number;
@@ -18,16 +19,7 @@ interface ILineSeries {
     points: Array<IGraphPoint>;
 }
 
-interface ITimelineGap {
-    from: IGraphPoint;
-    to: IGraphPoint;
-}
-
 export class GraphService extends AbstractService {
-    private static readonly gapThresholdMs = 2_000;
-    private static readonly gapFallDurationMs = 300;
-    private static readonly gapRiseDurationMs = 75;
-
     declare private chartCanvas: ChartJSNodeCanvas;
     declare private http: HttpClient;
 
@@ -44,7 +36,6 @@ export class GraphService extends AbstractService {
     @Trace()
     public async strains<M extends GameMode>(
         rawStrains: Array<ISkillStrain<M>>,
-        mode: M,
         coverUrl: string,
     ): Promise<Buffer> {
         const coverImage = await this.loadCoverImage(coverUrl);
@@ -53,27 +44,13 @@ export class GraphService extends AbstractService {
         const series = this.createStrainSeries(rawStrains);
 
         if (!series.length) {
-            throw new Error("Calculator returned no valid timestamped strain points.");
-        }
-
-        if (mode === GameMode.Standard) {
-            this.replaceNoSliderAimWithSliderAim(series);
-        }
-
-        const totalDuration = this.getTotalDuration(series);
-
-        for (const entry of series) {
-            const gaps = this.findTimelineGaps(entry.points, GraphService.gapThresholdMs);
-
-            entry.points = this.downsampleMinMax(entry.points, graphStrainTargetCount);
-            entry.points = this.applyTimelineGaps(
-                entry.points,
-                gaps,
-                GraphService.gapFallDurationMs,
-                GraphService.gapRiseDurationMs,
+            throw new Exception(
+                EApplicationError.INTERNAL_ERROR,
+                "Calculator returned no valid timestamped strain points.",
             );
         }
 
+        const totalDuration = this.getTotalDuration(series);
         const datasets = series.map((entry) => {
             const color = graphStrainColors[entry.label] ?? graphFallbackColor;
 
@@ -196,178 +173,8 @@ export class GraphService extends AbstractService {
         }
     }
 
-    private replaceNoSliderAimWithSliderAim(series: Array<ILineSeries>): void {
-        const aim = series.find((entry) => entry.label === "Aim");
-        const noSliderAimIndex = series.findIndex((entry) => entry.label === "AimNoSliders");
-
-        if (!aim || noSliderAimIndex === -1) {
-            return;
-        }
-
-        const noSliderAim = series[noSliderAimIndex]!;
-        const noSliderValuesByTime = new Map(noSliderAim.points.map((point) => [point.x, point.y]));
-
-        series[noSliderAimIndex] = {
-            label: "Aim (Sliders)",
-            points: aim.points.map((point) => ({
-                x: point.x,
-                y: Math.max(0, point.y - (noSliderValuesByTime.get(point.x) ?? 0)),
-            })),
-        };
-    }
-
     private getTotalDuration(series: ReadonlyArray<ILineSeries>): number {
         return series.reduce((maximum, entry) => Math.max(maximum, entry.points.at(-1)?.x ?? 0), 0);
-    }
-
-    //#endregion
-
-    //#region Timeline gaps
-
-    private findTimelineGaps(points: ReadonlyArray<IGraphPoint>, thresholdMs: number): Array<ITimelineGap> {
-        const gaps: Array<ITimelineGap> = [];
-
-        for (let index = 1; index < points.length; index++) {
-            const from = points[index - 1]!;
-            const to = points[index]!;
-
-            if (to.x - from.x > thresholdMs) {
-                gaps.push({ from, to });
-            }
-        }
-
-        return gaps;
-    }
-
-    private applyTimelineGaps(
-        points: ReadonlyArray<IGraphPoint>,
-        gaps: ReadonlyArray<ITimelineGap>,
-        fallDurationMs: number,
-        riseDurationMs: number,
-    ): Array<IGraphPoint> {
-        if (!gaps.length) {
-            return [...points];
-        }
-
-        const result = [...points];
-
-        for (const gap of gaps) {
-            const fallEnd = Math.min(gap.from.x + fallDurationMs, gap.to.x);
-            const riseStart = Math.max(fallEnd, gap.to.x - riseDurationMs);
-
-            result.push(gap.from, {
-                x: fallEnd,
-                y: 0,
-            });
-
-            if (riseStart > fallEnd) {
-                result.push({
-                    x: riseStart,
-                    y: 0,
-                });
-            }
-
-            result.push(gap.to);
-        }
-
-        return this.sortAndDeduplicatePoints(result);
-    }
-
-    private sortAndDeduplicatePoints(points: ReadonlyArray<IGraphPoint>): Array<IGraphPoint> {
-        const sorted = [...points].sort((a, b) => a.x - b.x || a.y - b.y);
-        const result: Array<IGraphPoint> = [];
-
-        for (const point of sorted) {
-            const previous = result.at(-1);
-
-            if (previous?.x === point.x && previous.y === point.y) {
-                continue;
-            }
-
-            result.push(point);
-        }
-
-        return result;
-    }
-
-    //#endregion
-
-    //#region Downsampling
-
-    private downsampleMinMax(points: ReadonlyArray<IGraphPoint>, maxPoints: number): Array<IGraphPoint> {
-        if (points.length <= maxPoints) {
-            return [...points];
-        }
-
-        if (maxPoints <= 1) {
-            return [points[0]!];
-        }
-
-        if (maxPoints === 2) {
-            return [points[0]!, points.at(-1)!];
-        }
-
-        if (maxPoints === 3) {
-            let maximum = points[1]!;
-
-            for (let index = 2; index < points.length - 1; index++) {
-                if (points[index]!.y > maximum.y) {
-                    maximum = points[index]!;
-                }
-            }
-
-            return [points[0]!, maximum, points.at(-1)!];
-        }
-
-        const firstPoint = points[0]!;
-        const lastPoint = points.at(-1)!;
-        const result: Array<IGraphPoint> = [firstPoint];
-
-        const bucketCount = Math.floor((maxPoints - 2) / 2);
-        const interiorPointCount = points.length - 2;
-        const bucketSize = interiorPointCount / bucketCount;
-
-        for (let bucketIndex = 0; bucketIndex < bucketCount; bucketIndex++) {
-            const start = 1 + Math.floor(bucketIndex * bucketSize);
-            const end = Math.min(points.length - 1, 1 + Math.floor((bucketIndex + 1) * bucketSize));
-
-            if (start >= end) {
-                continue;
-            }
-
-            let minimum = points[start]!;
-            let maximum = points[start]!;
-
-            for (let pointIndex = start + 1; pointIndex < end; pointIndex++) {
-                const point = points[pointIndex]!;
-
-                if (point.y < minimum.y) {
-                    minimum = point;
-                }
-
-                if (point.y > maximum.y) {
-                    maximum = point;
-                }
-            }
-
-            if (minimum.x <= maximum.x) {
-                result.push(minimum);
-
-                if (maximum !== minimum) {
-                    result.push(maximum);
-                }
-            } else {
-                result.push(maximum);
-
-                if (minimum !== maximum) {
-                    result.push(minimum);
-                }
-            }
-        }
-
-        result.push(lastPoint);
-
-        return result;
     }
 
     //#endregion

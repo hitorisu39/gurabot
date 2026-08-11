@@ -35,6 +35,10 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
         new();
     private static readonly ConcurrentDictionary<Type, SkillMetadata> SkillMetadataCache = new();
 
+    private const double StrainGapThresholdMs = 2_000;
+    private const double StrainGapFallDurationMs = 300;
+    private const double StrainGapRiseDurationMs = 75;
+
     public CalculatorService(
         BeatmapCache cache,
         HitResultGeneration hitResultGeneration,
@@ -180,6 +184,7 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
         Mod[] mods,
         IEnumerable<ModMessage> modMessages,
         double? customClockRate,
+        int? strainPointLimit,
         CancellationToken cancellationToken
     )
     {
@@ -214,7 +219,7 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
             skills
         );
 
-        IReadOnlyList<SkillStrain> strains = BuildStrains(skills, difficultyObjects);
+        IReadOnlyList<SkillStrain> strains = BuildStrains(skills, difficultyObjects, rulesetId, strainPointLimit);
 
         var cacheKey = new FullDifficultyCacheKey(
             cachedBeatmap.Identity,
@@ -228,7 +233,12 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
         return new DifficultyWithStrainsResult(attributes, prepared.PlayableBeatmap, prepared.PlayableMods, strains);
     }
 
-    private static IReadOnlyList<SkillStrain> BuildStrains(Skill[] skills, DifficultyHitObject[] hitObjects)
+    private static IReadOnlyList<SkillStrain> BuildStrains(
+        Skill[] skills,
+        DifficultyHitObject[] hitObjects,
+        uint rulesetId,
+        int? pointLimit
+    )
     {
         if (hitObjects.Length == 0)
             return Array.Empty<SkillStrain>();
@@ -260,36 +270,308 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
                 continue;
 
             string name = GetUniqueSkillName(skill, nameCounts);
-            var strain = new SkillStrain { SkillName = name };
+
+            var points = new List<StrainGraphPoint>(values.Count + 2);
 
             if (hitObjects[0].StartTime > 0)
             {
-                strain.Points.Add(new SkillStrainPoint { TimeMs = 0, Value = 0 });
+                points.Add(new StrainGraphPoint(0, 0));
             }
 
             for (int i = 0; i < values.Count; i++)
             {
                 double value = values[i];
+
                 if (!double.IsFinite(value))
                     value = 0;
 
-                strain.Points.Add(
-                    new SkillStrainPoint { TimeMs = Math.Max(0, hitObjects[i].StartTime), Value = Math.Max(0, value) }
-                );
+                points.Add(new StrainGraphPoint(Math.Max(0, hitObjects[i].StartTime), Math.Max(0, value)));
             }
 
-            double lastPointTime = strain.Points[^1].TimeMs;
+            double lastPointTime = points[^1].TimeMs;
 
             if (timelineEnd > lastPointTime)
             {
-                strain.Points.Add(new SkillStrainPoint { TimeMs = timelineEnd, Value = 0 });
+                points.Add(new StrainGraphPoint(timelineEnd, 0));
             }
 
-            result.Add(strain);
+            IReadOnlyList<StrainGraphPoint> normalized = NormalizeStrainPoints(points);
+
+            if (normalized.Count == 0)
+                continue;
+
+            result.Add(CreateSkillStrain(name, normalized));
+        }
+
+        // Must happen before independent downsampling, because Aim and
+        // AimNoSliders need matching timestamps for accurate subtraction.
+        if (rulesetId == 0)
+        {
+            ReplaceNoSliderAimWithSliderAim(result);
+        }
+
+        if (pointLimit.HasValue)
+        {
+            for (int i = 0; i < result.Count; i++)
+            {
+                result[i] = ReduceStrainSeries(result[i], pointLimit.Value);
+            }
         }
 
         return result;
     }
+
+    private static IReadOnlyList<StrainGraphPoint> NormalizeStrainPoints(IReadOnlyList<StrainGraphPoint> points)
+    {
+        var valuesByTime = new Dictionary<double, double>();
+
+        foreach (StrainGraphPoint point in points)
+        {
+            if (!double.IsFinite(point.TimeMs) || !double.IsFinite(point.Value))
+                continue;
+
+            double timeMs = Math.Max(0, point.TimeMs);
+            double value = Math.Max(0, point.Value);
+
+            if (valuesByTime.TryGetValue(timeMs, out double existingValue))
+            {
+                valuesByTime[timeMs] = Math.Max(existingValue, value);
+            }
+            else
+            {
+                valuesByTime[timeMs] = value;
+            }
+        }
+
+        return valuesByTime
+            .Select(pair => new StrainGraphPoint(pair.Key, pair.Value))
+            .OrderBy(point => point.TimeMs)
+            .ToArray();
+    }
+
+    private static void ReplaceNoSliderAimWithSliderAim(List<SkillStrain> strains)
+    {
+        SkillStrain? aim = strains.FirstOrDefault(strain => strain.SkillName == "Aim");
+
+        int noSliderAimIndex = strains.FindIndex(strain => strain.SkillName == "AimNoSliders");
+
+        if (aim == null || noSliderAimIndex == -1)
+            return;
+
+        SkillStrain noSliderAim = strains[noSliderAimIndex];
+
+        var noSliderValuesByTime = noSliderAim.Points.ToDictionary(point => point.TimeMs, point => point.Value);
+
+        var sliderAimPoints = aim.Points.Select(point =>
+        {
+            double noSliderValue = noSliderValuesByTime.GetValueOrDefault(point.TimeMs);
+
+            return new StrainGraphPoint(point.TimeMs, Math.Max(0, point.Value - noSliderValue));
+        });
+
+        strains[noSliderAimIndex] = CreateSkillStrain("Aim (Sliders)", sliderAimPoints);
+    }
+
+    private static SkillStrain ReduceStrainSeries(SkillStrain strain, int maxPoints)
+    {
+        var points = strain.Points.Select(point => new StrainGraphPoint(point.TimeMs, point.Value)).ToArray();
+
+        if (points.Length == 0)
+            return strain;
+
+        IReadOnlyList<StrainTimelineGap> gaps = FindTimelineGaps(points, StrainGapThresholdMs);
+
+        IReadOnlyList<StrainGraphPoint> sampled = DownsampleMinMax(points, maxPoints);
+
+        IReadOnlyList<StrainGraphPoint> withGaps = ApplyTimelineGaps(
+            sampled,
+            gaps,
+            StrainGapFallDurationMs,
+            StrainGapRiseDurationMs
+        );
+
+        return CreateSkillStrain(strain.SkillName, withGaps);
+    }
+
+    private static IReadOnlyList<StrainTimelineGap> FindTimelineGaps(
+        IReadOnlyList<StrainGraphPoint> points,
+        double thresholdMs
+    )
+    {
+        var gaps = new List<StrainTimelineGap>();
+
+        for (int i = 1; i < points.Count; i++)
+        {
+            StrainGraphPoint from = points[i - 1];
+            StrainGraphPoint to = points[i];
+
+            if (to.TimeMs - from.TimeMs > thresholdMs)
+            {
+                gaps.Add(new StrainTimelineGap(from, to));
+            }
+        }
+
+        return gaps;
+    }
+
+    private static IReadOnlyList<StrainGraphPoint> ApplyTimelineGaps(
+        IReadOnlyList<StrainGraphPoint> points,
+        IReadOnlyList<StrainTimelineGap> gaps,
+        double fallDurationMs,
+        double riseDurationMs
+    )
+    {
+        if (gaps.Count == 0)
+            return points.ToArray();
+
+        var result = new List<StrainGraphPoint>(points.Count + gaps.Count * 4);
+
+        result.AddRange(points);
+
+        foreach (StrainTimelineGap gap in gaps)
+        {
+            double fallEnd = Math.Min(gap.From.TimeMs + fallDurationMs, gap.To.TimeMs);
+
+            double riseStart = Math.Max(fallEnd, gap.To.TimeMs - riseDurationMs);
+
+            result.Add(gap.From);
+            result.Add(new StrainGraphPoint(fallEnd, 0));
+
+            if (riseStart > fallEnd)
+            {
+                result.Add(new StrainGraphPoint(riseStart, 0));
+            }
+
+            result.Add(gap.To);
+        }
+
+        return SortAndDeduplicateStrainPoints(result);
+    }
+
+    private static IReadOnlyList<StrainGraphPoint> SortAndDeduplicateStrainPoints(
+        IReadOnlyList<StrainGraphPoint> points
+    )
+    {
+        StrainGraphPoint[] sorted = points.OrderBy(point => point.TimeMs).ThenBy(point => point.Value).ToArray();
+
+        var result = new List<StrainGraphPoint>(sorted.Length);
+
+        foreach (StrainGraphPoint point in sorted)
+        {
+            if (result.Count > 0 && result[^1].Equals(point))
+                continue;
+
+            result.Add(point);
+        }
+
+        return result;
+    }
+
+    private static IReadOnlyList<StrainGraphPoint> DownsampleMinMax(
+        IReadOnlyList<StrainGraphPoint> points,
+        int maxPoints
+    )
+    {
+        if (points.Count <= maxPoints)
+            return points.ToArray();
+
+        if (maxPoints <= 1)
+            return new[] { points[0] };
+
+        if (maxPoints == 2)
+            return new[] { points[0], points[^1] };
+
+        if (maxPoints == 3)
+        {
+            StrainGraphPoint maximum = points[1];
+
+            for (int i = 2; i < points.Count - 1; i++)
+            {
+                if (points[i].Value > maximum.Value)
+                {
+                    maximum = points[i];
+                }
+            }
+
+            return new[] { points[0], maximum, points[^1] };
+        }
+
+        StrainGraphPoint firstPoint = points[0];
+        StrainGraphPoint lastPoint = points[^1];
+
+        var result = new List<StrainGraphPoint>(maxPoints) { firstPoint };
+
+        int bucketCount = (maxPoints - 2) / 2;
+        int interiorPointCount = points.Count - 2;
+        double bucketSize = (double)interiorPointCount / bucketCount;
+
+        for (int bucketIndex = 0; bucketIndex < bucketCount; bucketIndex++)
+        {
+            int start = 1 + (int)Math.Floor(bucketIndex * bucketSize);
+
+            int end = Math.Min(points.Count - 1, 1 + (int)Math.Floor((bucketIndex + 1) * bucketSize));
+
+            if (start >= end)
+                continue;
+
+            StrainGraphPoint minimum = points[start];
+            StrainGraphPoint maximum = points[start];
+
+            for (int pointIndex = start + 1; pointIndex < end; pointIndex++)
+            {
+                StrainGraphPoint point = points[pointIndex];
+
+                if (point.Value < minimum.Value)
+                {
+                    minimum = point;
+                }
+
+                if (point.Value > maximum.Value)
+                {
+                    maximum = point;
+                }
+            }
+
+            if (minimum.TimeMs <= maximum.TimeMs)
+            {
+                result.Add(minimum);
+
+                if (!maximum.Equals(minimum))
+                {
+                    result.Add(maximum);
+                }
+            }
+            else
+            {
+                result.Add(maximum);
+
+                if (!minimum.Equals(maximum))
+                {
+                    result.Add(minimum);
+                }
+            }
+        }
+
+        result.Add(lastPoint);
+
+        return result;
+    }
+
+    private static SkillStrain CreateSkillStrain(string name, IEnumerable<StrainGraphPoint> points)
+    {
+        var strain = new SkillStrain { SkillName = name };
+
+        foreach (StrainGraphPoint point in points)
+        {
+            strain.Points.Add(new SkillStrainPoint { TimeMs = point.TimeMs, Value = point.Value });
+        }
+
+        return strain;
+    }
+
+    private readonly record struct StrainGraphPoint(double TimeMs, double Value);
+
+    private readonly record struct StrainTimelineGap(StrainGraphPoint From, StrainGraphPoint To);
 
     private static string GetSkillName(Skill skill)
     {
@@ -490,6 +772,23 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
         }
         else if (request.CalculateStrains)
         {
+            int? strainPointLimit = null;
+
+            if (request.HasStrainPointLimit)
+            {
+                if (request.StrainPointLimit == 0 || request.StrainPointLimit > int.MaxValue)
+                {
+                    throw new RpcException(
+                        new Status(
+                            StatusCode.InvalidArgument,
+                            "strain_point_limit must be between 1 and Int32.MaxValue."
+                        )
+                    );
+                }
+
+                strainPointLimit = checked((int)request.StrainPointLimit);
+            }
+
             DifficultyWithStrainsResult calculated = CalculateDifficultyWithStrains(
                 cachedBeatmap,
                 ruleset,
@@ -497,6 +796,7 @@ public class CalculatorService : Calculator.Protos.Calculator.CalculatorBase
                 mods,
                 request.Mods,
                 customClockRate,
+                strainPointLimit,
                 cancellationToken
             );
 

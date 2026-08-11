@@ -45,6 +45,7 @@ export class CalculatorAttributesService extends AbstractService {
         mode: M,
         mods: Array<ParsedMod>,
         clockRate?: number,
+        strainPointLimit?: number,
     ): Promise<IDifficultyCalculationResponse<M>> {
         const { cacheString, custom } = this.getModCacheString(mods, clockRate);
 
@@ -60,7 +61,8 @@ export class CalculatorAttributesService extends AbstractService {
             beatmapPath: this.calculatorMapService.getPath(beatmapID),
             mods: protoMods,
             clockRate,
-            calculateStrains: true
+            calculateStrains: true,
+            strainPointLimit
         });
 
         await this.saveToDatabase(beatmapID, mode, cacheString, response.attributes, custom);
