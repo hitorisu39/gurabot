@@ -452,7 +452,7 @@ export class SkillCardViewService extends AbstractService {
         const parts: Array<string> = [];
 
         parts.push(ProfileFormatter.rank(profile.statistics.globalRank));
-        parts.push(ProfileFormatter.rank(profile.statistics.countryRank));
+        parts.push(ProfileFormatter.countryRank(profile.countryCode, profile.statistics.countryRank));
 
         return parts.join("  ");
     }
