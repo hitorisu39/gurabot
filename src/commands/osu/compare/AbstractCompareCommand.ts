@@ -5,6 +5,8 @@ import {
     Examples,
     Help,
     Import,
+    Inject,
+    InjectMatch,
     IsEnum,
     IsInlineIndex,
     IsMods,
@@ -25,6 +27,7 @@ import { EScoreListSize, EScoreQuerySort, EScoreViewLayout, ESortOrder } from "@
 import { ScoreViewService } from "@/modules/osu/scores/ScoreView.service";
 import { BaseScoreEvaluator } from "@domain/osu/utils/BaseScoreEvaluator";
 import { ProviderMeta } from "@generated/adapter";
+import { BeatmapUtils } from "@domain/osu/utils/BeatmapUtils";
 
 @Category(ECommandCategory.Osu)
 @Help(`
@@ -51,6 +54,7 @@ export abstract class AbstractCompareCommand extends AbstractOsuCommand {
     @Import() declare private readonly scoreViewService: ScoreViewService;
 
     @Option("map", "Specify a map url or id")
+    @InjectMatch(BeatmapUtils.isTarget)
     declare private readonly map: CommandOption<string>;
 
     @Option("version", "Specify difficulty name to search for in the mapset")

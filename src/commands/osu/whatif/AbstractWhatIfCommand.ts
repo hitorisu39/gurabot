@@ -1,4 +1,4 @@
-import { Aliases, Category, Examples, Help, Import, Inject, IsNumber, Option } from "@/core/decorators";
+import { Aliases, Category, Examples, Help, Import, Inject, InjectMatch, IsNumber, Option } from "@/core/decorators";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
 import { OsuService } from "@/modules/osu/Osu.service";
@@ -24,7 +24,7 @@ export abstract class AbstractWhatIfCommand extends AbstractOsuCommand {
 
     @Option("pp", "Amount of PP for the hypothetical performance play")
     @IsNumber(0, 99999)
-    @Inject()
+    @InjectMatch((v) => !Number.isNaN(v))
     @Aliases("value")
     declare private readonly pp: CommandOption<number>;
 
