@@ -14,7 +14,7 @@ export class TopCommand extends AbstractTopCommand {}
 @Command({
     name: "taikotop",
     description: "Shows top 100 taiko plays of an osu! player.",
-    aliases: ["toptaiko", "topt", "ttop"],
+    aliases: ["toptaiko", "topt", "ttop", "tt"],
     prefixOnly: true,
 })
 export class TaikoTopCommand extends AbstractTopCommand {
@@ -25,7 +25,7 @@ export class TaikoTopCommand extends AbstractTopCommand {
 @Command({
     name: "catchtop",
     description: "Shows top 100 catch plays of an osu! player.",
-    aliases: ["topctb", "catchtop", "topcatch", "ctop", "topc"],
+    aliases: ["topctb", "catchtop", "topcatch", "ctop", "topc", "tc"],
     prefixOnly: true,
 })
 export class CatchTopCommand extends AbstractTopCommand {
@@ -36,7 +36,7 @@ export class CatchTopCommand extends AbstractTopCommand {
 @Command({
     name: "maniatop",
     description: "Shows top 100 mania plays of an osu! player.",
-    aliases: ["topmania", "mtop", "topm"],
+    aliases: ["topmania", "mtop", "topm", "tm"],
     prefixOnly: true,
 })
 export class ManiaTopCommand extends AbstractTopCommand {
