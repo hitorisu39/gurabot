@@ -168,15 +168,24 @@ export enum EOptionType {
     DateRange = "DateRange",
 }
 
+export enum EInjectMode {
+    Greedy = "Greedy",
+    Token = "Token",
+    Match = "Match",
+}
+
 export interface IOptionMetadata {
     propertyKey: string;
     name: string;
     description: string;
     type: EOptionType;
     required: boolean;
-    inject: boolean;
-    min?: number | undefined;
-    max?: number | undefined;
+
+    inject?: EInjectMode;
+    injectMatcher?: (value: string) => boolean;
+
+    min?: number;
+    max?: number;
     enumData?: any;
     aliases?: Array<string>;
     queryDto?: any;
@@ -217,7 +226,26 @@ export function Required() {
 
 export function Inject() {
     return function (target: any, propertyKey: string | symbol) {
-        updateProperty(target, propertyKey, { inject: true, type: EOptionType.String });
+        updateProperty(target, propertyKey, {
+            inject: EInjectMode.Greedy,
+        });
+    };
+}
+
+export function InjectToken() {
+    return function (target: any, propertyKey: string | symbol) {
+        updateProperty(target, propertyKey, {
+            inject: EInjectMode.Token,
+        });
+    };
+}
+
+export function InjectMatch(matcher: (value: string) => boolean) {
+    return function (target: any, propertyKey: string | symbol) {
+        updateProperty(target, propertyKey, {
+            inject: EInjectMode.Match,
+            injectMatcher: matcher,
+        });
     };
 }
 

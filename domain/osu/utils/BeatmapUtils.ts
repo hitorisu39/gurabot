@@ -30,8 +30,8 @@ export class BeatmapUtils {
     }
 
     public static isTarget(input: string): boolean {
-        const target = this.normalizeTarget(input);
-        return /^\d+$/.test(target) || this.targetRegexes.some((regex) => regex.test(target));
+        const target = BeatmapUtils.normalizeTarget(input);
+        return /^\d+$/.test(target) || BeatmapUtils.targetRegexes.some((regex) => regex.test(target));
     }
 
     public static extractTarget(input: string): IExtractedBeatmapTarget {
@@ -43,9 +43,9 @@ export class BeatmapUtils {
             };
         }
 
-        const first = this.normalizeTarget(tokens[0]!);
+        const first = BeatmapUtils.normalizeTarget(tokens[0]!);
 
-        if (!this.isTarget(first)) {
+        if (!BeatmapUtils.isTarget(first)) {
             return {
                 remainder: tokens.join(" "),
             };
