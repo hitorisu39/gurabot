@@ -39,7 +39,7 @@ export class MapViewService extends AbstractViewService<MapViewDto, boolean> {
             currentMap.mode,
             data.mods,
             undefined,
-            graphStrainTargetCount
+            graphStrainTargetCount,
         );
 
         const embed = await this.createEmbed(data.beatmapset, currentMap, data, difficulty);
@@ -49,10 +49,7 @@ export class MapViewService extends AbstractViewService<MapViewDto, boolean> {
         const payload: TMessagePayload = { embeds: [embed], components };
 
         if (withGraph && difficulty.strains) {
-            const graph = await this.graphService.strains(
-                difficulty.strains,
-                data.beatmapset.covers.cover,
-            );
+            const graph = await this.graphService.strains(difficulty.strains, data.beatmapset.covers.cover);
             const attachment = new AttachmentBuilder(graph, { name: "strains.png" });
             payload.files = [attachment];
         }

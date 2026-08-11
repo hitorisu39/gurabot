@@ -34,10 +34,7 @@ export class GraphService extends AbstractService {
     }
 
     @Trace()
-    public async strains<M extends GameMode>(
-        rawStrains: Array<ISkillStrain<M>>,
-        coverUrl: string,
-    ): Promise<Buffer> {
+    public async strains<M extends GameMode>(rawStrains: Array<ISkillStrain<M>>, coverUrl: string): Promise<Buffer> {
         const coverImage = await this.loadCoverImage(coverUrl);
         const backgroundPlugin = this.createBackgroundPlugin(coverImage);
 
