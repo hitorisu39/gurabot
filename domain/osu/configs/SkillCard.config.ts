@@ -10,44 +10,44 @@ interface ISkillCardTheme {
 export const skillCardThemes: Record<ESkillRank, ISkillCardTheme> = {
     [ESkillRank.Weak]: {
         username: "#ffffff",
-        skillName: "#9cdb90",
-        skillValue: "#9aa794",
+        skillName: "#ffffffb4",
+        skillValue: "#ffffffb4",
     },
 
     [ESkillRank.Common]: {
         username: "#ffffff",
-        skillName: "#d1db90",
-        skillValue: "#a7a194",
+        skillName: "#ffffffb4",
+        skillValue: "#ffffffb4",
     },
 
     [ESkillRank.Average]: {
-        username: "#c9ebff",
-        skillName: "#90c5db",
-        skillValue: "#94a2a7",
+        username: "#ffffff",
+        skillName: "#ffffffb4",
+        skillValue: "#ffffffb4",
     },
 
     [ESkillRank.Expert]: {
-        username: "#dac9ff",
-        skillName: "#9590db",
-        skillValue: "#9594a7",
+        username: "#ffffff",
+        skillName: "#ffffffb4",
+        skillValue: "#ffffffb4",
     },
 
     [ESkillRank.Elite]: {
         username: "#ffffff",
-        skillName: "#e2a2ff",
-        skillValue: "#a294a7",
+        skillName: "#ffffffb4",
+        skillValue: "#ffffffb4",
     },
 
     [ESkillRank.Master]: {
-        username: "#e1cdad",
-        skillName: "#dbc390",
-        skillValue: "#a7a194",
+        username: "#ffffff",
+        skillName: "#ffffffb4",
+        skillValue: "#ffffffb4",
     },
 
     [ESkillRank.Legend]: {
         username: "#ffffff",
-        skillName: "#db9090",
-        skillValue: "#a79494",
+        skillName: "#ffffffb4",
+        skillValue: "#ffffffb4",
     },
 };
 
