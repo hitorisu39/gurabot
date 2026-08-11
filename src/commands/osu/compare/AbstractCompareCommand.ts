@@ -5,7 +5,6 @@ import {
     Examples,
     Help,
     Import,
-    Inject,
     InjectMatch,
     IsEnum,
     IsInlineIndex,

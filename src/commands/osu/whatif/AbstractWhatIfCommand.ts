@@ -1,4 +1,4 @@
-import { Aliases, Category, Examples, Help, Import, Inject, InjectMatch, IsNumber, Option } from "@/core/decorators";
+import { Aliases, Category, Examples, Help, Import, InjectMatch, IsNumber, Option } from "@/core/decorators";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
 import { OsuService } from "@/modules/osu/Osu.service";
