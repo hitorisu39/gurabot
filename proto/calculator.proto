@@ -101,6 +101,7 @@ message DifficultyRequest {
     optional uint32 passed_objects = 4;
     optional double clock_rate = 5;
     optional bool calculate_strains = 6;
+    optional uint32 strain_point_limit = 7;
 }
 
 message DifficultyResponse {

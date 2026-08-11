@@ -17,6 +17,6 @@ export const graphStrainColors: Record<string, { border: string; bg: string }> =
     Strain: { border: "#f7fc6c", bg: "rgba(247, 252, 108, 0.2)" },
     Mania: { border: "#f7fc6c", bg: "rgba(247, 252, 108, 0.2)" },
 };
-export const graphStrainTargetCount = 200;
 
+export const graphStrainTargetCount = 200;
 export const graphFallbackColor = { border: "#ffffff", bg: "rgba(255, 255, 255, 0.2)" };

@@ -17,6 +17,7 @@ import { GraphService } from "../Graph.service";
 import { AttachmentBuilder } from "discord.js";
 import { AbstractViewService } from "@/modules/AbstractViewService";
 import { ScoreStateKind } from "@generated/calculator/calculator";
+import { graphStrainTargetCount } from "@domain/osu/configs/Graph.config";
 
 export class MapViewService extends AbstractViewService<MapViewDto, boolean> {
     @Import() declare private readonly graphService: GraphService;
@@ -37,6 +38,8 @@ export class MapViewService extends AbstractViewService<MapViewDto, boolean> {
             currentMap.id,
             currentMap.mode,
             data.mods,
+            undefined,
+            graphStrainTargetCount
         );
 
         const embed = await this.createEmbed(data.beatmapset, currentMap, data, difficulty);
@@ -48,7 +51,6 @@ export class MapViewService extends AbstractViewService<MapViewDto, boolean> {
         if (withGraph && difficulty.strains) {
             const graph = await this.graphService.strains(
                 difficulty.strains,
-                currentMap.mode,
                 data.beatmapset.covers.cover,
             );
             const attachment = new AttachmentBuilder(graph, { name: "strains.png" });

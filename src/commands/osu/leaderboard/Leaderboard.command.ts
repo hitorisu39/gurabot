@@ -101,7 +101,7 @@ export class LeaderboardCommand extends AbstractSessionCommand {
                 legacyOnly,
                 provider,
             ),
-            this.calculatorService.difficultyWithStrains(beatmap.id, beatmap.mode, parsedMods),
+            this.calculatorService.difficulty(beatmap.id, beatmap.mode, parsedMods),
         ]);
 
         const data: LeaderboardViewDto = {
@@ -110,12 +110,11 @@ export class LeaderboardCommand extends AbstractSessionCommand {
             provider,
             beatmap,
             scores,
-            starRating: difficulty.attributes.starRating,
+            starRating: difficulty.starRating,
             page: 1,
         };
 
         await this.leaderboardViewService.prepare(data);
-
         await this.respondWithSession(ctx, "osu_leaderboard_view", data, this.leaderboardViewService);
     }
 }
