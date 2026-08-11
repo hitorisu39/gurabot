@@ -1,4 +1,4 @@
-import { EOptionType, IOptionMetadata, Trace } from "@/core/decorators";
+import { EInjectMode, EOptionType, IOptionMetadata, Trace } from "@/core/decorators";
 import { CommandContext } from "../context/CommandContext";
 import { MessageContext } from "../context/MessageContext";
 import { SlashContext } from "../context/SlashContext";
@@ -74,10 +74,12 @@ export class CommandParser {
                     rawValue = (ctx as SlashContext).interaction.options.getString(meta.name);
                 } else {
                     const explicitValue = this.getOptionValue(meta, prefixMap);
-
                     if (explicitValue !== undefined) {
                         rawValue = explicitValue;
-                    } else if (meta.inject && (injectedContent.length > 0 || prefixMap.size > 0)) {
+                    } else if (
+                        meta.inject === EInjectMode.Greedy &&
+                        (injectedContent.length > 0 || prefixMap.size > 0)
+                    ) {
                         rawValue = injectedContent;
                     } else if (prefixMap.size > 0) {
                         /*
@@ -91,7 +93,7 @@ export class CommandParser {
                         rawValue = null;
                     }
                 }
-            } else if (meta.inject && !ctx.isSlash) {
+            } else if (meta.inject !== undefined && !ctx.isSlash) {
                 const explicitValue = this.getOptionValue(meta, prefixMap);
                 rawValue = explicitValue ?? injectedValues.get(meta.propertyKey) ?? null;
             } else if (ctx.isSlash && !internalState) {
@@ -129,33 +131,30 @@ export class CommandParser {
         prefixMap: Map<string, string>,
     ): Map<string, string> {
         const result = new Map<string, string>();
-
         if (!content) {
             return result;
         }
 
         const injected = optionsMeta.filter(
-            (meta) => meta.inject && meta.type !== EOptionType.Query && !this.hasOptionValue(meta, prefixMap),
+            (meta) =>
+                meta.inject !== undefined && meta.type !== EOptionType.Query && !this.hasOptionValue(meta, prefixMap),
         );
-
         if (!injected.length) {
             return result;
         }
 
-        if (injected.length === 1) {
-            result.set(injected[0]!.propertyKey, content);
-            return result;
-        }
-
         const tokens = content.split(/\s+/).filter(Boolean);
+        const matchOptions = injected.filter((meta) => meta.inject === EInjectMode.Match);
 
-        const tokenOptions = injected.filter(
-            (meta) => meta.type === EOptionType.Number || meta.type === EOptionType.Integer,
-        );
+        for (const meta of matchOptions) {
+            if (!meta.injectMatcher) {
+                throw new Exception(
+                    EApplicationError.INTERNAL_ERROR,
+                    `Matched injected option \`${meta.name}\` has no matcher.`,
+                );
+            }
 
-        for (const meta of tokenOptions) {
-            const tokenIndex = tokens.findIndex((token) => this.matchesInjectedToken(meta, token));
-
+            const tokenIndex = tokens.findIndex((token) => meta.injectMatcher!(token));
             if (tokenIndex === -1) {
                 continue;
             }
@@ -164,54 +163,31 @@ export class CommandParser {
             result.set(meta.propertyKey, token!);
         }
 
-        const stringOptions = injected.filter((meta) => meta.type === EOptionType.String);
+        const tokenOptions = injected.filter((meta) => meta.inject === EInjectMode.Token);
+        for (const meta of tokenOptions) {
+            const token = tokens.shift();
 
-        if (stringOptions.length > 1) {
+            if (token === undefined) {
+                break;
+            }
+
+            result.set(meta.propertyKey, token);
+        }
+
+        const greedyOptions = injected.filter((meta) => meta.inject === EInjectMode.Greedy);
+        if (greedyOptions.length > 1) {
             throw new Exception(
                 EApplicationError.INTERNAL_ERROR,
-                "A command cannot have multiple unresolved injected string options.",
+                "A command cannot have multiple unresolved greedy injected options.",
             );
         }
 
-        const stringOption = stringOptions[0];
-
-        if (stringOption && tokens.length) {
-            result.set(stringOption.propertyKey, tokens.join(" "));
-        }
-
-        const supported = new Set([EOptionType.String, EOptionType.Number, EOptionType.Integer]);
-        const unsupported = injected.filter((meta) => !supported.has(meta.type));
-
-        if (unsupported.length) {
-            throw new Exception(
-                EApplicationError.INTERNAL_ERROR,
-                `Unsupported injected option type for \`${unsupported[0]!.name}\`.`,
-            );
+        const greedyOption = greedyOptions[0];
+        if (greedyOption && tokens.length > 0) {
+            result.set(greedyOption.propertyKey, tokens.join(" "));
         }
 
         return result;
-    }
-
-    private static matchesInjectedToken(meta: IOptionMetadata, token: string): boolean {
-        const value = Number(token);
-
-        if (!Number.isFinite(value)) {
-            return false;
-        }
-
-        if (meta.type === EOptionType.Integer && !Number.isInteger(value)) {
-            return false;
-        }
-
-        if (meta.min !== undefined && value < meta.min) {
-            return false;
-        }
-
-        if (meta.max !== undefined && value > meta.max) {
-            return false;
-        }
-
-        return true;
     }
 
     private static getOptionKeys(meta: IOptionMetadata): string[] {
@@ -433,7 +409,7 @@ export class CommandParser {
             cleanedContent = this.extractKeyValuePairs(cleanedContent, queryPrefixMap);
         } else {
             queryPrefixMap = globalPrefixMap;
-            cleanedContent = meta.inject ? stringContent : "";
+            cleanedContent = meta.inject === EInjectMode.Greedy ? stringContent : "";
         }
 
         const parsedDtoFields = await this.parseAndValidate(ctx, properties, {
@@ -442,7 +418,6 @@ export class CommandParser {
         });
 
         const dtoInstance = new dtoClass();
-
         for (const [key, value] of Object.entries(parsedDtoFields)) {
             dtoInstance[key] = value;
         }
@@ -684,7 +659,7 @@ export class CommandParser {
     }
 
     private static extractKeyValuePairs(content: string, prefixMap: Map<string, string>): string {
-        const kvRegex = /([a-zA-Z0-9_]+)([=><:]+)(?:"([^"]+)"|([^\s]+))/g;
+        const kvRegex = /([a-zA-Z0-9_]+)([=><]+|:(?!\/\/))(?:"([^"]+)"|([^\s]+))/g;
 
         let match: RegExpExecArray | null;
 
