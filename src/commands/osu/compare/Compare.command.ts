@@ -14,7 +14,7 @@ export class CompareCommand extends AbstractCompareCommand {}
 @Command({
     name: "taikocompare",
     description: "Compares your taiko scores on a specific beatmap.",
-    aliases: ["comparetaiko", "ct", "tcompare", "tc"],
+    aliases: ["comparetaiko", "ct", "tcompare"],
     prefixOnly: true,
 })
 export class TaikoCompareCommand extends AbstractCompareCommand {
