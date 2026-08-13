@@ -22,6 +22,7 @@ import { EScoreListSize, EScoreQuerySort, ESortOrder } from "@domain/osu/enums/S
 import { PopulatedScoreEvaluator } from "@domain/osu/utils/PopulatedScoreEvaluator";
 import { ScoresViewDto } from "@domain/osu/views/Scores.view";
 import { ScoreViewService } from "@/modules/osu/scores/ScoreView.service";
+import { scoreFetchBestLimit } from "@domain/osu/configs/Score.config";
 
 @Help(`
     Shows the top {mode} plays of the specified player.
@@ -112,7 +113,7 @@ export abstract class AbstractTopCommand extends AbstractOsuCommand {
             nameOrID: target.query,
             mode: target.mode,
             type: "best",
-            limit: 100,
+            limit: scoreFetchBestLimit,
             provider: target.server,
         });
 

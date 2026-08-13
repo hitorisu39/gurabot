@@ -7,6 +7,7 @@ import { ECommandCategory } from "@domain/core/Command";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { Score } from "@generated/adapter/types";
 import { AttachmentBuilder } from "discord.js";
+import { scoreFetchBestLimit } from "@domain/osu/configs/Score.config";
 
 export interface IGraphTopResult {
     image: Buffer;
@@ -31,7 +32,7 @@ export abstract class AbstractGraphTopCommand extends AbstractOsuCommand {
             nameOrID: target.query,
             mode: target.mode,
             type: "best",
-            limit: 100,
+            limit: scoreFetchBestLimit,
             provider: target.server,
         });
 

@@ -13,6 +13,7 @@ import { ScoreUtils } from "@domain/osu/utils/ScoreUtils";
 import { NoChokeViewDto } from "@domain/osu/views/NoChoke.view";
 import { GameMode, Score } from "@generated/adapter/types";
 import { plainToInstance } from "class-transformer";
+import { scoreFetchBestLimit } from "@domain/osu/configs/Score.config";
 
 @Help(`
     Shows projected top plays after removing misses and recalculating full-combo PP.
@@ -44,7 +45,7 @@ export abstract class AbstractNoChokeCommand extends AbstractOsuCommand {
             nameOrID: target.query,
             mode: target.mode,
             type: "best",
-            limit: 100,
+            limit: scoreFetchBestLimit,
             provider: target.server,
         });
 

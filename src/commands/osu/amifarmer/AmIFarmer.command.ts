@@ -7,6 +7,7 @@ import { FarmerEvaluator, IFarmerAnalysis } from "@domain/osu/utils/FarmerEvalua
 import { GameMode } from "@generated/adapter/types";
 import { Embed } from "@/core/discord/ui/Embed";
 import { ECommandCategory } from "@domain/core/Command";
+import { scoreFetchBestLimit } from "@domain/osu/configs/Score.config";
 
 @Examples("amifarmer", "amifarmer mrekk", "aif whitecat")
 @Category(ECommandCategory.Osu)
@@ -33,7 +34,7 @@ export class AmIFarmerCommand extends AbstractOsuCommand {
             nameOrID: target.query,
             mode: target.mode,
             type: "best",
-            limit: 100,
+            limit: scoreFetchBestLimit,
             provider: target.server,
         });
 
