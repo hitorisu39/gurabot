@@ -9,6 +9,7 @@ import { OsuService } from "@/modules/osu/Osu.service";
 import { SkillCalculatorService } from "@/modules/osu/skills/SkillCalculator.service";
 import { GraphSkillsCurveService } from "@/modules/osu/graph/GraphSkillsCurve.service";
 import { ProfileViewService } from "@/modules/osu/profile/ProfileView.service";
+import { scoreFetchBestLimit } from "@domain/osu/configs/Score.config";
 
 @Help(`
     Graphs the distribution of calculated skill values across a player's top 100 plays.
@@ -31,7 +32,7 @@ export abstract class AbstractGraphSkillsCurveCommand extends AbstractOsuCommand
             nameOrID: target.query,
             mode: target.mode,
             type: "best",
-            limit: 100,
+            limit: scoreFetchBestLimit,
             provider: target.server,
         });
 

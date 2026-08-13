@@ -22,6 +22,7 @@ import { ScoreViewService } from "@/modules/osu/scores/ScoreView.service";
 import { Embed } from "@/core/discord/ui/Embed";
 import { ProviderMeta } from "@generated/adapter";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
+import { scoreFetchRecentLimit } from "@domain/osu/configs/Score.config";
 
 @Help(`
     Shows most recent {passed}{mode} scores of the specified player.
@@ -95,7 +96,7 @@ export abstract class AbstractRecentListCommand extends AbstractOsuCommand {
             nameOrID: target.query,
             mode: target.mode,
             type: "recent",
-            limit: 100,
+            limit: scoreFetchRecentLimit,
             includeFails: !passed,
             provider: target.server,
         });
