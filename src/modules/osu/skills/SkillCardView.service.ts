@@ -226,7 +226,7 @@ export class SkillCardViewService extends AbstractService {
 
     private createSkillRowsSvg(categories: Array<SkillCategoryResultDto>): string {
         return categories
-            .slice(0, 4)
+            .slice(0, 5)
             .map((category, index) => {
                 const rowY = skillCardLayout.skillAreaTop + index * skillCardLayout.skillRowHeight;
                 const label = this.escapeXml(category.label);
@@ -262,7 +262,7 @@ export class SkillCardViewService extends AbstractService {
         const maximumStars = skillCardMaximumStars[mode];
 
         const rows = await Promise.all(
-            categories.slice(0, 4).map(async (category, index) => {
+            categories.slice(0, 5).map(async (category, index) => {
                 const rowY = skillCardLayout.skillAreaTop + index * skillCardLayout.skillRowHeight;
                 const percentage = clamp(category.average / maximumStars, 0, 1);
 

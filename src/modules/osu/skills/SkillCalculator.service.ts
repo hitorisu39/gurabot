@@ -41,6 +41,7 @@ interface ISkillFormulaInput {
 
     aimDifficulty?: number;
     speedDifficulty?: number;
+    readingDifficulty?: number;
     taikoDifficulty?: ITaikoDifficultyAttributes;
 }
 
@@ -127,12 +128,13 @@ export class SkillCalculatorService extends AbstractService {
 
             aimDifficulty: standardDifficulty.aimDifficulty,
             speedDifficulty: standardDifficulty.speedDifficulty,
+            readingDifficulty: standardDifficulty.readingDifficulty,
 
             taikoDifficulty: mode === GameMode.Taiko ? (score.fullDifficulty as ITaikoDifficultyAttributes) : undefined,
         };
     }
 
-    private calculateStandard(input: ISkillFormulaInput): Partial<Record<ESkillType, number>> {
+private calculateStandard(input: ISkillFormulaInput): Partial<Record<ESkillType, number>> {
         if (!isValidNumber(input.aimDifficulty) || !isValidNumber(input.speedDifficulty)) {
             return {};
         }
@@ -141,6 +143,7 @@ export class SkillCalculatorService extends AbstractService {
         const SPEED_MULTIPLIER = 2.2;
         const ACC_MULTIPLIER = 1.6;
         const STAMINA_MULTIPLIER = 1.19;
+        const READING_MULTIPLIER = 2;
 
         const accuracyFactor =
             input.accuracy >= 95
@@ -213,13 +216,33 @@ export class SkillCalculatorService extends AbstractService {
             Math.pow(comboFactor, 0.5) *
             Math.pow(accuracyFactor, 0.6);
 
+    const readingBase = input.readingDifficulty || 0; 
+    const readingComboFactor = 0.85 + 0.15 * Math.sqrt(comboRatio);
+    const readingAccuracyFactor = 0.8 + 0.2 * Math.pow(input.accuracy / 100, 3);
+
+    const noteDensityBase = (input.bpm * (13 - input.ar)) / 200;
+    const upperCap = 1.1;
+    const lowerCap = 0.95;
+    const scalingSpeed = 0.2;
+    const noteDensityFactor =1 + Math.sign(noteDensityBase - 4) *((upperCap - lowerCap) / 2 +(upperCap + lowerCap - 2) / 2 * Math.sign(noteDensityBase - 4)) *(1 - Math.exp(-scalingSpeed * Math.abs(noteDensityBase - 4)));
+
+    const readingSkill = 
+        readingBase *
+        readingComboFactor *
+        readingAccuracyFactor *
+        (1 - missPenalty) *
+        noteDensityFactor *
+        READING_MULTIPLIER;
+
+    
         return this.sanitizeValues({
             [ESkillType.Aim]: aimSkill * AIM_MULTIPLIER,
             [ESkillType.Speed]: speedSkill * SPEED_MULTIPLIER,
             [ESkillType.Accuracy]: accuracySkill * ACC_MULTIPLIER,
             [ESkillType.Stamina]: staminaSkill * STAMINA_MULTIPLIER,
-        });
-    }
+            [ESkillType.Reading]: readingSkill,
+    });
+}
 
     private calculateTaiko(input: ISkillFormulaInput): Partial<Record<ESkillType, number>> {
         const difficulty = input.taikoDifficulty;
@@ -237,21 +260,21 @@ export class SkillCalculatorService extends AbstractService {
         const staminaBase = this.taikoSkillBase(input.stars, difficulty.staminaDifficulty);
         const readingBase = this.taikoSkillBase(input.stars, difficulty.readingDifficulty);
 
-        const rhythmExecution = 0.8 + 0.2 * Math.pow(accuracy, 5);
+        const rhythmExecution = 0.88 + 0.37 * Math.pow(accuracy, 5);
         const rhythmComboFactor = 0.94 + 0.06 * Math.sqrt(combo);
 
-        const colourExecution = 0.84 + 0.16 * Math.pow(accuracy, 2);
+        const colourExecution = 0.91 + 0.31 * Math.pow(accuracy, 2);
         const colourComboFactor = 0.9 + 0.1 * Math.sqrt(combo);
 
-        const readingExecution = 0.86 + 0.14 * Math.pow(accuracy, 3);
-        const readingComboFactor = 0.94 + 0.06 * Math.sqrt(combo);
+        const readingExecution = 0.87+ 0.30 * Math.pow(accuracy, 3);
+        const readingComboFactor = 0.94 + 0.08 * Math.sqrt(combo);
         const readingModFactor = (input.hasHidden ? 1.02 : 1) * (input.hasFlashlight ? 1.04 : 1);
 
         const consistencyFactor = 0.95 + 0.05 * clamp(difficulty.consistencyFactor, 0, 1);
         const strainLengthFactor = 0.97 + 0.03 * clamp((difficulty.staminaTopStrains - 1000) / 555, 0, 1);
         const monoFactor = 0.98 + 0.04 * clamp(difficulty.monoStaminaFactor, 0, 1);
 
-        const staminaExecution = 0.82 + 0.18 * Math.pow(accuracy, 2.5);
+        const staminaExecution = 0.86 + 0.29 * Math.pow(accuracy, 2.5);
         const staminaComboFactor = 0.9 + 0.1 * Math.sqrt(combo);
 
         const rhythm = rhythmBase * rhythmExecution * rhythmComboFactor * missPenalty;
@@ -296,12 +319,12 @@ export class SkillCalculatorService extends AbstractService {
 
         const missRate = input.misses / Math.max(1, input.maxCombo);
 
-        const movementExecution = 0.72 + 0.18 * Math.pow(accuracy, 2) + 0.1 * Math.sqrt(combo);
+        const movementExecution = 0.86 + 0.24 * Math.pow(accuracy, 2) + 0.1 * Math.sqrt(combo);
 
         const movementMissPenalty = Math.exp(-Math.min(0.3, missRate * 8));
         const movement = input.stars * movementExecution * movementMissPenalty;
 
-        const accuracyExecution = 0.58 + 0.42 * Math.pow(accuracy, 10);
+        const accuracyExecution = 0.72 + 0.46 * Math.pow(accuracy, 10);
         const accuracyComboFactor = 0.96 + 0.04 * Math.sqrt(combo);
         const accuracyMissPenalty = Math.exp(-Math.min(0.2, missRate * 4));
 
@@ -331,12 +354,12 @@ export class SkillCalculatorService extends AbstractService {
 
         const missRate = input.misses / Math.max(1, input.objectCount);
 
-        const strainExecution = 0.68 + 0.22 * Math.pow(accuracy, 4) + 0.1 * Math.sqrt(combo);
+        const strainExecution = 0.82 + 0.26 * Math.pow(accuracy, 4) + 0.1 * Math.sqrt(combo);
 
         const strainMissPenalty = Math.exp(-Math.min(0.3, missRate * 10));
         const strain = input.stars * strainExecution * strainMissPenalty;
 
-        const speedExecution = 0.72 + 0.2 * Math.pow(accuracy, 3) + 0.08 * Math.sqrt(combo);
+        const speedExecution = 0.79 + 0.25 * Math.pow(accuracy, 3) + 0.08 * Math.sqrt(combo);
 
         const speedMissPenalty = Math.exp(-Math.min(0.25, missRate * 8));
         const speed = input.stars * densityFactor * speedExecution * speedMissPenalty;
@@ -344,8 +367,8 @@ export class SkillCalculatorService extends AbstractService {
         const odFactor = 1 + clamp((input.od - 8) * 0.025, -0.075, 0.1);
         const lengthFactor = 0.95 + 0.05 * this.normalizedLogLength(input.maxCombo, 1500);
 
-        const accuracyExecution = 0.48 + 0.52 * Math.pow(accuracy, 12);
-        const accuracyComboFactor = 0.97 + 0.03 * Math.sqrt(combo);
+        const accuracyExecution = 0.65 + 0.54 * Math.pow(accuracy, 12);
+        const accuracyComboFactor = 0.97 + 0.04 * Math.sqrt(combo);
         const accuracyMissPenalty = Math.exp(-Math.min(0.18, missRate * 6));
 
         const accuracySkill =
@@ -451,6 +474,7 @@ export class SkillCalculatorService extends AbstractService {
                     { type: ESkillType.Speed, label: "Speed" },
                     { type: ESkillType.Accuracy, label: "Accuracy" },
                     { type: ESkillType.Stamina, label: "Stamina" },
+                    { type: ESkillType.Reading, label: "Reading" },
                 ];
 
             case GameMode.Taiko:

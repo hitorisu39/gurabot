@@ -8,19 +8,19 @@ import { ECommandCategory } from "@domain/core/Command";
     Calculates skills of a player and sends a card picture.
 
     **Total value**
-    \`osu!standard\`: 15% from Aim, 20% from Speed, 50% from Accuracy, 20% from Stamina. 
+    \`osu!standard\`: 25% from Aim, 15% from Speed, 35% from Accuracy, 15% from Stamina, 20% from Reading.
     \`osu!taiko\`: 25% Rhythm, 20% Colour, 30% Stamina, 25% Reading.
     \`osu!catch\`: 45% Movement, 55% Accuracy.
-    \`osu!mania\`: 20% Strain, 25% Speed, 50% Accuracy.
+    \`osu!mania\`: 30% Strain, 30% Speed, 40% Accuracy.
 
     **Rank**
     \`Total value < 3\`: Weak
-    \`Total value < 4.5\`: Common
-    \`Total value < 5.5\`: Average
-    \`Total value < 6.5\`: Expert
-    \`Total value < 8\`: Elite
-    \`Total value < 9.5\`: Master
-    \`Total value >= 9.5\`: Legend
+    \`Total value < 5\`: Common
+    \`Total value < 6.5\`: Average
+    \`Total value < 8\`: Expert
+    \`Total value < 9\`: Elite
+    \`Total value < 10\`: Master
+    \`Total value >= 10\`: Legend
 
     Some players might have special cards. They're either gurabot supporters or Hall of Famers.
 `)
