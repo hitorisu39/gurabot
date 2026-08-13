@@ -22,7 +22,7 @@ export const skillRankWeights: Record<GameMode, Partial<Record<ESkillType, numbe
         [ESkillType.Speed]: 0.15,
         [ESkillType.Accuracy]: 0.35,
         [ESkillType.Stamina]: 0.15,
-        [ESkillType.Reading]:0.20,
+        [ESkillType.Reading]: 0.2,
     },
 
     [GameMode.Taiko]: {
@@ -40,6 +40,6 @@ export const skillRankWeights: Record<GameMode, Partial<Record<ESkillType, numbe
     [GameMode.Mania]: {
         [ESkillType.Strain]: 0.3,
         [ESkillType.Speed]: 0.3,
-        [ESkillType.Accuracy]: 0.40,
+        [ESkillType.Accuracy]: 0.4,
     },
 };
