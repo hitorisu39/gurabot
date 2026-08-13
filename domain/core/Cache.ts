@@ -10,6 +10,7 @@ import { NoChokeViewDto } from "@domain/osu/views/NoChoke.view";
 import { ProfileViewDto } from "@domain/osu/views/Profile.view";
 import { ScoresViewDto } from "@domain/osu/views/Scores.view";
 import { SimulateViewDto } from "@domain/osu/views/Simulate.view";
+import { OsuTrackStatsHistoryDto } from "@domain/osutrack/OsuTrack.dto";
 
 export interface ICacheSchema {
     // Discord
@@ -31,6 +32,9 @@ export interface ICacheSchema {
 
     // Osu
     osu_user_profile: PopulatedUser;
+
+    // osu!track
+    osutrack_stats_history: Array<OsuTrackStatsHistoryDto>;
 
     // Auth
     auth_osu_state: AuthOsuStateDto;

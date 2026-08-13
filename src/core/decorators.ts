@@ -14,6 +14,7 @@ import {
     METAKEY_IMPORTS,
     METAKEY_MIDDLEWARE_OPTIONS,
     METAKEY_NO_USER_INSTALL,
+    METAKEY_SUBCOMMAND_GROUP_OPTIONS,
     METAKEY_SUBCOMMAND_OPTIONS,
     METAKEY_USER_PERMISSIONS,
 } from "./metakeys";
@@ -71,6 +72,12 @@ export interface ISubcommandOptions {
     prefixOnly?: boolean;
 }
 
+export interface ISubcommandGroupOptions {
+    root: string;
+    name: string;
+    description: string;
+}
+
 export interface ICommandMetadata {
     options: ICommandOptions | ISubcommandOptions;
     guildOnly: boolean;
@@ -87,6 +94,12 @@ export function Command(options: ICommandOptions): ClassDecorator {
 export function Subcommand(options: ISubcommandOptions): ClassDecorator {
     return (target) => {
         Reflect.defineMetadata(METAKEY_SUBCOMMAND_OPTIONS, options, target);
+    };
+}
+
+export function SubcommandGroup(options: ISubcommandGroupOptions): ClassDecorator {
+    return (target: Function) => {
+        Reflect.defineMetadata(METAKEY_SUBCOMMAND_GROUP_OPTIONS, options, target);
     };
 }
 

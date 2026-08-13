@@ -1,9 +1,8 @@
 import { AbstractScoreView } from "./AbstractScoreView";
 import { Embed } from "@/core/discord/ui/Embed";
 import { ScoresViewDto } from "@domain/osu/views/Scores.view";
-import { Score } from "@generated/adapter/types";
+import { GameMode, Score } from "@generated/adapter/types";
 import { ScoreUtils } from "@domain/osu/utils/ScoreUtils";
-import { GameMode } from "../../../../adapter/models/common";
 import { DescriptionBuilder } from "@/core/discord/ui/DescriptionBuilder";
 import { MapFormatter } from "@domain/osu/formatters/Map.formatter";
 import { ScoreFormatter } from "@domain/osu/formatters/Score.formatter";

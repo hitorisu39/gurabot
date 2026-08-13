@@ -9,8 +9,7 @@ import { ProfileViewService } from "../profile/ProfileView.service";
 import { discordMaxVisualLineLength } from "@domain/discord/configs/Discord.config";
 
 export class SkillStatsViewService extends AbstractService {
-    @Import()
-    declare private readonly profileViewService: ProfileViewService;
+    @Import() declare private readonly profileViewService: ProfileViewService;
 
     public build(data: SkillStatsViewDto): Embed {
         const embed = this.profileViewService.createBaseEmbed(data.profile, data.timestamp, false);

@@ -4,7 +4,6 @@ import { ActionRow } from "@/core/discord/ui/ActionRow";
 import { DescriptionBuilder } from "@/core/discord/ui/DescriptionBuilder";
 import { Embed } from "@/core/discord/ui/Embed";
 import { SelectMenu } from "@/core/discord/ui/SelectMenu";
-import { AmeobeaPeakDto } from "@domain/ameobea/Ameobea.dto";
 import { discordEmoteGrades } from "@domain/discord/configs/Emotes.config";
 import { DateFormatter } from "@domain/discord/formatters/Date.formatter";
 import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";
@@ -18,6 +17,7 @@ import { GameMode, Genre, Grade, HighestRank, Status, UserGrades, UserLevel } fr
 import { MapFormatter } from "@domain/osu/formatters/Map.formatter";
 import { AbstractViewService } from "@/modules/AbstractViewService";
 import { PopulatedScoreAverageDto } from "@domain/osu/Score.dto";
+import { OsuTrackPeakDto } from "@domain/osutrack/OsuTrack.dto";
 
 interface IAverageStatRow {
     metric: string;
@@ -36,20 +36,20 @@ export class ProfileViewService extends AbstractViewService<ProfileViewDto, EPro
     public overview(data: ProfileViewDto): Embed {
         const embed = this.createBaseEmbed(data.profile, data.timestamp);
 
-        const { profile, origin, ameobea } = data;
+        const { profile, origin, osutrack } = data;
         const { statistics, achievements, badges, highestRank } = profile;
 
         const description = new DescriptionBuilder()
             .addIf(highestRank, () => {
                 const rank = ProfileFormatter.rank(highestRank!.rank);
-                const ameobeaRank = ProfileFormatter.rank(ameobea?.peakRank ?? 0);
+                const osuTrackRank = ProfileFormatter.rank(osutrack?.peakRank ?? 0);
 
                 const formatted =
-                    ameobea && ameobea.peakRank < highestRank!.rank
+                    osutrack && osutrack.peakRank < highestRank!.rank
                         ? DiscordFormatter.link(
                               rank,
                               origin,
-                              `${ameobeaRank} on ${DateFormatter.full(ameobea.peakRankDate)} according to ameobea.me`,
+                              `${osuTrackRank} on ${DateFormatter.full(osutrack.peakRankDate)} according to osu!track`,
                               true,
                           )
                         : `\`${rank}\``;
@@ -76,7 +76,7 @@ export class ProfileViewService extends AbstractViewService<ProfileViewDto, EPro
     public statistics(data: ProfileViewDto): Embed {
         const embed = this.createBaseEmbed(data.profile, data.timestamp);
 
-        const { profile, origin, ameobea, scores } = data;
+        const { profile, origin, osutrack, scores } = data;
         const { statistics, achievements, badges, highestRank } = profile;
 
         embed
@@ -90,11 +90,11 @@ export class ProfileViewService extends AbstractViewService<ProfileViewDto, EPro
                 },
             )
             .addFields(
-                { name: "Peak Rank", value: this.formatPeakRank(origin, highestRank, ameobea), inline: true },
+                { name: "Peak Rank", value: this.formatPeakRank(origin, highestRank, osutrack), inline: true },
                 { name: "Ranked Score", value: DiscordFormatter.number(statistics.rankedScore), inline: true },
                 {
                     name: "Peak Acc",
-                    value: this.formatPeakAccuracy(origin, statistics.accuracy, ameobea),
+                    value: this.formatPeakAccuracy(origin, statistics.accuracy, osutrack),
                     inline: true,
                 },
             )
@@ -467,25 +467,25 @@ export class ProfileViewService extends AbstractViewService<ProfileViewDto, EPro
         return embed;
     }
 
-    private formatPeakRank(origin: string, highestRank?: HighestRank, ameobea?: AmeobeaPeakDto | null): string {
+    private formatPeakRank(origin: string, highestRank?: HighestRank, osutrack?: OsuTrackPeakDto | null): string {
         const rank = ProfileFormatter.rank(highestRank?.rank ?? 0);
 
-        if (ameobea && ameobea.peakRank < (highestRank?.rank ?? 0)) {
-            const ameobeaRank = ProfileFormatter.rank(ameobea.peakRank);
-            const tooltip = `${ameobeaRank} on ${DateFormatter.full(ameobea.peakRankDate)} according to ameobea.me`;
+        if (osutrack && osutrack.peakRank < (highestRank?.rank ?? 0)) {
+            const osuTrackRank = ProfileFormatter.rank(osutrack.peakRank);
+            const tooltip = `${osuTrackRank} on ${DateFormatter.full(osutrack.peakRankDate)} according to osu!track`;
             return DiscordFormatter.link(rank, origin, tooltip);
         }
 
         return rank;
     }
 
-    private formatPeakAccuracy(origin: string, currentAccuracy: number, ameobea?: AmeobeaPeakDto | null): string {
+    private formatPeakAccuracy(origin: string, currentAccuracy: number, osutrack?: OsuTrackPeakDto | null): string {
         const accuracy = ProfileFormatter.accuracy(currentAccuracy);
 
-        if (ameobea && ameobea.peakAccuracy > currentAccuracy) {
-            const ameobeaAccuracy = ProfileFormatter.accuracy(ameobea.peakAccuracy);
-            const tooltip = `${ameobeaAccuracy} on ${DateFormatter.full(ameobea.peakRankDate)} according to ameobea.me`;
-            return DiscordFormatter.link(ameobeaAccuracy, origin, tooltip);
+        if (osutrack && osutrack.peakAccuracy > currentAccuracy) {
+            const osuTrackAccuracy = ProfileFormatter.accuracy(osutrack.peakAccuracy);
+            const tooltip = `${osuTrackAccuracy} on ${DateFormatter.full(osutrack.peakRankDate)} according to osu!track`;
+            return DiscordFormatter.link(osuTrackAccuracy, origin, tooltip);
         }
 
         return accuracy;

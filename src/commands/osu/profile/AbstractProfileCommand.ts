@@ -4,23 +4,23 @@ import { OsuService } from "@/modules/osu/Osu.service";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
 import { ProfileViewService } from "@/modules/osu/profile/ProfileView.service";
 import { EProfileView, ProfileViewDto } from "@domain/osu/views/Profile.view";
-import { AmeobeaService } from "@/modules/ameobea/Ameobea.service";
 import { ECommandCategory } from "@domain/core/Command";
+import { OsuTrackService } from "@/modules/osutrack/OsuTrack.service";
 
 @Category(ECommandCategory.Osu)
 export abstract class AbstractProfileCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
     @Import() declare private readonly profileViewService: ProfileViewService;
-    @Import() declare private readonly ameobeaService: AmeobeaService;
+    @Import() declare private readonly osuTrackService: OsuTrackService;
 
     public async execute(ctx: CommandContext): Promise<void> {
         const target = await this.resolveTarget(ctx);
         const cachedID = await this.osuService.resolveCachedID(target.query, target.server);
 
-        let user, scores, ameobea;
+        let user, scores, osutrack;
 
         if (cachedID) {
-            [{ user, scores }, ameobea] = await Promise.all([
+            [{ user, scores }, osutrack] = await Promise.all([
                 this.osuService.userWithScores({
                     nameOrID: cachedID,
                     mode: target.mode,
@@ -28,7 +28,7 @@ export abstract class AbstractProfileCommand extends AbstractOsuCommand {
                     limit: 100,
                     provider: target.server,
                 }),
-                this.ameobeaService.peak(cachedID, target.mode, target.server).catch(() => null),
+                this.osuTrackService.peak(cachedID, target.mode, target.server).catch(() => null),
             ]);
         } else {
             ({ user, scores } = await this.osuService.userWithScores({
@@ -38,7 +38,7 @@ export abstract class AbstractProfileCommand extends AbstractOsuCommand {
                 limit: 100,
                 provider: target.server,
             }));
-            ameobea = await this.ameobeaService.peak(user.id, user.mode, target.server).catch(() => null);
+            osutrack = await this.osuTrackService.peak(user.id, user.mode, target.server).catch(() => null);
         }
 
         const data: ProfileViewDto = {
@@ -46,7 +46,7 @@ export abstract class AbstractProfileCommand extends AbstractOsuCommand {
             origin: ctx.origin(),
             authorID: ctx.author.id,
             profile: user,
-            ameobea: ameobea || null,
+            osutrack: osutrack || null,
             scores: null,
             populated: null,
         };
