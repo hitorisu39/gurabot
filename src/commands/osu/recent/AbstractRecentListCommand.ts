@@ -45,7 +45,7 @@ export abstract class AbstractRecentListCommand extends AbstractOsuCommand {
 
     @Option("index", "Jump to a specific score index (1-100)")
     @IsInlineIndex()
-    @IsRange(1, 100)
+    @IsRange(1, scoreFetchRecentLimit)
     @Aliases("i")
     declare private readonly index: CommandOption<ICommandRange>;
 
