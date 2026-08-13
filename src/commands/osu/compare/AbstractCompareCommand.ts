@@ -19,7 +19,6 @@ import { CalculatorService } from "@/modules/osu/calculator/Calculator.service";
 import { Grade } from "@generated/adapter/types";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { MapViewService } from "@/modules/osu/map/MapView.service";
-import { GraphService } from "@/modules/osu/Graph.service";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
 import { ScoresViewDto } from "@domain/osu/views/Scores.view";
 import { EScoreListSize, EScoreQuerySort, EScoreViewLayout, ESortOrder } from "@domain/osu/enums/Score.enum";
@@ -47,7 +46,6 @@ import { BeatmapUtils } from "@domain/osu/utils/BeatmapUtils";
 @Category(ECommandCategory.Osu)
 export abstract class AbstractCompareCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
-    @Import() declare private readonly graphService: GraphService;
     @Import() declare private readonly mapViewService: MapViewService;
     @Import() declare private readonly calculatorService: CalculatorService;
     @Import() declare private readonly scoreViewService: ScoreViewService;

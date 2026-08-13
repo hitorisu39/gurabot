@@ -2,7 +2,7 @@ import { GameMode } from "@generated/adapter/types";
 import { PopulatedScore, ScoreWithMaps } from "../Score.dto";
 import { PopulatedUser } from "../Profile.dto";
 import { Exclude, Expose, Type } from "class-transformer";
-import { AmeobeaPeakDto } from "@domain/ameobea/Ameobea.dto";
+import { OsuTrackPeakDto } from "@domain/osutrack/OsuTrack.dto";
 
 export enum EProfileView {
     Overview = "Overview",
@@ -34,8 +34,8 @@ export class ProfileViewDto {
     declare populated: Array<PopulatedScore<GameMode>> | null;
 
     @Expose()
-    @Type(() => AmeobeaPeakDto)
-    declare ameobea: AmeobeaPeakDto | null;
+    @Type(() => OsuTrackPeakDto)
+    declare osutrack: OsuTrackPeakDto | null;
 
     @Expose()
     declare timestamp: number;

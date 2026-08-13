@@ -2,7 +2,7 @@ import { Import, On } from "@/core/decorators";
 import { AbstractController } from "@/core/framework/AbstractController";
 import { OsuDailyService } from "./OsuDaily.service";
 
-export class AmeobeaController extends AbstractController {
+export class OsuDailyController extends AbstractController {
     @Import() declare private readonly osuDailyService: OsuDailyService;
 
     @On("app", "ready")

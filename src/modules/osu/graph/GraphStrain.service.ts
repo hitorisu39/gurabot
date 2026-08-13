@@ -1,13 +1,14 @@
 import { AbstractService } from "@/core/framework/AbstractService";
-import { Trace } from "@/core/decorators";
+import { Import, Trace } from "@/core/decorators";
 import { HttpClient } from "@/http";
 import { ISkillStrain } from "@domain/core/Calculator";
 import { graphFallbackColor, graphStrainColors } from "@domain/osu/configs/Graph.config";
 import { GameMode } from "@generated/adapter/types";
 import { ChartConfiguration, Plugin } from "chart.js";
-import { ChartJSNodeCanvas } from "chartjs-node-canvas";
 import { Image, loadImage } from "canvas";
 import { EApplicationError, Exception } from "@domain/core/Exception";
+import { GraphRendererService } from "./GraphRenderer.service";
+import { EGraphSize } from "@domain/osu/enums/Graph.enum";
 
 interface IGraphPoint {
     x: number;
@@ -19,22 +20,17 @@ interface ILineSeries {
     points: Array<IGraphPoint>;
 }
 
-export class GraphService extends AbstractService {
-    declare private chartCanvas: ChartJSNodeCanvas;
+export class GraphStrainService extends AbstractService {
+    @Import() declare private readonly graphRendererService: GraphRendererService;
+
     declare private http: HttpClient;
 
     public async init(): Promise<void> {
-        this.http = new HttpClient(this.logger, { name: "OsuGraph" });
-
-        this.chartCanvas = new ChartJSNodeCanvas({
-            width: 900,
-            height: 265,
-            backgroundColour: "transparent",
-        });
+        this.http = new HttpClient(this.logger, { name: "OsuGraphStrain" });
     }
 
     @Trace()
-    public async strains<M extends GameMode>(rawStrains: Array<ISkillStrain<M>>, coverUrl: string): Promise<Buffer> {
+    public async generate<M extends GameMode>(rawStrains: Array<ISkillStrain<M>>, coverUrl: string): Promise<Buffer> {
         const coverImage = await this.loadCoverImage(coverUrl);
         const backgroundPlugin = this.createBackgroundPlugin(coverImage);
 
@@ -122,7 +118,7 @@ export class GraphService extends AbstractService {
             },
         };
 
-        return await this.chartCanvas.renderToBuffer(configuration);
+        return await this.graphRendererService.render(EGraphSize.Compact, configuration);
     }
 
     //#region Series

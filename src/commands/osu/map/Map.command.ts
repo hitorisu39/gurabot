@@ -20,7 +20,6 @@ import { BeatmapResolverService } from "@/modules/osu/BeatmapResolver.service";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { MapViewDto } from "@domain/osu/views/Map.view";
 import { MapViewService } from "@/modules/osu/map/MapView.service";
-import { GraphService } from "@/modules/osu/Graph.service";
 import { AbstractSessionCommand } from "@/commands/AbstractSessionCommand";
 
 @Help(`
@@ -48,7 +47,6 @@ import { AbstractSessionCommand } from "@/commands/AbstractSessionCommand";
 })
 export class MapCommand extends AbstractSessionCommand {
     @Import() declare private readonly osuService: OsuService;
-    @Import() declare private readonly graphService: GraphService;
     @Import() declare private readonly mapViewService: MapViewService;
     @Import() declare private readonly calculatorService: CalculatorService;
     @Import() declare private readonly beatmapResolverService: BeatmapResolverService;
