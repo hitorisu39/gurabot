@@ -123,6 +123,21 @@ export const graphColors = {
             a: "#4FD1C5",
         },
     },
+    ladder: {
+        pp: {
+            border: "#C084FC",
+            bg: "rgba(192, 132, 252, 0.16)",
+        },
+        density: {
+            border: "#38BDF8",
+            bg: "rgba(56, 189, 248, 0.16)",
+        },
+        decay: {
+            border: "#F59E0B",
+            bg: "rgba(245, 158, 11, 0.16)",
+        },
+        marker: "#FFD166",
+    },
 } as const;
 
 export const graphStrainTargetCount = 200;

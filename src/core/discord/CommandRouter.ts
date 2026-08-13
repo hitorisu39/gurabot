@@ -447,7 +447,7 @@ export class CommandRouter {
             payload.set(name, {
                 name: options.name,
                 description: options.description,
-                options: properties.map((prop) => CommandParser.mapToDiscordOption(prop)),
+                options: this.mapApplicationCommandOptions(properties),
                 integration_types: userInstallable
                     ? [ApplicationIntegrationType.GuildInstall, ApplicationIntegrationType.UserInstall]
                     : [ApplicationIntegrationType.GuildInstall],
@@ -509,7 +509,7 @@ export class CommandRouter {
                 type: ApplicationCommandOptionType.Subcommand,
                 name: subcommandOptions.name,
                 description: subcommandOptions.description,
-                options: subcommandProperties.map((prop) => CommandParser.mapToDiscordOption(prop)),
+                options: this.mapApplicationCommandOptions(subcommandProperties),
             };
 
             if (subcommandOptions.group) {
@@ -566,6 +566,12 @@ export class CommandRouter {
         );
 
         return commandOptions?.name ?? command.constructor.name;
+    }
+
+    private mapApplicationCommandOptions(properties: ReadonlyArray<IOptionMetadata>): Array<any> {
+        return [...properties]
+            .sort((a, b) => Number(b.required) - Number(a.required))
+            .map((property) => CommandParser.mapToDiscordOption(property));
     }
 
     public getAllCommandNames(): Array<string> {
