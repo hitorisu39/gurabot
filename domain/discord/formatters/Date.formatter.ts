@@ -18,45 +18,59 @@ export class DateFormatter {
 
     // October 22nd 2017
     public static full(date?: Date | number | string): string {
-        return this.parse(date).format("MMMM Do YYYY");
+        return DateFormatter.parse(date).format("MMMM Do YYYY");
     }
 
     // Oct 22nd 2017
     public static short(date?: Date | number | string): string {
-        return this.parse(date).format("MMM Do YYYY");
+        return DateFormatter.parse(date).format("MMM Do YYYY");
     }
 
     // 22nd October
     public static dayMonth(date?: Date | number | string): string {
-        return this.parse(date).format("Do MMMM");
+        return DateFormatter.parse(date).format("Do MMMM");
     }
 
     // 2025-03-18
     public static iso(date?: Date | number | string): string {
-        return this.parse(date).format("YYYY-MM-DD");
+        return DateFormatter.parse(date).format("YYYY-MM-DD");
     }
 
     // 16:42
     public static time(date?: Date | number | string): string {
-        return this.parse(date).format("HH:mm");
+        return DateFormatter.parse(date).format("HH:mm");
     }
 
     // October 22nd 2017, 16:42
     public static fullWithTime(date?: Date | number | string): string {
-        return this.parse(date).format("MMMM Do YYYY, HH:mm");
+        return DateFormatter.parse(date).format("MMMM Do YYYY, HH:mm");
     }
 
     // "2 hours ago"
     public static relative(date?: Date | number | string): string {
-        return this.parse(date).fromNow();
+        return DateFormatter.parse(date).fromNow();
+    }
+
+    // Jan 2026
+    public static monthYear(date?: Date | number | string): string {
+        return DateFormatter.parse(date).utc().format("MMM YYYY");
+    }
+
+    // Jan 22
+    public static monthDay(date?: Date | number | string): string {
+        return DateFormatter.parse(date).utc().format("MMM D");
     }
 
     // Elapsed compact age (e.g., "5y", "5mo", "12d", "2h", "15m", "now")
     public static age(date: Date | number | string): string {
-        const ended = this.parse(date);
+        const ended = DateFormatter.parse(date);
         const now = dayjs();
-        const diff = now.diff(ended);
-        const dur = dayjs.duration(diff);
+        return DateFormatter.duration(now.diff(ended));
+    }
+
+    // Elapsed compact duration (e.g., "5y", "5mo", "12d", "2h", "15m", "now")
+    public static duration(milliseconds: number): string {
+        const dur = dayjs.duration(Math.max(0, milliseconds));
 
         const years = dur.years();
         if (years > 0) return `${years}y`;

@@ -1,6 +1,12 @@
 import { AbstractService } from "@/core/framework/AbstractService";
 import { IStandardDifficultyAttributes, ITaikoDifficultyAttributes } from "@domain/core/Calculator";
-import { SkillCalculationResultDto, SkillCategoryResultDto, SkillScoreResultDto } from "@domain/osu/Skill.dto";
+import {
+    SkillCalculationResultDto,
+    SkillCategoryResultDto,
+    SkillDistributionCategoryDto,
+    SkillDistributionResultDto,
+    SkillScoreResultDto,
+} from "@domain/osu/Skill.dto";
 import { PopulatedScore } from "@domain/osu/Score.dto";
 import { BeatmapAttributesCalculator } from "@domain/osu/utils/BeatmapAttributesCalculator";
 import { GameMode } from "@generated/adapter/types";
@@ -55,11 +61,7 @@ export class SkillCalculatorService extends AbstractService {
     private static readonly standardWeightDivisor = 10;
 
     public calculate(mode: GameMode, scores: Array<PopulatedScore>): SkillCalculationResultDto {
-        const evaluated = scores.map<IScoreSkillValues>((score) => ({
-            score,
-            values: this.calculateScore(mode, score),
-        }));
-
+        const evaluated = this.evaluateScores(mode, scores);
         const weighted = mode === GameMode.Standard;
 
         return {
@@ -67,6 +69,23 @@ export class SkillCalculatorService extends AbstractService {
                 this.buildCategory(definition, evaluated, weighted),
             ),
         };
+    }
+
+    public calculateDistribution(mode: GameMode, scores: Array<PopulatedScore>): SkillDistributionResultDto {
+        const evaluated = this.evaluateScores(mode, scores);
+
+        return {
+            categories: this.getSkillDefinitions(mode).map((definition) =>
+                this.buildDistributionCategory(definition, evaluated),
+            ),
+        };
+    }
+
+    private evaluateScores(mode: GameMode, scores: Array<PopulatedScore>): Array<IScoreSkillValues> {
+        return scores.map<IScoreSkillValues>((score) => ({
+            score,
+            values: this.calculateScore(mode, score),
+        }));
     }
 
     private calculateScore(mode: GameMode, score: PopulatedScore): Partial<Record<ESkillType, number>> {
@@ -405,6 +424,31 @@ export class SkillCalculatorService extends AbstractService {
             label: definition.label,
             average: weighted ? this.calculateWeightedAverage(results) : this.calculateArithmeticAverage(results),
             topScores: results.slice(0, SkillCalculatorService.topScoreCount),
+        };
+    }
+
+    private buildDistributionCategory(
+        definition: ISkillDefinition,
+        evaluated: Array<IScoreSkillValues>,
+    ): SkillDistributionCategoryDto {
+        const values: Array<number> = [];
+
+        for (const item of evaluated) {
+            const value = item.values[definition.type];
+
+            if (!this.isValidSkillValue(value)) {
+                continue;
+            }
+
+            values.push(value);
+        }
+
+        values.sort((a, b) => b - a);
+
+        return {
+            type: definition.type,
+            label: definition.label,
+            values,
         };
     }
 

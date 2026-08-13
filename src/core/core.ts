@@ -4,7 +4,7 @@ import { pathToFileURL } from "url";
 
 import { AbstractCommand } from "./discord/AbstractCommand";
 import { EApplicationError, Exception } from "@domain/core/Exception";
-import { METAKEY_EVENT_HANDLERS, METAKEY_IMPORTS } from "./metakeys";
+import { METAKEY_EVENT_HANDLERS, METAKEY_IMPORTS, METAKEY_SUBCOMMAND_GROUP_OPTIONS } from "./metakeys";
 import { IApplicationContext } from "./types";
 import { AbstractMiddleware } from "./discord/middleware/AbstractMiddleware";
 import { AbstractDiscordEvent } from "./discord/AbstractDiscordEvent";
@@ -20,7 +20,7 @@ export class Core {
         const files = await glob(
             [
                 "modules/**/*.{controller,service,middleware}.{ts,js}",
-                "commands/**/*.{command,subcommand}.{ts,js}",
+                "commands/**/*.{command,subcommand,group}.{ts,js}",
                 "components/**/*.component.{ts,js}",
                 "events/**/*.event.{ts,js}",
             ],
@@ -37,19 +37,34 @@ export class Core {
             for (const key in moduleExports) {
                 const exportedClass = moduleExports[key];
 
-                if (typeof exportedClass === "function" && exportedClass.prototype) {
-                    const instance = new exportedClass(this.ctx);
-                    this.instances.set(exportedClass, instance);
+                if (typeof exportedClass !== "function" || !exportedClass.prototype) {
+                    continue;
+                }
 
-                    if (exportedClass.prototype instanceof AbstractCommand)
-                        this.ctx.discord.commandRouter.register(instance);
-                    else if (exportedClass.prototype instanceof AbstractComponent) {
-                        this.ctx.discord.componentRouter.register(instance);
-                    } else if (exportedClass.prototype instanceof AbstractMiddleware)
-                        this.ctx.discord.commandRouter.registerMiddleware(instance);
-                    else if (exportedClass.prototype instanceof AbstractDiscordEvent) {
-                        if (instance.once) this.ctx.discord.once(instance.event, instance.execute.bind(instance));
-                        else this.ctx.discord.on(instance.event, instance.execute.bind(instance));
+                const subcommandGroupOptions = Reflect.getMetadata(METAKEY_SUBCOMMAND_GROUP_OPTIONS, exportedClass);
+
+                /*
+                 * Subcommand groups are structural metadata only.
+                 */
+                if (subcommandGroupOptions) {
+                    this.ctx.discord.commandRouter.registerSubcommandGroup(subcommandGroupOptions);
+                    continue;
+                }
+
+                const instance = new exportedClass(this.ctx);
+                this.instances.set(exportedClass, instance);
+
+                if (exportedClass.prototype instanceof AbstractCommand) {
+                    this.ctx.discord.commandRouter.register(instance);
+                } else if (exportedClass.prototype instanceof AbstractComponent) {
+                    this.ctx.discord.componentRouter.register(instance);
+                } else if (exportedClass.prototype instanceof AbstractMiddleware) {
+                    this.ctx.discord.commandRouter.registerMiddleware(instance);
+                } else if (exportedClass.prototype instanceof AbstractDiscordEvent) {
+                    if (instance.once) {
+                        this.ctx.discord.once(instance.event, instance.execute.bind(instance));
+                    } else {
+                        this.ctx.discord.on(instance.event, instance.execute.bind(instance));
                     }
                 }
             }

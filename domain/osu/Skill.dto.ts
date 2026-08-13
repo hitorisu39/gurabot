@@ -36,6 +36,25 @@ export class SkillCalculationResultDto {
 }
 
 @Exclude()
+export class SkillDistributionCategoryDto {
+    @Expose()
+    declare type: ESkillType;
+
+    @Expose()
+    declare label: string;
+
+    @Expose()
+    declare values: Array<number>;
+}
+
+@Exclude()
+export class SkillDistributionResultDto {
+    @Expose()
+    @Type(() => SkillDistributionCategoryDto)
+    declare categories: Array<SkillDistributionCategoryDto>;
+}
+
+@Exclude()
 export class SkillRankDto {
     @Expose()
     declare rank: ESkillRank;

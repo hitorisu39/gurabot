@@ -63,6 +63,11 @@ export class DiscordFormatter {
         return arrowMap[direction];
     }
 
+    public static delta(value: number): string {
+        const prefix = value > 0 ? "+" : "";
+        return `${prefix}${DiscordFormatter.number(value)}`;
+    }
+
     public static formatInlineGrid(
         items: Array<{ label: string; value: string }>,
         preferredCols = 3,
