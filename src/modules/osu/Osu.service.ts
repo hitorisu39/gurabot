@@ -11,6 +11,7 @@ import type { TRepository } from "@/core";
 import { ScorePlacementEvaluator } from "@domain/osu/utils/ScorePlacementEvaluator";
 import { BeatmapUtils } from "@domain/osu/utils/BeatmapUtils";
 import { ParsedMod } from "@generated/adapter/mods";
+import { scoreFetchBestLimit } from "@domain/osu/configs/Score.config";
 
 interface IUserWithScoresInput {
     nameOrID: string | number;
@@ -435,7 +436,7 @@ export class OsuService extends AbstractService {
 
         const [scores, personalScores, globalScores] = await Promise.all([
             this.userBeatmapScores(id, mode, beatmap.id, provider),
-            this.best(id, mode, 100, provider),
+            this.best(id, mode, scoreFetchBestLimit, provider),
             globalScoresPromise,
         ]);
 
