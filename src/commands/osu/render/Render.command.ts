@@ -125,7 +125,7 @@ export class RenderCommand extends AbstractSessionCommand {
                 skin: skin.skin,
                 customSkin: false,
                 label: skin.skin,
-                description: `Official skin · ${skin.skin}`,
+                description: `Official skin • ${skin.skin}`,
             });
         }
 

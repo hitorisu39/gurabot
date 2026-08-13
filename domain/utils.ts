@@ -44,6 +44,10 @@ export function isValidNumber(value: number | undefined): value is number {
     return typeof value === "number" && Number.isFinite(value);
 }
 
+export function isTimezoneOffset(value: string): boolean {
+    return /^(?:UTC|Z|(?:UTC)?[+-]\d{1,2}(?::\d{2})?)$/i.test(value);
+}
+
 export function parseNumericString(value: string): number | null {
     const normalized = value.trim();
 

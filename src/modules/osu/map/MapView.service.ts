@@ -13,14 +13,14 @@ import { AsciiTable } from "@domain/discord/utils/AsciiTable";
 import { Pagination } from "@domain/discord/utils/Pagination";
 import { osuMapsetDownloads } from "@domain/osu/configs/Osu.config";
 import { IDifficultyCalculationResponse } from "@domain/core/Calculator";
-import { GraphService } from "../Graph.service";
 import { AttachmentBuilder } from "discord.js";
 import { AbstractViewService } from "@/modules/AbstractViewService";
 import { ScoreStateKind } from "@generated/calculator/calculator";
 import { graphStrainTargetCount } from "@domain/osu/configs/Graph.config";
+import { GraphStrainService } from "../graph/GraphStrain.service";
 
 export class MapViewService extends AbstractViewService<MapViewDto, boolean> {
-    @Import() declare private readonly graphService: GraphService;
+    @Import() declare private readonly graphStrainService: GraphStrainService;
     @Import() declare private readonly calculatorService: CalculatorService;
 
     protected readonly ttl: number = 300;
@@ -49,7 +49,7 @@ export class MapViewService extends AbstractViewService<MapViewDto, boolean> {
         const payload: TMessagePayload = { embeds: [embed], components };
 
         if (withGraph && difficulty.strains) {
-            const graph = await this.graphService.strains(difficulty.strains, data.beatmapset.covers.cover);
+            const graph = await this.graphStrainService.generate(difficulty.strains, data.beatmapset.covers.cover);
             const attachment = new AttachmentBuilder(graph, { name: "strains.png" });
             payload.files = [attachment];
         }

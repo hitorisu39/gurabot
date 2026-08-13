@@ -21,7 +21,13 @@ import {
 import { TDispatcher, TLogger, TMetrics } from "../types";
 import { AbstractCommand } from "./AbstractCommand";
 import { CommandContext } from "./context/CommandContext";
-import { ICommandOptions, IMiddlewareOptions, IOptionMetadata, ISubcommandOptions } from "../decorators";
+import {
+    ICommandOptions,
+    IMiddlewareOptions,
+    IOptionMetadata,
+    ISubcommandGroupOptions,
+    ISubcommandOptions,
+} from "../decorators";
 import { CommandParser } from "./options/CommandParser";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { AbstractMiddleware } from "./middleware/AbstractMiddleware";
@@ -38,6 +44,7 @@ export class CommandRouter {
      * or both.
      */
     private readonly rootCommands = new Map<string, AbstractCommand>();
+    private readonly subcommandGroups = new Map<string, ISubcommandGroupOptions>();
     private readonly subcommands = new Map<string, AbstractCommand>();
 
     /**
@@ -128,6 +135,16 @@ export class CommandRouter {
         const key = this.getSubcommandKey(options);
         this.subcommands.set(key, command);
         this.logger.debug(`Registered subcommand: ${key}`);
+    }
+
+    public registerSubcommandGroup(options: ISubcommandGroupOptions): void {
+        const key = this.getSubcommandGroupKey(options);
+        this.subcommandGroups.set(key, options);
+        this.logger.debug(`Registered subcommand group: ${key}`);
+    }
+
+    private getSubcommandGroupKey(options: ISubcommandGroupOptions): string {
+        return `${options.root}:${options.name}`.toLowerCase();
     }
 
     /**
@@ -231,6 +248,36 @@ export class CommandRouter {
      * complete.
      */
     private validateCommandGraph(): void {
+        for (const [key, groupOptions] of this.subcommandGroups) {
+            const rootCommand = this.rootCommands.get(groupOptions.root.toLowerCase());
+
+            if (!rootCommand) {
+                throw new Exception(
+                    EApplicationError.INTERNAL_ERROR,
+                    `Subcommand group '${key}' references missing root command '${groupOptions.root}'.`,
+                );
+            }
+
+            const rootOptions: ICommandOptions | undefined = Reflect.getMetadata(
+                METAKEY_COMMAND_OPTIONS,
+                rootCommand.constructor,
+            );
+
+            if (!rootOptions) {
+                throw new Exception(
+                    EApplicationError.INTERNAL_ERROR,
+                    `Root command '${groupOptions.root}' has no command metadata.`,
+                );
+            }
+
+            if (rootOptions.prefixOnly) {
+                throw new Exception(
+                    EApplicationError.INTERNAL_ERROR,
+                    `Subcommand group '${key}' cannot belong to prefix-only root command '${rootOptions.name}'.`,
+                );
+            }
+        }
+
         for (const [key, command] of this.subcommands) {
             const options: ISubcommandOptions | undefined = Reflect.getMetadata(
                 METAKEY_SUBCOMMAND_OPTIONS,
@@ -260,6 +307,17 @@ export class CommandRouter {
                     EApplicationError.INTERNAL_ERROR,
                     `Root command '${options.root}' has no command metadata.`,
                 );
+            }
+
+            if (options.group) {
+                const groupKey = `${options.root}:${options.group}`.toLowerCase();
+
+                if (!this.subcommandGroups.has(groupKey)) {
+                    throw new Exception(
+                        EApplicationError.INTERNAL_ERROR,
+                        `Subcommand '${key}' references missing subcommand group '${groupKey}'.`,
+                    );
+                }
             }
 
             if (rootOptions.slashOnly && options.prefixOnly) {
@@ -374,6 +432,9 @@ export class CommandRouter {
 
         const payload = new Map<string, any>();
 
+        /*
+         * Root commands.
+         */
         for (const [name, command] of this.slashRootCommands.entries()) {
             const options: ICommandOptions = Reflect.getMetadata(METAKEY_COMMAND_OPTIONS, command.constructor);
 
@@ -381,7 +442,6 @@ export class CommandRouter {
                 Reflect.getMetadata(METAKEY_COMMAND_PROPERTIES, command.constructor.prototype) || [];
 
             const userInstallable = this.isCommandUserInstallable(command);
-
             const guildOnly = this.isCommandGuildOnly(command);
 
             payload.set(name, {
@@ -401,6 +461,32 @@ export class CommandRouter {
             });
         }
 
+        /*
+         * Explicitly declared subcommand groups.
+         *
+         * Groups must exist before grouped subcommands are appended below.
+         */
+        for (const [key, groupOptions] of this.subcommandGroups.entries()) {
+            const rootPayload = payload.get(groupOptions.root.toLowerCase());
+
+            if (!rootPayload) {
+                throw new Exception(
+                    EApplicationError.INTERNAL_ERROR,
+                    `Slash subcommand group '${key}' has no slash-capable root command '${groupOptions.root}'.`,
+                );
+            }
+
+            rootPayload.options.push({
+                type: ApplicationCommandOptionType.SubcommandGroup,
+                name: groupOptions.name,
+                description: groupOptions.description,
+                options: [],
+            });
+        }
+
+        /*
+         * Subcommands.
+         */
         for (const [key, command] of this.slashSubcommands.entries()) {
             const subcommandOptions: ISubcommandOptions = Reflect.getMetadata(
                 METAKEY_SUBCOMMAND_OPTIONS,
@@ -412,9 +498,6 @@ export class CommandRouter {
 
             const rootPayload = payload.get(subcommandOptions.root.toLowerCase());
 
-            /**
-             * This exception is unreachable, in theory.
-             */
             if (!rootPayload) {
                 throw new Exception(
                     EApplicationError.INTERNAL_ERROR,
@@ -430,21 +513,17 @@ export class CommandRouter {
             };
 
             if (subcommandOptions.group) {
-                let group = rootPayload.options.find(
+                const group = rootPayload.options.find(
                     (option: any) =>
                         option.name === subcommandOptions.group &&
                         option.type === ApplicationCommandOptionType.SubcommandGroup,
                 );
 
                 if (!group) {
-                    group = {
-                        type: ApplicationCommandOptionType.SubcommandGroup,
-                        name: subcommandOptions.group,
-                        description: `Group ${subcommandOptions.group}`,
-                        options: [],
-                    };
-
-                    rootPayload.options.push(group);
+                    throw new Exception(
+                        EApplicationError.INTERNAL_ERROR,
+                        `Slash subcommand '${key}' references missing group '${subcommandOptions.root}:${subcommandOptions.group}'.`,
+                    );
                 }
 
                 group.options.push(data);
