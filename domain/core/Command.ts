@@ -75,3 +75,40 @@ export class CommandOption<T> {
         return this.some() ? (this.value as T) : defaultValue;
     }
 }
+
+/**
+ * Global command inject matcher util
+ */
+export class CommandMatcher {
+    public static number(value: string): boolean {
+        if (!value.trim()) {
+            return false;
+        }
+
+        return Number.isFinite(Number(value));
+    }
+
+    public static integer(value: string): boolean {
+        if (!value.trim()) {
+            return false;
+        }
+
+        return Number.isInteger(Number(value));
+    }
+
+    public static positiveNumber(value: string): boolean {
+        if (!CommandMatcher.number(value)) {
+            return false;
+        }
+
+        return Number(value) > 0;
+    }
+
+    public static positiveInteger(value: string): boolean {
+        if (!CommandMatcher.integer(value)) {
+            return false;
+        }
+
+        return Number(value) > 0;
+    }
+}

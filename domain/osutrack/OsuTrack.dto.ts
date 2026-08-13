@@ -73,6 +73,26 @@ export class OsuTrackStatsHistoryDto {
     }
 }
 
+export type TOsuTrackLadderPoint = [number, number];
+
+@Exclude()
+export class OsuTrackLadderSimulationConfigDto {
+    @Expose({ name: "rank_to_decay" })
+    declare rankToDecay: Array<TOsuTrackLadderPoint>;
+
+    @Expose({ name: "rank_to_density" })
+    declare rankToDensity: Array<TOsuTrackLadderPoint>;
+
+    @Expose({ name: "rank_to_pp" })
+    declare rankToPp: Array<TOsuTrackLadderPoint>;
+
+    toJSON() {
+        return instanceToPlain(this, {
+            excludeExtraneousValues: true,
+        });
+    }
+}
+
 export class OsuTrackPeakQueryDto {
     declare user: number | string;
     declare mode: number;

@@ -22,7 +22,7 @@ export class WhatIfViewService extends AbstractService {
         let description =
             `This would become ${possessive} top #${DiscordFormatter.number(data.placement)} performance play.\n` +
             `Their total pp would change by **${ppSign}${ppDifference}pp** ` +
-            `from **${this.pp(data.currentPP)}** to **${this.pp(data.projectedPP)}**`;
+            `to **${this.pp(data.projectedPP)}**`;
 
         if (data.projectedRank !== undefined) {
             const rankDifference = data.currentRank - data.projectedRank;
@@ -31,7 +31,6 @@ export class WhatIfViewService extends AbstractService {
             description +=
                 `, and their global rank would approximately change by ` +
                 `**${rankSign}${rankDifference}** ` +
-                `from **${ProfileFormatter.rank(data.currentRank)}** ` +
                 `to **${ProfileFormatter.rank(data.projectedRank)}**`;
         }
 

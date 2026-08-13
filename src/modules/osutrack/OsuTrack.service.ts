@@ -19,7 +19,7 @@ export class OsuTrackService extends AbstractService {
      * History changes relatively slowly and is comparatively expensive
      * to fetch, so avoid repeatedly downloading the entire dataset.
      */
-    private readonly historyCacheTTL = 15 * 60;
+    private readonly historyCacheTtl = 15 * 60;
 
     /*
      * Coalesce concurrent requests for the same user/mode within this
@@ -110,8 +110,7 @@ export class OsuTrackService extends AbstractService {
             throw new Exception(EApplicationError.NOT_FOUND, `${this.name} returned no valid stats history`);
         }
 
-        await this.cache.set("osutrack_stats_history", history, this.historyCacheTTL, cacheID);
-
+        await this.cache.set("osutrack_stats_history", history, this.historyCacheTtl, cacheID);
         return history;
     }
 
