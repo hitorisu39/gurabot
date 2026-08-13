@@ -176,17 +176,17 @@ export class SkillCalculatorService extends AbstractService {
         const comboFactor =
             ((Math.pow(1.1, comboRatio) - 0.2) * Math.pow(Math.max(0, input.countCircles), 0.04)) / Math.pow(300, 0.1);
 
-        const missPenalty = Math.min(0.2, input.misses * 0.007);
+        const missPenalty = 1 - Math.min(0.2, input.misses * 0.007);
         const bpmBonus = 1 + Math.min(0.2, (input.bpm - 100) * 0.002);
 
-        const aimStrainScale = input.aimDifficulty * (1 - missPenalty) * bpmBonus;
+        const aimStrainScale = input.aimDifficulty * missPenalty * bpmBonus;
         const aimSkill = aimStrainScale * csBonus * accuracyFactor * Math.pow(comboFactor, 0.9);
 
         const arBonus = input.ar >= 10.3 ? 1 + Math.min(0.2, (input.ar - 10.29) * 0.04) : 1;
 
         const bpmFactor = 1 + Math.min(0.2, Math.exp(0.005 * (input.bpm - 240)) - 1);
 
-        const speedStrainScale = input.speedDifficulty * (1 - missPenalty) * bpmFactor * arBonus;
+        const speedStrainScale = input.speedDifficulty * missPenalty * bpmFactor * arBonus;
         const speedSkill = speedStrainScale * accuracyFactor * Math.pow(comboFactor, 0.85);
 
         const totalStrain = input.aimDifficulty + input.speedDifficulty;
@@ -231,7 +231,7 @@ export class SkillCalculatorService extends AbstractService {
             Math.pow(csBonus, 0.5) *
             Math.pow(arBonus, 0.5) *
             staminaBpmFactor *
-            (1 - missPenalty) *
+            missPenalty *
             Math.pow(comboFactor, 0.5) *
             Math.pow(accuracyFactor, 0.6);
 
@@ -249,20 +249,14 @@ export class SkillCalculatorService extends AbstractService {
                 ((upperCap - lowerCap) / 2 + ((upperCap + lowerCap - 2) / 2) * Math.sign(noteDensityBase - 4)) *
                 (1 - Math.exp(-scalingSpeed * Math.abs(noteDensityBase - 4)));
 
-        const readingSkill =
-            readingBase *
-            readingComboFactor *
-            readingAccuracyFactor *
-            (1 - missPenalty) *
-            noteDensityFactor *
-            READING_MULTIPLIER;
+        const readingSkill = readingBase * readingComboFactor * readingAccuracyFactor * missPenalty * noteDensityFactor;
 
         return this.sanitizeValues({
             [ESkillType.Aim]: aimSkill * AIM_MULTIPLIER,
             [ESkillType.Speed]: speedSkill * SPEED_MULTIPLIER,
             [ESkillType.Accuracy]: accuracySkill * ACC_MULTIPLIER,
             [ESkillType.Stamina]: staminaSkill * STAMINA_MULTIPLIER,
-            [ESkillType.Reading]: readingSkill,
+            [ESkillType.Reading]: readingSkill * READING_MULTIPLIER,
         });
     }
 
