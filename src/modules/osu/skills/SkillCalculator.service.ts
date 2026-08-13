@@ -153,7 +153,7 @@ export class SkillCalculatorService extends AbstractService {
         };
     }
 
-private calculateStandard(input: ISkillFormulaInput): Partial<Record<ESkillType, number>> {
+    private calculateStandard(input: ISkillFormulaInput): Partial<Record<ESkillType, number>> {
         if (!isValidNumber(input.aimDifficulty) || !isValidNumber(input.speedDifficulty)) {
             return {};
         }
@@ -235,33 +235,36 @@ private calculateStandard(input: ISkillFormulaInput): Partial<Record<ESkillType,
             Math.pow(comboFactor, 0.5) *
             Math.pow(accuracyFactor, 0.6);
 
-    const readingBase = input.readingDifficulty || 0; 
-    const readingComboFactor = 0.85 + 0.15 * Math.sqrt(comboRatio);
-    const readingAccuracyFactor = 0.8 + 0.2 * Math.pow(input.accuracy / 100, 3);
+        const readingBase = input.readingDifficulty || 0;
+        const readingComboFactor = 0.85 + 0.15 * Math.sqrt(comboRatio);
+        const readingAccuracyFactor = 0.8 + 0.2 * Math.pow(input.accuracy / 100, 3);
 
-    const noteDensityBase = (input.bpm * (13 - input.ar)) / 200;
-    const upperCap = 1.1;
-    const lowerCap = 0.95;
-    const scalingSpeed = 0.2;
-    const noteDensityFactor =1 + Math.sign(noteDensityBase - 4) *((upperCap - lowerCap) / 2 +(upperCap + lowerCap - 2) / 2 * Math.sign(noteDensityBase - 4)) *(1 - Math.exp(-scalingSpeed * Math.abs(noteDensityBase - 4)));
+        const noteDensityBase = (input.bpm * (13 - input.ar)) / 200;
+        const upperCap = 1.1;
+        const lowerCap = 0.95;
+        const scalingSpeed = 0.2;
+        const noteDensityFactor =
+            1 +
+            Math.sign(noteDensityBase - 4) *
+                ((upperCap - lowerCap) / 2 + ((upperCap + lowerCap - 2) / 2) * Math.sign(noteDensityBase - 4)) *
+                (1 - Math.exp(-scalingSpeed * Math.abs(noteDensityBase - 4)));
 
-    const readingSkill = 
-        readingBase *
-        readingComboFactor *
-        readingAccuracyFactor *
-        (1 - missPenalty) *
-        noteDensityFactor *
-        READING_MULTIPLIER;
+        const readingSkill =
+            readingBase *
+            readingComboFactor *
+            readingAccuracyFactor *
+            (1 - missPenalty) *
+            noteDensityFactor *
+            READING_MULTIPLIER;
 
-    
         return this.sanitizeValues({
             [ESkillType.Aim]: aimSkill * AIM_MULTIPLIER,
             [ESkillType.Speed]: speedSkill * SPEED_MULTIPLIER,
             [ESkillType.Accuracy]: accuracySkill * ACC_MULTIPLIER,
             [ESkillType.Stamina]: staminaSkill * STAMINA_MULTIPLIER,
             [ESkillType.Reading]: readingSkill,
-    });
-}
+        });
+    }
 
     private calculateTaiko(input: ISkillFormulaInput): Partial<Record<ESkillType, number>> {
         const difficulty = input.taikoDifficulty;
@@ -285,7 +288,7 @@ private calculateStandard(input: ISkillFormulaInput): Partial<Record<ESkillType,
         const colourExecution = 0.91 + 0.31 * Math.pow(accuracy, 2);
         const colourComboFactor = 0.9 + 0.1 * Math.sqrt(combo);
 
-        const readingExecution = 0.87+ 0.30 * Math.pow(accuracy, 3);
+        const readingExecution = 0.87 + 0.3 * Math.pow(accuracy, 3);
         const readingComboFactor = 0.94 + 0.08 * Math.sqrt(combo);
         const readingModFactor = (input.hasHidden ? 1.02 : 1) * (input.hasFlashlight ? 1.04 : 1);
 
