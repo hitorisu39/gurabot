@@ -37,7 +37,7 @@ export class CommandParser {
             const messageContext = ctx as MessageContext;
             let content = messageContext.rawContent;
 
-            const modsRegex = /(?:^|\s)([+-][a-zA-Z]{2,}!?)(?=\s|$)/;
+            const modsRegex = /(?:^|\s)(\+[a-zA-Z]{2,}!?|-[a-zA-Z]{2,}!)(?=\s|$)/;
             const modMatch = content.match(modsRegex);
 
             if (modMatch) {
@@ -366,21 +366,21 @@ export class CommandParser {
     private static parseMods(input: string): ICommandMods {
         input = input.toUpperCase();
 
+        if (!/^(\+[A-Z]{2,}!?|-[A-Z]{2,}!)$/.test(input)) {
+            throw new Exception(EApplicationError.INPUT_ERROR, `Invalid mod combination: \`${input}\``);
+        }
+
         let type = EModMatchType.Include;
 
-        if (input.startsWith("+") && input.endsWith("!")) {
-            type = EModMatchType.Match;
-        } else if (input.startsWith("-") && input.endsWith("!")) {
+        if (input.startsWith("-")) {
             type = EModMatchType.Exclude;
-        } else if (input.startsWith("+")) {
-            type = EModMatchType.Include;
-        } else {
-            type = input.endsWith("!") ? EModMatchType.Match : EModMatchType.Include;
+        } else if (input.endsWith("!")) {
+            type = EModMatchType.Match;
         }
 
         const mods = input.replace(/[+!-]/g, "");
 
-        if (!mods || mods.length % 2 !== 0) {
+        if (mods.length % 2 !== 0) {
             throw new Exception(EApplicationError.INPUT_ERROR, `Invalid mod combination: \`${input}\``);
         }
 

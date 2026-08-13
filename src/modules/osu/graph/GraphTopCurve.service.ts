@@ -249,7 +249,7 @@ export class GraphTopCurveService extends AbstractService {
         const topText = `#${stats.top.position}: ` + this.formatPp(stats.top.pp);
         const middleText = `#${stats.middle.position}: ` + this.formatPp(stats.middle.pp);
         const tailText = `#${stats.tail.position}: ` + this.formatPp(stats.tail.pp);
-        
+
         const topWidth = ctx.measureText(topText).width;
         const middleWidth = ctx.measureText(middleText).width;
         const tailWidth = ctx.measureText(tailText).width;
