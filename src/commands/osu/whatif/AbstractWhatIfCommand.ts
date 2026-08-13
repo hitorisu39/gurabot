@@ -4,7 +4,7 @@ import { AbstractOsuCommand } from "../AbstractOsuCommand";
 import { OsuService } from "@/modules/osu/Osu.service";
 import { OsuDailyService } from "@/modules/osudaily/OsuDaily.service";
 import { WhatIfViewService } from "@/modules/osu/whatif/WhatIfView.service";
-import { CommandOption, ECommandCategory } from "@domain/core/Command";
+import { CommandMatcher, CommandOption, ECommandCategory } from "@domain/core/Command";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { ScoreUtils } from "@domain/osu/utils/ScoreUtils";
 import { AdapterProvider } from "@generated/adapter/types";
@@ -25,7 +25,7 @@ export abstract class AbstractWhatIfCommand extends AbstractOsuCommand {
 
     @Option("pp", "Amount of PP for the hypothetical performance play")
     @IsNumber(0, 99999)
-    @InjectMatch((v) => !Number.isNaN(v))
+    @InjectMatch(CommandMatcher.number)
     @Aliases("value")
     declare private readonly pp: CommandOption<number>;
 

@@ -12,10 +12,17 @@ import { ChannelService } from "@/modules/channel/Channel.service";
 import { ProfileFormatter } from "@domain/osu/formatters/Profile.formatter";
 import { AbstractSessionCommand } from "../AbstractSessionCommand";
 
-export interface IResolvedOsuTarget {
-    query: string | number;
+export interface IResolvedOsuContext {
     mode: GameMode;
     server: AdapterProvider;
+}
+
+export interface IResolvedOsuTarget extends IResolvedOsuContext {
+    query: string | number;
+}
+
+export interface IResolvedOptionalOsuTarget extends IResolvedOsuContext {
+    query: string | number | null;
 }
 
 export abstract class AbstractOsuCommand extends AbstractSessionCommand {
@@ -43,51 +50,90 @@ export abstract class AbstractOsuCommand extends AbstractSessionCommand {
 
     protected forcedMode?: GameMode;
 
-    protected async resolveTarget(ctx: CommandContext): Promise<IResolvedOsuTarget> {
+    protected async resolveContext(ctx: CommandContext): Promise<IResolvedOsuContext> {
         const performer = await this.userService.get(ctx.author.id);
         const guild = ctx.guild ? await this.guildService.get(ctx.guild.id) : null;
-
         const server = this.server.unwrapUnchecked() ?? performer?.server ?? guild?.server ?? AdapterProvider.Bancho;
 
         const mode =
             this.forcedMode ?? this.mode.unwrapUnchecked() ?? performer?.mode ?? guild?.mode ?? GameMode.Standard;
 
-        let query: string | number;
+        return {
+            mode,
+            server,
+        };
+    }
 
+    protected async resolveTarget(ctx: CommandContext): Promise<IResolvedOsuTarget> {
+        const context = await this.resolveContext(ctx);
+        const query = await this.resolveTargetQuery(ctx, context.server, true);
+
+        if (query === null) {
+            throw new Exception(EApplicationError.INTERNAL_ERROR, "Failed to resolve osu! target.");
+        }
+
+        return {
+            ...context,
+            query,
+        };
+    }
+
+    protected async resolveOptionalTarget(ctx: CommandContext): Promise<IResolvedOptionalOsuTarget> {
+        const context = await this.resolveContext(ctx);
+        const query = await this.resolveTargetQuery(ctx, context.server, false);
+
+        return {
+            ...context,
+            query,
+        };
+    }
+
+    private async resolveTargetQuery(
+        ctx: CommandContext,
+        server: AdapterProvider,
+        requireAuthorLink: boolean,
+    ): Promise<string | number | null> {
         if (this.name.some()) {
             const value = this.name.unwrap().trim();
             const mentionedUserID = this.parseDiscordMention(value);
 
             if (mentionedUserID) {
-                query = await this.resolveLinkedUser(mentionedUserID, server);
-            } else {
-                query = value;
+                return await this.resolveLinkedUser(mentionedUserID, server);
             }
-        } else if (this.discordUser.some()) {
-            query = await this.resolveLinkedUser(this.discordUser.unwrap().id, server);
-        } else {
-            query = await this.resolveLinkedUser(ctx.author.id, server, true);
+
+            return value;
         }
 
-        return { query, mode, server };
+        if (this.discordUser.some()) {
+            return await this.resolveLinkedUser(this.discordUser.unwrap().id, server);
+        }
+
+        const linked = await this.userService.getLinkedID(ctx.author.id, server);
+
+        if (linked) {
+            return linked.osuID;
+        }
+
+        if (!requireAuthorLink) {
+            return null;
+        }
+
+        throw new Exception(
+            EApplicationError.INPUT_ERROR,
+            `You haven't linked an account on ${ProviderMeta[server].name}. Please specify a name or use \`/link osu\`.`,
+        );
     }
 
     private parseDiscordMention(value: string): string | null {
         const match = value.match(/^<@!?(\d+)>$/);
+
         return match?.[1] ?? null;
     }
 
-    private async resolveLinkedUser(userID: string, server: AdapterProvider, isCommandAuthor = false): Promise<number> {
+    private async resolveLinkedUser(userID: string, server: AdapterProvider): Promise<number> {
         const linked = await this.userService.getLinkedID(userID, server);
 
         if (!linked) {
-            if (isCommandAuthor) {
-                throw new Exception(
-                    EApplicationError.INPUT_ERROR,
-                    `You haven't linked an account on ${ProviderMeta[server].name}. Please specify a name or use \`/link osu\`.`,
-                );
-            }
-
             throw new Exception(
                 EApplicationError.INPUT_ERROR,
                 `<@${userID}> hasn't linked an account on ${ProviderMeta[server].name}.`,
