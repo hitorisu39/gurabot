@@ -29,10 +29,7 @@ export abstract class AbstractGraphOsuTrackLadderCommand extends AbstractOsuComm
         const target = await this.resolveOptionalTarget(ctx);
 
         if (target.server !== AdapterProvider.Bancho) {
-            throw new Exception(
-                EApplicationError.NOT_FOUND,
-                "osu!track ladder graphs are only available for Bancho users.",
-            );
+            throw new Exception(EApplicationError.NOT_FOUND, "osu!track graphs are only available for Bancho users.");
         }
 
         const timestamp = Date.now();

@@ -3,6 +3,7 @@ import duration from "dayjs/plugin/duration";
 import advancedFormat from "dayjs/plugin/advancedFormat";
 import relativeTime from "dayjs/plugin/relativeTime";
 import utc from "dayjs/plugin/utc";
+import { DiscordFormatter } from "./Discord.formatter";
 
 dayjs.extend(duration);
 dayjs.extend(advancedFormat);
@@ -91,6 +92,35 @@ export class DateFormatter {
         if (seconds > 0) return `${seconds}s`;
 
         return "now";
+    }
+
+    // Approximate human-readable duration
+    // e.g. "14 days", "142 days (~4.7 months)", "730 days (~2.0 years)"
+    public static estimateDuration(milliseconds: number): string {
+        const totalDays = Math.max(0, milliseconds) / (24 * 60 * 60 * 1000);
+
+        if (totalDays < 1) {
+            const hours = Math.max(1, Math.round(totalDays * 24));
+            return `${hours} ${hours === 1 ? "hour" : "hours"}`;
+        }
+
+        const days = Math.ceil(totalDays);
+
+        if (totalDays < 60) {
+            return `${DiscordFormatter.number(days)} ${days === 1 ? "day" : "days"}`;
+        }
+
+        if (totalDays < 365.25) {
+            const months = totalDays / 30.4375;
+            return `${DiscordFormatter.number(days)} days (~${months.toFixed(1)} months)`;
+        }
+
+        const years = totalDays / 365.25;
+        return `${DiscordFormatter.number(days)} days (~${years.toFixed(1)} years)`;
+    }
+
+    public static estimateDays(days: number): string {
+        return DateFormatter.estimateDuration(days * 24 * 60 * 60 * 1000);
     }
 
     /**
