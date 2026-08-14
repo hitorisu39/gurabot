@@ -63,3 +63,10 @@ export const Language = SchemaEnum.define("Language", {
     Polish: "Polish",
     Unspecified: "Unspecified",
 });
+
+export const RankingType = SchemaEnum.define("RankingType", {
+    Performance: "Performance",
+    Score: "Score",
+    Country: "Country",
+    Charts: "Charts",
+});
