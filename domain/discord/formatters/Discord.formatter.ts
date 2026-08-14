@@ -33,6 +33,14 @@ export class DiscordFormatter {
         return discordSpaceUnicode.repeat(repeat);
     }
 
+    public static plural(count: number, singular: string, plural: string = `${singular}s`) {
+        return count === 1 ? singular : plural;
+    }
+
+    public static quantity(count: number, singular: string, plural: string = `${singular}s`): string {
+        return `${this.number(count)} ${this.plural(count, singular, plural)}`;
+    }
+
     public static smallNumber(value: number): string {
         const superscriptMap: Record<string, string> = {
             "0": "⁰",

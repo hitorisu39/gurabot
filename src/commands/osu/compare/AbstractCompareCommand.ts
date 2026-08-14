@@ -26,6 +26,7 @@ import { ScoreViewService } from "@/modules/osu/scores/ScoreView.service";
 import { BaseScoreEvaluator } from "@domain/osu/utils/BaseScoreEvaluator";
 import { ProviderMeta } from "@generated/adapter";
 import { BeatmapUtils } from "@domain/osu/utils/BeatmapUtils";
+import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";
 
 @Help(`
     Compares your {mode} scores on a specific beatmap.
@@ -126,10 +127,9 @@ export abstract class AbstractCompareCommand extends AbstractOsuCommand {
             throw new Exception(EApplicationError.NOT_FOUND, `No scores found matching the specified filters.`);
 
         const count = scores.length;
-        const plural = count === 1 ? "" : "s";
-
         const displayQuery =
-            evaluator.display(count, "on the beatmap:") ?? `Found **${count}** score${plural} on the beatmap:`;
+            evaluator.display(count, "on the beatmap:") ??
+            `Found **${count}** ${DiscordFormatter.plural(count, "score")} on the beatmap:`;
 
         const data: ScoresViewDto = {
             timestamp: Date.now(),

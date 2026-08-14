@@ -11,6 +11,7 @@ import { EScoreQuerySort, ESortOrder } from "../enums/Score.enum";
 import { Grade, Score } from "@generated/adapter/types";
 import { dateRangeContains, rangeContains } from "@domain/utils";
 import { ModUtils } from "@generated/adapter/mods";
+import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";
 
 export class BaseScoreEvaluator<Q extends BaseScoreQueryDto = BaseScoreQueryDto> {
     protected query: Q | null;
@@ -201,17 +202,14 @@ export class BaseScoreEvaluator<Q extends BaseScoreQueryDto = BaseScoreQueryDto>
 
         if (queryParts.length > 0) {
             let queryStr = queryParts.join(", ");
-
             if (queryStr.length > 100) queryStr = queryStr.slice(0, 97) + "...";
-
             parts.push(`Query: \`${queryStr}\``);
         }
 
         let text = parts.join(" ~ ");
 
         if (this.mods.some() || queryParts.length > 0) {
-            const plural = count === 1 ? "" : "s";
-            text += `\nFound **${count}** score${plural} ${suffix}`;
+            text += `\nFound **${count}** ${DiscordFormatter.plural(count, "score")} ${suffix}`;
         }
 
         return text;

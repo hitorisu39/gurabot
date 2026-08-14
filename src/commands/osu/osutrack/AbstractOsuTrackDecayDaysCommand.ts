@@ -1,14 +1,4 @@
-import {
-    Category,
-    Examples,
-    Help,
-    Import,
-    InjectMatch,
-    IsInteger,
-    IsNumber,
-    Option,
-    Required,
-} from "@/core/decorators";
+import { Category, Examples, Help, Import, InjectMatch, IsInteger, Option, Required } from "@/core/decorators";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
 import { OsuService } from "@/modules/osu/Osu.service";
