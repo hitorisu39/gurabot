@@ -19,7 +19,6 @@ export class GraphTopRankedDateSubcommand extends AbstractGraphTopRankedDateComm
 })
 export class GraphTopRankedDateCommand extends AbstractGraphTopRankedDateCommand {}
 
-// Taiko
 @Category(ECommandCategory.Taiko)
 @Command({
     name: "taikographtoprankeddate",
@@ -31,7 +30,6 @@ export class TaikoGraphTopRankedDateCommand extends AbstractGraphTopRankedDateCo
     protected forcedMode = GameMode.Taiko;
 }
 
-// Catch
 @Category(ECommandCategory.Catch)
 @Command({
     name: "catchgraphtoprankeddate",
@@ -43,7 +41,6 @@ export class CatchGraphTopRankedDateCommand extends AbstractGraphTopRankedDateCo
     protected forcedMode = GameMode.Catch;
 }
 
-// Mania
 @Category(ECommandCategory.Mania)
 @Command({
     name: "maniagraphtoprankeddate",

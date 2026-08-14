@@ -6,7 +6,7 @@ import { ProfileViewService } from "@/modules/osu/profile/ProfileView.service";
 import { EProfileView, ProfileViewDto } from "@domain/osu/views/Profile.view";
 import { ECommandCategory } from "@domain/core/Command";
 import { OsuTrackService } from "@/modules/osutrack/OsuTrack.service";
-import { scoreFetchBestLimit } from "@domain/osu/configs/Score.config";
+import { scoreBestQueryLimit } from "@domain/osu/configs/Score.config";
 
 @Category(ECommandCategory.Osu)
 export abstract class AbstractProfileCommand extends AbstractOsuCommand {
@@ -26,7 +26,7 @@ export abstract class AbstractProfileCommand extends AbstractOsuCommand {
                     nameOrID: cachedID,
                     mode: target.mode,
                     type: "best",
-                    limit: scoreFetchBestLimit,
+                    limit: scoreBestQueryLimit,
                     provider: target.server,
                 }),
                 this.osuTrackService.peak(cachedID, target.mode, target.server).catch(() => null),
@@ -36,7 +36,7 @@ export abstract class AbstractProfileCommand extends AbstractOsuCommand {
                 nameOrID: target.query,
                 mode: target.mode,
                 type: "best",
-                limit: scoreFetchBestLimit,
+                limit: scoreBestQueryLimit,
                 provider: target.server,
             }));
             osutrack = await this.osuTrackService.peak(user.id, user.mode, target.server).catch(() => null);

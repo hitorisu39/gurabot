@@ -19,7 +19,6 @@ export class GraphOsuTrackScoresSubcommand extends AbstractGraphOsuTrackScoresCo
 })
 export class GraphOsuTrackScoresCommand extends AbstractGraphOsuTrackScoresCommand {}
 
-// Taiko
 @Category(ECommandCategory.Taiko)
 @Command({
     name: "taikographosutrackscores",
@@ -31,7 +30,6 @@ export class TaikoGraphOsuTrackScoresCommand extends AbstractGraphOsuTrackScores
     protected forcedMode = GameMode.Taiko;
 }
 
-// Catch
 @Category(ECommandCategory.Catch)
 @Command({
     name: "catchgraphosutrackscores",
@@ -43,7 +41,6 @@ export class CatchGraphOsuTrackScoresCommand extends AbstractGraphOsuTrackScores
     protected forcedMode = GameMode.Catch;
 }
 
-// Mania
 @Category(ECommandCategory.Mania)
 @Command({
     name: "maniagraphosutrackscores",

@@ -43,8 +43,6 @@ export class SkillCardSubcommand extends AbstractSkillCardCommand {}
 })
 export class SkillsCommand extends AbstractSkillStatsCommand {}
 
-// Taiko
-
 @Category(ECommandCategory.Taiko)
 @Command({
     name: "taikoskills",
@@ -56,8 +54,6 @@ export class TaikoSkillsCommand extends AbstractSkillStatsCommand {
     protected forcedMode = GameMode.Taiko;
 }
 
-// Catch
-
 @Category(ECommandCategory.Catch)
 @Command({
     name: "catchskills",
@@ -68,8 +64,6 @@ export class TaikoSkillsCommand extends AbstractSkillStatsCommand {
 export class CatchSkillsCommand extends AbstractSkillStatsCommand {
     protected forcedMode = GameMode.Catch;
 }
-
-// Mania
 
 @Category(ECommandCategory.Mania)
 @Command({

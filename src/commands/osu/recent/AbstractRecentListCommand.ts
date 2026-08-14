@@ -22,7 +22,7 @@ import { ScoreViewService } from "@/modules/osu/scores/ScoreView.service";
 import { Embed } from "@/core/discord/ui/Embed";
 import { ProviderMeta } from "@generated/adapter";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
-import { scoreFetchRecentLimit } from "@domain/osu/configs/Score.config";
+import { scoreRecentQueryLimit } from "@domain/osu/configs/Score.config";
 
 @Help(`
     Shows most recent {passed}{mode} scores of the specified player.
@@ -45,7 +45,7 @@ export abstract class AbstractRecentListCommand extends AbstractOsuCommand {
 
     @Option("index", "Jump to a specific score index (1-100)")
     @IsInlineIndex()
-    @IsRange(1, scoreFetchRecentLimit)
+    @IsRange(1, scoreRecentQueryLimit)
     @Aliases("i")
     declare private readonly index: CommandOption<ICommandRange>;
 
@@ -96,7 +96,7 @@ export abstract class AbstractRecentListCommand extends AbstractOsuCommand {
             nameOrID: target.query,
             mode: target.mode,
             type: "recent",
-            limit: scoreFetchRecentLimit,
+            limit: scoreRecentQueryLimit,
             includeFails: !passed,
             provider: target.server,
         });

@@ -14,7 +14,6 @@ import {
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { OsuService } from "@/modules/osu/Osu.service";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
-import { ProfileViewService } from "@/modules/osu/profile/ProfileView.service";
 import { Grade } from "@generated/adapter/types";
 import { PopulatedScoresQueryDto } from "@domain/osu/Score.dto";
 import { CommandOption, ECommandCategory, ICommandMods, ICommandQueryData, ICommandRange } from "@domain/core/Command";
@@ -22,10 +21,10 @@ import { EScoreListSize, EScoreQuerySort, ESortOrder } from "@domain/osu/enums/S
 import { PopulatedScoreEvaluator } from "@domain/osu/utils/PopulatedScoreEvaluator";
 import { ScoresViewDto } from "@domain/osu/views/Scores.view";
 import { ScoreViewService } from "@/modules/osu/scores/ScoreView.service";
-import { scoreBestQueryLimit } from "@domain/osu/configs/Score.config";
+import { scorePinnedQueryLimit } from "@domain/osu/configs/Score.config";
 
 @Help(`
-    Shows the top {mode} plays of the specified player.
+    Shows the pinned {mode} plays of the specified player.
 
     **Map Filters**
     Ranges supported: \`ar\`, \`cs\`, \`od\`, \`hp\`, \`bpm\`, \`stars\`, \`length\` (in seconds).
@@ -43,14 +42,13 @@ import { scoreBestQueryLimit } from "@domain/osu/configs/Score.config";
     Size: \`size=detailed\` or \`size=compact\`.
 `)
 @Examples(
-    "top cs>=4 ar=10 od>=9.8 length>64 +hd",
-    "top creator=sotarks +dt bpm>215 sort=date order=asc",
-    'top spaced name query="hatsune miku cs>=4"',
+    "pinned cs>=4 ar=10 od>=9.8 length>64 +hd",
+    "pin creator=sotarks +dt bpm>215 sort=date order=asc",
+    'p spaced name query="hatsune miku cs>=4"',
 )
 @Category(ECommandCategory.Osu)
-export abstract class AbstractTopCommand extends AbstractOsuCommand {
+export abstract class AbstractPinnedCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
-    @Import() declare private readonly profileViewService: ProfileViewService;
     @Import() declare private readonly scoreViewService: ScoreViewService;
 
     @Option("query", "Filter scores (e.g. pp range, cs, ar, artist, etc.)")
@@ -79,9 +77,9 @@ export abstract class AbstractTopCommand extends AbstractOsuCommand {
     @IsEnum(EScoreListSize)
     declare private readonly size: CommandOption<EScoreListSize>;
 
-    @Option("index", `Jump to a specific score index (1-${scoreBestQueryLimit}})`)
+    @Option("index", `Jump to a specific pinned score index (1-${scorePinnedQueryLimit})`)
     @IsInlineIndex()
-    @IsRange(1, scoreBestQueryLimit)
+    @IsRange(1, scorePinnedQueryLimit)
     @Aliases("i")
     declare private readonly index: CommandOption<ICommandRange>;
 
@@ -107,13 +105,14 @@ export abstract class AbstractTopCommand extends AbstractOsuCommand {
             sortOption,
             orderOption,
         );
+
         const activeAttributes = evaluator.getActiveAttributes();
 
         const { user, scores } = await this.osuService.userWithScores({
             nameOrID: target.query,
             mode: target.mode,
-            type: "best",
-            limit: scoreBestQueryLimit,
+            type: "pinned",
+            limit: scorePinnedQueryLimit,
             provider: target.server,
         });
 
@@ -135,12 +134,12 @@ export abstract class AbstractTopCommand extends AbstractOsuCommand {
             profile: user,
             scores: finalScores,
             displayQuery: evaluator.display(finalScores.length),
-            activeAttributes: activeAttributes,
+            activeAttributes,
             pageSize: sizeOption,
             page: 1,
         };
 
-        await this.scoreViewService.prepare(data, { personalScores: scores });
+        await this.scoreViewService.prepare(data);
         await this.respondWithSession(ctx, "osu_scores_view", data, this.scoreViewService);
     }
 }
