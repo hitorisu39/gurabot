@@ -2,6 +2,7 @@ import { TOsuTrackLadderPoint } from "../OsuTrack.dto";
 
 export class OsuTrackLadderUtils {
     public static readonly decayOversample = 50;
+    public static readonly simulationOversample = 50;
 
     public static interpolate(target: number, data: ReadonlyArray<TOsuTrackLadderPoint>) {
         const first = data.at(0);
@@ -109,6 +110,70 @@ export class OsuTrackLadderUtils {
             rank += dailyDecay * stepDuration;
 
             if (rank >= targetRank) {
+                return (step + 1) * stepDuration;
+            }
+        }
+
+        return null;
+    }
+
+    public static projectRankWithPace(
+        currentRank: number,
+        ppPerDay: number,
+        days: number,
+        decay: ReadonlyArray<TOsuTrackLadderPoint>,
+        density: ReadonlyArray<TOsuTrackLadderPoint>,
+    ): number {
+        let rank = currentRank;
+
+        const steps = Math.ceil(days * OsuTrackLadderUtils.simulationOversample);
+        if (steps <= 0) {
+            return Math.round(rank);
+        }
+
+        const stepDuration = days / steps;
+
+        for (let step = 0; step < steps; step++) {
+            const dailyDecay = OsuTrackLadderUtils.interpolate(rank, decay);
+            const rankDensity = OsuTrackLadderUtils.interpolate(rank, density);
+            const rankMovement = dailyDecay - ppPerDay * rankDensity;
+
+            rank += rankMovement * stepDuration;
+            rank = Math.max(1, rank);
+        }
+
+        return Math.round(rank);
+    }
+
+    public static calculateReachRankDays(
+        currentRank: number,
+        targetRank: number,
+        ppPerDay: number,
+        decay: ReadonlyArray<TOsuTrackLadderPoint>,
+        density: ReadonlyArray<TOsuTrackLadderPoint>,
+        maxDays: number,
+    ): number | null {
+        if (targetRank >= currentRank) {
+            return 0;
+        }
+
+        let rank = currentRank;
+
+        const stepDuration = 1 / OsuTrackLadderUtils.simulationOversample;
+        const maxSteps = Math.ceil(maxDays * OsuTrackLadderUtils.simulationOversample);
+
+        for (let step = 0; step < maxSteps; step++) {
+            const dailyDecay = OsuTrackLadderUtils.interpolate(rank, decay);
+            const rankDensity = OsuTrackLadderUtils.interpolate(rank, density);
+
+            if (!Number.isFinite(dailyDecay) || !Number.isFinite(rankDensity)) {
+                return null;
+            }
+
+            rank += (dailyDecay - ppPerDay * rankDensity) * stepDuration;
+            rank = Math.max(1, rank);
+
+            if (rank <= targetRank) {
                 return (step + 1) * stepDuration;
             }
         }

@@ -20,12 +20,11 @@ import { AdapterProvider } from "@generated/adapter/types";
 import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";
 import { ProfileFormatter } from "@domain/osu/formatters/Profile.formatter";
 import { OsuTrackLadderUtils } from "@domain/osutrack/utils/OsuTrackLadderUtils";
+import { DateFormatter } from "@domain/discord/formatters/Date.formatter";
 
 @Help(`
-    Estimates how long it would take a player's global rank to naturally
-    decay to a specified rank without gaining pp.
-
-    The estimate uses osu!track's historical ladder decay model.
+    Estimates how long it would take a player's global rank to naturally decay to a specified rank without gaining pp.
+    The estimate uses osu!track's historical decay data.
 `)
 @Examples("osutrackdecayrank 100000", "osutrackdecayrank 50000 mrekk")
 @Category(ECommandCategory.Osu)
@@ -73,7 +72,7 @@ export abstract class AbstractOsuTrackDecayRankCommand extends AbstractOsuComman
         const lastPoint = config.rankToDecay.at(-1);
 
         if (!lastPoint) {
-            throw new Exception(EApplicationError.INTERNAL_ERROR, "osu!track returned no ladder decay data.");
+            throw new Exception(EApplicationError.INTERNAL_ERROR, "osu!track returned no decay data.");
         }
 
         const maxModeledRank = lastPoint[0];
@@ -101,31 +100,16 @@ export abstract class AbstractOsuTrackDecayRankCommand extends AbstractOsuComman
                 `Without gaining pp, ${profile.username} is estimated to decay from ` +
                     `**${ProfileFormatter.rank(currentRank)}** to ` +
                     `**${ProfileFormatter.rank(targetRank)}** after approximately ` +
-                    `**${this.formatDays(days)}**. ` +
+                    `**${DateFormatter.estimateDays(days)}**. ` +
                     `That's a loss of **${DiscordFormatter.number(rankLoss)} ranks**.`,
             )
             .setFooter({
-                text: ProfileFormatter.mode(profile.mode),
+                text: `${ProfileFormatter.mode(profile.mode)} · ` + "Estimated from osu!track history data",
                 iconURL: ProfileFormatter.modeIcon(profile.mode),
             });
 
         await ctx.respond({
             embeds: [embed],
         });
-    }
-
-    private formatDays(days: number): string {
-        if (days < 1) {
-            const hours = Math.max(1, Math.round(days * 24));
-            return `${hours} ${hours === 1 ? "hour" : "hours"}`;
-        }
-
-        const roundedDays = Math.ceil(days);
-        if (roundedDays < 365) {
-            return `${DiscordFormatter.number(roundedDays)} ${roundedDays === 1 ? "day" : "days"}`;
-        }
-
-        const years = roundedDays / 365.25;
-        return `${DiscordFormatter.number(roundedDays)} days (~${years.toFixed(1)} years)`;
     }
 }

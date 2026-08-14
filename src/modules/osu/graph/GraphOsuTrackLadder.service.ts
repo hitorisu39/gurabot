@@ -60,7 +60,7 @@ export class GraphOsuTrackLadderService extends AbstractService {
         const rawPoints = this.getMetricPoints(config, metric);
 
         if (rawPoints.length < 2) {
-            throw new Exception(EApplicationError.NOT_FOUND, "There is not enough osu!track ladder data to graph.");
+            throw new Exception(EApplicationError.NOT_FOUND, "There is not enough osu!track data to graph.");
         }
 
         const points = this.samplePoints(rawPoints);
@@ -266,7 +266,7 @@ export class GraphOsuTrackLadderService extends AbstractService {
         switch (metric) {
             case EOsuTrackLadderMetric.Pp:
                 return {
-                    title: "osu!track ladder PP distribution",
+                    title: "osu!track PP distribution",
                     filename: "osutrack-ladder-pp",
                     label: "Performance points by global rank",
                     borderColor: graphColors.ladder.pp.border,
@@ -278,7 +278,7 @@ export class GraphOsuTrackLadderService extends AbstractService {
 
             case EOsuTrackLadderMetric.Density:
                 return {
-                    title: "osu!track ladder PP density",
+                    title: "osu!track PP density",
                     filename: "osutrack-ladder-density",
                     label: "Ranks gained per +1pp",
                     borderColor: graphColors.ladder.density.border,
@@ -290,7 +290,7 @@ export class GraphOsuTrackLadderService extends AbstractService {
 
             case EOsuTrackLadderMetric.Decay:
                 return {
-                    title: "osu!track ladder rank decay",
+                    title: "osu!track rank decay",
                     filename: "osutrack-ladder-decay",
                     label: "Natural rank loss per day",
                     borderColor: graphColors.ladder.decay.border,
