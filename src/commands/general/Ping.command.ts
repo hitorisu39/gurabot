@@ -8,7 +8,6 @@ import { ECommandCategory } from "@domain/core/Command";
 @Command({
     name: "ping",
     description: "Replies with Pong and latency!",
-    aliases: ["p"],
 })
 export class PingCommand extends AbstractCommand {
     public async execute(ctx: CommandContext): Promise<void> {

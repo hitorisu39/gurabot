@@ -19,7 +19,6 @@ export class OsuTrackDecayDaysSubcommand extends AbstractOsuTrackDecayDaysComman
 })
 export class OsuTrackDecayDaysCommand extends AbstractOsuTrackDecayDaysCommand {}
 
-// Taiko
 @Category(ECommandCategory.Taiko)
 @Command({
     name: "taikoosutrackdecaydays",
@@ -31,7 +30,6 @@ export class TaikoOsuTrackDecayDaysCommand extends AbstractOsuTrackDecayDaysComm
     protected forcedMode = GameMode.Taiko;
 }
 
-// Catch
 @Category(ECommandCategory.Catch)
 @Command({
     name: "catchosutrackdecaydays",
@@ -43,7 +41,6 @@ export class CatchOsuTrackDecayDaysCommand extends AbstractOsuTrackDecayDaysComm
     protected forcedMode = GameMode.Catch;
 }
 
-// Mania
 @Category(ECommandCategory.Mania)
 @Command({
     name: "maniaosutrackdecaydays",

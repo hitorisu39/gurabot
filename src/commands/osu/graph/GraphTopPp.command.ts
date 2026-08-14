@@ -19,7 +19,6 @@ export class GraphTopPpSubcommand extends AbstractGraphTopPpCommand {}
 })
 export class GraphTopPpCommand extends AbstractGraphTopPpCommand {}
 
-// Taiko
 @Category(ECommandCategory.Taiko)
 @Command({
     name: "taikographtoppp",
@@ -31,7 +30,6 @@ export class TaikoGraphTopPpCommand extends AbstractGraphTopPpCommand {
     protected forcedMode = GameMode.Taiko;
 }
 
-// Catch
 @Category(ECommandCategory.Catch)
 @Command({
     name: "catchgraphtoppp",
@@ -43,7 +41,6 @@ export class CatchGraphTopPpCommand extends AbstractGraphTopPpCommand {
     protected forcedMode = GameMode.Catch;
 }
 
-// Mania
 @Category(ECommandCategory.Mania)
 @Command({
     name: "maniagraphtoppp",

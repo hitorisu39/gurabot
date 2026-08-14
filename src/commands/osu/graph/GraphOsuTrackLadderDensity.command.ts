@@ -24,7 +24,6 @@ export class GraphOsuTrackLadderDensitySubcommand extends AbstractGraphOsuTrackL
 })
 export class GraphOsuTrackLadderDensityCommand extends AbstractGraphOsuTrackLadderDensityCommand {}
 
-// Taiko
 @Category(ECommandCategory.Taiko)
 @Command({
     name: "taikographladderdensity",
@@ -36,7 +35,6 @@ export class TaikoGraphOsuTrackLadderDensityCommand extends AbstractGraphOsuTrac
     protected forcedMode = GameMode.Taiko;
 }
 
-// Catch
 @Category(ECommandCategory.Catch)
 @Command({
     name: "catchgraphladderdensity",
@@ -48,7 +46,6 @@ export class CatchGraphOsuTrackLadderDensityCommand extends AbstractGraphOsuTrac
     protected forcedMode = GameMode.Catch;
 }
 
-// Mania
 @Category(ECommandCategory.Mania)
 @Command({
     name: "maniagraphladderdensity",

@@ -19,7 +19,6 @@ export class GraphTopAgeSubcommand extends AbstractGraphTopAgeCommand {}
 })
 export class GraphTopAgeCommand extends AbstractGraphTopAgeCommand {}
 
-// Taiko
 @Category(ECommandCategory.Taiko)
 @Command({
     name: "taikographtopage",
@@ -31,7 +30,6 @@ export class TaikoGraphTopAgeCommand extends AbstractGraphTopAgeCommand {
     protected forcedMode = GameMode.Taiko;
 }
 
-// Catch
 @Category(ECommandCategory.Catch)
 @Command({
     name: "catchgraphtopage",
@@ -43,7 +41,6 @@ export class CatchGraphTopAgeCommand extends AbstractGraphTopAgeCommand {
     protected forcedMode = GameMode.Catch;
 }
 
-// Mania
 @Category(ECommandCategory.Mania)
 @Command({
     name: "maniagraphtopage",

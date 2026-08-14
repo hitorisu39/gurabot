@@ -10,7 +10,7 @@ import { ScoreUtils } from "@domain/osu/utils/ScoreUtils";
 import { AdapterProvider } from "@generated/adapter/types";
 import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";
 import { WhatIfViewDataDto } from "@domain/osu/views/WhatIf.view";
-import { scoreFetchBestLimit } from "@domain/osu/configs/Score.config";
+import { scoreBestQueryLimit } from "@domain/osu/configs/Score.config";
 
 @Help(`
     Calculates how a new performance play would affect a player's total pp.
@@ -37,7 +37,7 @@ export abstract class AbstractWhatIfCommand extends AbstractOsuCommand {
             nameOrID: target.query,
             mode: target.mode,
             type: "best",
-            limit: scoreFetchBestLimit,
+            limit: scoreBestQueryLimit,
             provider: target.server,
         });
 

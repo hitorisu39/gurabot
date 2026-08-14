@@ -19,7 +19,6 @@ export class GraphOsuTrackPlaycountSubcommand extends AbstractGraphOsuTrackPlayc
 })
 export class GraphOsuTrackPlaycountCommand extends AbstractGraphOsuTrackPlaycountCommand {}
 
-// Taiko
 @Category(ECommandCategory.Taiko)
 @Command({
     name: "taikographosutrackplaycount",
@@ -31,7 +30,6 @@ export class TaikoGraphOsuTrackPlaycountCommand extends AbstractGraphOsuTrackPla
     protected forcedMode = GameMode.Taiko;
 }
 
-// Catch
 @Category(ECommandCategory.Catch)
 @Command({
     name: "catchgraphosutrackplaycount",
@@ -43,7 +41,6 @@ export class CatchGraphOsuTrackPlaycountCommand extends AbstractGraphOsuTrackPla
     protected forcedMode = GameMode.Catch;
 }
 
-// Mania
 @Category(ECommandCategory.Mania)
 @Command({
     name: "maniagraphosutrackplaycount",

@@ -54,8 +54,6 @@ export class RecentPassCommand extends AbstractRecentCommand {
     protected forcedPassed = true;
 }
 
-// Taiko
-
 @Category(ECommandCategory.Taiko)
 @Command({
     name: "taikorecent",
@@ -80,8 +78,6 @@ export class TaikoRecentPassCommand extends AbstractRecentCommand {
     protected forcedPassed = true;
 }
 
-// Catch
-
 @Category(ECommandCategory.Catch)
 @Command({
     name: "catchrecent",
@@ -105,8 +101,6 @@ export class CatchRecentPassCommand extends AbstractRecentCommand {
     protected forcedMode = GameMode.Catch;
     protected forcedPassed = true;
 }
-
-// Mania
 
 @Category(ECommandCategory.Mania)
 @Command({

@@ -10,8 +10,6 @@ import { ECommandCategory } from "@domain/core/Command";
 })
 export class NoChokeCommand extends AbstractNoChokeCommand {}
 
-// Taiko
-
 @Category(ECommandCategory.Taiko)
 @Command({
     name: "taikonochoke",
@@ -23,8 +21,6 @@ export class TaikoNoChokeCommand extends AbstractNoChokeCommand {
     protected forcedMode = GameMode.Taiko;
 }
 
-// Catch
-
 @Category(ECommandCategory.Catch)
 @Command({
     name: "catchnochoke",
@@ -35,8 +31,6 @@ export class TaikoNoChokeCommand extends AbstractNoChokeCommand {
 export class CatchNoChokeCommand extends AbstractNoChokeCommand {
     protected forcedMode = GameMode.Catch;
 }
-
-// Mania
 
 @Category(ECommandCategory.Mania)
 @Command({

@@ -21,7 +21,7 @@ import { BaseScoreEvaluator } from "@domain/osu/utils/BaseScoreEvaluator";
 import { EScoreListSize, EScoreQuerySort, ESortOrder } from "@domain/osu/enums/Score.enum";
 import { ScoreViewService } from "@/modules/osu/scores/ScoreView.service";
 import { ScoresViewDto } from "@domain/osu/views/Scores.view";
-import { scoreFetchBestLimit, scoreFetchRecentLimit } from "@domain/osu/configs/Score.config";
+import { scoreBestQueryLimit, scoreRecentQueryLimit } from "@domain/osu/configs/Score.config";
 
 @Help(`
     Shows most recent {passed}{mode} score of the specified player.
@@ -60,7 +60,7 @@ export abstract class AbstractRecentCommand extends AbstractOsuCommand {
             nameOrID: target.query,
             mode: target.mode,
             type: "recent",
-            limit: scoreFetchRecentLimit,
+            limit: scoreRecentQueryLimit,
             includeFails: !passed,
             provider: target.server,
         });
@@ -98,7 +98,7 @@ export abstract class AbstractRecentCommand extends AbstractOsuCommand {
         let displayQuery: string | null = null;
         if (!passed) displayQuery = `Try #${this.getTryCount(scores, targetScore)}`;
 
-        const personalScoresPromise = this.osuService.best(user.id, target.mode, scoreFetchBestLimit, target.server);
+        const personalScoresPromise = this.osuService.best(user.id, target.mode, scoreBestQueryLimit, target.server);
 
         const data: ScoresViewDto = {
             timestamp: Date.now(),

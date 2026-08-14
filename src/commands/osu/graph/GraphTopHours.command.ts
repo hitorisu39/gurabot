@@ -19,7 +19,6 @@ export class GraphTopHoursSubcommand extends AbstractGraphTopHoursCommand {}
 })
 export class GraphTopHoursCommand extends AbstractGraphTopHoursCommand {}
 
-// Taiko
 @Category(ECommandCategory.Taiko)
 @Command({
     name: "taikographtophours",
@@ -32,7 +31,6 @@ export class TaikoGraphTopHoursCommand extends AbstractGraphTopHoursCommand {
     protected forcedMode = GameMode.Taiko;
 }
 
-// Catch
 @Category(ECommandCategory.Catch)
 @Command({
     name: "catchgraphtophours",
@@ -45,7 +43,6 @@ export class CatchGraphTopHoursCommand extends AbstractGraphTopHoursCommand {
     protected forcedMode = GameMode.Catch;
 }
 
-// Mania
 @Category(ECommandCategory.Mania)
 @Command({
     name: "maniagraphtophours",
