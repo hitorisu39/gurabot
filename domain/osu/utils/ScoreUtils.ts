@@ -13,9 +13,21 @@ export interface IScorePPProjection {
     weightedDifference: number;
 }
 
+export interface IScorePPSimulation {
+    /**
+     * One-based positions of hypothetical scores.
+     * Null means the score did not enter the retained top scores.
+     */
+    placements: Array<number | null>;
+
+    currentWeightedPP: number;
+    projectedWeightedPP: number;
+    weightedDifference: number;
+}
+
 interface IWeightedPPEntry {
     pp: number;
-    hypothetical: boolean;
+    hypotheticalIndex: number | null;
 }
 
 export class ScoreUtils {
@@ -63,11 +75,11 @@ export class ScoreUtils {
             .reduce((total, pp, index) => total + pp * Math.pow(this.ppWeightDecay, index), 0);
     }
 
-    public static projectPP(
+    public static simulatePP(
         scores: ReadonlyArray<Score>,
-        hypotheticalPP: number,
+        hypotheticalPP: ReadonlyArray<number>,
         limit: number = 100,
-    ): IScorePPProjection {
+    ): IScorePPSimulation {
         const currentEntries: Array<IWeightedPPEntry> = scores
             .map((score) => this.pp(score))
             .filter((pp): pp is number => typeof pp === "number" && Number.isFinite(pp) && pp >= 0)
@@ -75,19 +87,20 @@ export class ScoreUtils {
             .slice(0, limit)
             .map((pp) => ({
                 pp,
-                hypothetical: false,
+                hypotheticalIndex: null,
             }));
 
-        const currentWeightedPP = this.weightedPPValues(currentEntries.map((entry) => entry.pp));
-        const retainedCount = currentEntries.length < limit ? currentEntries.length + 1 : currentEntries.length;
+        const hypotheticalEntries: Array<IWeightedPPEntry> = hypotheticalPP
+            .map((pp, hypotheticalIndex) => ({
+                pp,
+                hypotheticalIndex,
+            }))
+            .filter((entry) => Number.isFinite(entry.pp) && entry.pp >= 0);
 
-        const projectedEntries: Array<IWeightedPPEntry> = [
-            ...currentEntries,
-            {
-                pp: hypotheticalPP,
-                hypothetical: true,
-            },
-        ]
+        const currentWeightedPP = this.weightedPPValues(currentEntries.map((entry) => entry.pp));
+        const retainedCount = Math.min(limit, currentEntries.length + hypotheticalEntries.length);
+
+        const projectedEntries = [...currentEntries, ...hypotheticalEntries]
             .sort((a, b) => {
                 const difference = b.pp - a.pp;
 
@@ -95,18 +108,53 @@ export class ScoreUtils {
                     return difference;
                 }
 
-                return Number(b.hypothetical) - Number(a.hypothetical);
+                if (a.hypotheticalIndex !== null && b.hypotheticalIndex === null) {
+                    return -1;
+                }
+
+                if (a.hypotheticalIndex === null && b.hypotheticalIndex !== null) {
+                    return 1;
+                }
+
+                if (a.hypotheticalIndex !== null && b.hypotheticalIndex !== null) {
+                    return a.hypotheticalIndex - b.hypotheticalIndex;
+                }
+
+                return 0;
             })
             .slice(0, retainedCount);
 
-        const hypotheticalIndex = projectedEntries.findIndex((entry) => entry.hypothetical);
+        const placements: Array<number | null> = hypotheticalPP.map(() => null);
+
+        for (let index = 0; index < projectedEntries.length; index++) {
+            const entry = projectedEntries[index];
+            if (entry && entry.hypotheticalIndex !== null) {
+                placements[entry.hypotheticalIndex] = index + 1;
+            }
+        }
+
         const projectedWeightedPP = this.weightedPPValues(projectedEntries.map((entry) => entry.pp));
 
         return {
-            placement: hypotheticalIndex === -1 ? null : hypotheticalIndex + 1,
+            placements,
             currentWeightedPP,
             projectedWeightedPP,
             weightedDifference: projectedWeightedPP - currentWeightedPP,
+        };
+    }
+
+    public static projectPP(
+        scores: ReadonlyArray<Score>,
+        hypotheticalPP: number,
+        limit: number = 100,
+    ): IScorePPProjection {
+        const simulation = this.simulatePP(scores, [hypotheticalPP], limit);
+
+        return {
+            placement: simulation.placements[0] ?? null,
+            currentWeightedPP: simulation.currentWeightedPP,
+            projectedWeightedPP: simulation.projectedWeightedPP,
+            weightedDifference: simulation.weightedDifference,
         };
     }
 
