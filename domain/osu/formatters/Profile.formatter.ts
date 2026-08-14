@@ -14,12 +14,9 @@ export class ProfileFormatter {
         return discordEmoteOfflineUrl;
     }
 
-    public static rank(rank: number): string {
-        return "#" + DiscordFormatter.number(rank);
-    }
-
-    public static countryRank(countryCode: string, rank: number, delimiter = "#"): string {
-        return `${countryCode.toUpperCase()}${delimiter}${DiscordFormatter.number(rank)}`;
+    public static rank(rank: number, countryCode?: string, delimiter: string = "#"): string {
+        if (countryCode) return `${countryCode.toUpperCase()}${delimiter}${DiscordFormatter.number(rank)}`;
+        return delimiter + DiscordFormatter.number(rank);
     }
 
     public static mode(mode: GameMode): string {
@@ -71,14 +68,14 @@ export class ProfileFormatter {
 
     public static pp(pp?: number): string {
         if (!pp) return "0pp";
-        return `${DiscordFormatter.number(pp)}pp`;
+        return `${DiscordFormatter.number(DiscordFormatter.fixed(pp, 1))}pp`;
     }
 
     public static link(provider: AdapterProvider, userID: number, mode?: GameMode): string {
         return ProviderMeta[provider].formatters.userProfile(userID, mode);
     }
 
-    public static avatar(provider: AdapterProvider, userID: number, timestamp?: number): string {
-        return ProviderMeta[provider].formatters.userAvatar(userID, timestamp);
+    public static avatar(provider: AdapterProvider, userID: number, timestamp?: number | null): string {
+        return ProviderMeta[provider].formatters.userAvatar(userID, timestamp || Date.now());
     }
 }
