@@ -20,12 +20,11 @@ import { AdapterProvider } from "@generated/adapter/types";
 import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";
 import { ProfileFormatter } from "@domain/osu/formatters/Profile.formatter";
 import { OsuTrackLadderUtils } from "@domain/osutrack/utils/OsuTrackLadderUtils";
+import { OsuTrackFormatter } from "@domain/osutrack/formatters/OsuTrack.formatter";
 
 @Help(`
-    Estimates where a player's global rank would decay to after a specified
-    number of days without gaining pp.
-
-    The estimate uses osu!track's historical ladder decay model.
+    Estimates where a player's global rank would decay to after a specified number of days without gaining pp.
+    The estimate uses osu!track's historical decay data.
 `)
 @Examples("osutrackdecaydays 30", "osutrackdecaydays 90 mrekk")
 @Category(ECommandCategory.Osu)
@@ -76,35 +75,15 @@ export abstract class AbstractOsuTrackDecayDaysCommand extends AbstractOsuComman
                     `${profile.username}'s global rank is estimated to decay to ` +
                     `**${ProfileFormatter.rank(projectedRank)}**.\n` +
                     `That's a loss of approximately **${DiscordFormatter.number(rankLoss)} ranks**. ` +
-                    `Their current modeled decay rate is **~${this.formatDecay(currentDecay)} ranks/day**.`,
+                    `Their current modeled decay rate is **~${OsuTrackFormatter.decay(currentDecay)} ranks/day**.`,
             )
             .setFooter({
-                text: ProfileFormatter.mode(profile.mode),
+                text: `${ProfileFormatter.mode(profile.mode)} · ` + "Estimated from osu!track history data",
                 iconURL: ProfileFormatter.modeIcon(profile.mode),
             });
 
         await ctx.respond({
             embeds: [embed],
         });
-    }
-
-    private formatDecay(value: number): string {
-        if (value >= 100) {
-            return DiscordFormatter.number(Math.round(value));
-        }
-
-        if (value >= 10) {
-            return value.toFixed(1);
-        }
-
-        if (value >= 1) {
-            return value.toFixed(2);
-        }
-
-        if (value >= 0.01) {
-            return value.toFixed(3);
-        }
-
-        return value.toFixed(4);
     }
 }
