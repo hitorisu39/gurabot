@@ -19,7 +19,6 @@ export class GraphTopCurveSubcommand extends AbstractGraphTopCurveCommand {}
 })
 export class GraphTopCurveCommand extends AbstractGraphTopCurveCommand {}
 
-// Taiko
 @Category(ECommandCategory.Taiko)
 @Command({
     name: "taikographtopcurve",
@@ -31,7 +30,6 @@ export class TaikoGraphTopCurveCommand extends AbstractGraphTopCurveCommand {
     protected forcedMode = GameMode.Taiko;
 }
 
-// Catch
 @Category(ECommandCategory.Catch)
 @Command({
     name: "catchgraphtopcurve",
@@ -43,7 +41,6 @@ export class CatchGraphTopCurveCommand extends AbstractGraphTopCurveCommand {
     protected forcedMode = GameMode.Catch;
 }
 
-// Mania
 @Category(ECommandCategory.Mania)
 @Command({
     name: "maniagraphtopcurve",

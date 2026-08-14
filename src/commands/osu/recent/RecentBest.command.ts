@@ -24,8 +24,6 @@ export class RecentBestCommand extends AbstractTopCommand {
     protected forcedSort = EScoreQuerySort.Date;
 }
 
-// Taiko
-
 @Category(ECommandCategory.Taiko)
 @Command({
     name: "taikorecentbest",
@@ -38,8 +36,6 @@ export class TaikoRecentBestCommand extends AbstractTopCommand {
     protected forcedSort = EScoreQuerySort.Date;
 }
 
-// Catch
-
 @Category(ECommandCategory.Catch)
 @Command({
     name: "catchrecentbest",
@@ -51,8 +47,6 @@ export class CatchRecentBestCommand extends AbstractTopCommand {
     protected forcedMode = GameMode.Catch;
     protected forcedSort = EScoreQuerySort.Date;
 }
-
-// Mania
 
 @Category(ECommandCategory.Mania)
 @Command({

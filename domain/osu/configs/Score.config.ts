@@ -21,9 +21,14 @@ export const scoreStatsCompactDelimiter = " • ";
 /**
  * How many best scores we want to fetch for use in commands.
  */
-export const scoreFetchBestLimit = 100;
+export const scoreBestQueryLimit = 100;
 
 /**
  * How many recent scores we want to fetch for use in commands.
  */
-export const scoreFetchRecentLimit = 100;
+export const scoreRecentQueryLimit = 100;
+
+/**
+ * How many pinned scores we want to fetch for use in commands.
+ */
+export const scorePinnedQueryLimit = 100;

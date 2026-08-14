@@ -18,8 +18,6 @@ export class GraphRankSubcommand extends AbstractGraphRankCommand {}
 })
 export class GraphRankCommand extends AbstractGraphRankCommand {}
 
-// Taiko
-
 @Category(ECommandCategory.Taiko)
 @Command({
     name: "taikographrank",
@@ -31,8 +29,6 @@ export class TaikoGraphRankCommand extends AbstractGraphRankCommand {
     protected forcedMode = GameMode.Taiko;
 }
 
-// Catch
-
 @Category(ECommandCategory.Catch)
 @Command({
     name: "catchgraphrank",
@@ -43,8 +39,6 @@ export class TaikoGraphRankCommand extends AbstractGraphRankCommand {
 export class CatchGraphRankCommand extends AbstractGraphRankCommand {
     protected forcedMode = GameMode.Catch;
 }
-
-// Mania
 
 @Category(ECommandCategory.Mania)
 @Command({

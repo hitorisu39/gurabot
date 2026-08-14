@@ -19,7 +19,7 @@ import type { TRepository } from "@/core";
 import { ScorePlacementEvaluator } from "@domain/osu/utils/ScorePlacementEvaluator";
 import { BeatmapUtils } from "@domain/osu/utils/BeatmapUtils";
 import { ParsedMod } from "@generated/adapter/mods";
-import { scoreFetchBestLimit } from "@domain/osu/configs/Score.config";
+import { scoreBestQueryLimit } from "@domain/osu/configs/Score.config";
 
 export type UserScoreType = "best" | "recent" | "firsts" | "pinned";
 
@@ -240,14 +240,14 @@ export class OsuService extends AbstractService {
     @Trace()
     public async firsts(
         id: number,
-        mode :GameMode,
+        mode: GameMode,
         limit: number,
-        provider: AdapterProvider = AdapterProvider.Bancho
+        provider: AdapterProvider = AdapterProvider.Bancho,
     ): Promise<Array<Score>> {
         return await this.adapter[provider].firsts({
             id,
             mode,
-            limit
+            limit,
         });
     }
 
@@ -486,7 +486,7 @@ export class OsuService extends AbstractService {
 
         const [scores, personalScores, globalScores] = await Promise.all([
             this.userBeatmapScores(id, mode, beatmap.id, provider),
-            this.best(id, mode, scoreFetchBestLimit, provider),
+            this.best(id, mode, scoreBestQueryLimit, provider),
             globalScoresPromise,
         ]);
 

@@ -19,7 +19,6 @@ export class OsuTrackReachPpSubcommand extends AbstractOsuTrackReachPpCommand {}
 })
 export class OsuTrackReachPpCommand extends AbstractOsuTrackReachPpCommand {}
 
-// Taiko
 @Category(ECommandCategory.Taiko)
 @Command({
     name: "taikoosutrackreachpp",
@@ -31,7 +30,6 @@ export class TaikoOsuTrackReachPpCommand extends AbstractOsuTrackReachPpCommand 
     protected forcedMode = GameMode.Taiko;
 }
 
-// Catch
 @Category(ECommandCategory.Catch)
 @Command({
     name: "catchosutrackreachpp",
@@ -43,7 +41,6 @@ export class CatchOsuTrackReachPpCommand extends AbstractOsuTrackReachPpCommand 
     protected forcedMode = GameMode.Catch;
 }
 
-// Mania
 @Category(ECommandCategory.Mania)
 @Command({
     name: "maniaosutrackreachpp",

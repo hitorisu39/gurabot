@@ -20,7 +20,6 @@ export class GraphSkillsCurveSubcommand extends AbstractGraphSkillsCurveCommand 
 @Examples("gsc", "gsc mrekk")
 export class GraphSkillsCurveCommand extends AbstractGraphSkillsCurveCommand {}
 
-// Taiko
 @Category(ECommandCategory.Taiko)
 @Command({
     name: "taikographskillscurve",
@@ -32,7 +31,6 @@ export class TaikoGraphSkillsCurveCommand extends AbstractGraphSkillsCurveComman
     protected forcedMode = GameMode.Taiko;
 }
 
-// Catch
 @Category(ECommandCategory.Catch)
 @Command({
     name: "catchgraphskillscurve",
@@ -44,7 +42,6 @@ export class CatchGraphSkillsCurveCommand extends AbstractGraphSkillsCurveComman
     protected forcedMode = GameMode.Catch;
 }
 
-// Mania
 @Category(ECommandCategory.Mania)
 @Command({
     name: "maniagraphskillscurve",

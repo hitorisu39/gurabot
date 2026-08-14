@@ -7,7 +7,7 @@ import { OsuService } from "@/modules/osu/Osu.service";
 import { SkillCalculatorService } from "@/modules/osu/skills/SkillCalculator.service";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
 import { ECommandCategory } from "@domain/core/Command";
-import { scoreFetchBestLimit } from "@domain/osu/configs/Score.config";
+import { scoreBestQueryLimit } from "@domain/osu/configs/Score.config";
 
 @Category(ECommandCategory.Osu)
 export abstract class AbstractSkillCommand extends AbstractOsuCommand {
@@ -21,7 +21,7 @@ export abstract class AbstractSkillCommand extends AbstractOsuCommand {
             nameOrID: target.query,
             mode: target.mode,
             type: "best",
-            limit: scoreFetchBestLimit,
+            limit: scoreBestQueryLimit,
             provider: target.server,
         });
 

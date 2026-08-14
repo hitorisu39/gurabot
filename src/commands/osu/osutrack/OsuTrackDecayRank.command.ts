@@ -19,7 +19,6 @@ export class OsuTrackDecayRankSubcommand extends AbstractOsuTrackDecayRankComman
 })
 export class OsuTrackDecayRankCommand extends AbstractOsuTrackDecayRankCommand {}
 
-// Taiko
 @Category(ECommandCategory.Taiko)
 @Command({
     name: "taikoosutrackdecayrank",
@@ -31,7 +30,6 @@ export class TaikoOsuTrackDecayRankCommand extends AbstractOsuTrackDecayRankComm
     protected forcedMode = GameMode.Taiko;
 }
 
-// Catch
 @Category(ECommandCategory.Catch)
 @Command({
     name: "catchosutrackdecayrank",
@@ -43,7 +41,6 @@ export class CatchOsuTrackDecayRankCommand extends AbstractOsuTrackDecayRankComm
     protected forcedMode = GameMode.Catch;
 }
 
-// Mania
 @Category(ECommandCategory.Mania)
 @Command({
     name: "maniaosutrackdecayrank",

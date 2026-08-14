@@ -19,7 +19,6 @@ export class GraphOsuTrackAccuracySubcommand extends AbstractGraphOsuTrackAccura
 })
 export class GraphOsuTrackAccuracyCommand extends AbstractGraphOsuTrackAccuracyCommand {}
 
-// Taiko
 @Category(ECommandCategory.Taiko)
 @Command({
     name: "taikographosutrackaccuracy",
@@ -31,7 +30,6 @@ export class TaikoGraphOsuTrackAccuracyCommand extends AbstractGraphOsuTrackAccu
     protected forcedMode = GameMode.Taiko;
 }
 
-// Catch
 @Category(ECommandCategory.Catch)
 @Command({
     name: "catchgraphosutrackaccuracy",
@@ -43,7 +41,6 @@ export class CatchGraphOsuTrackAccuracyCommand extends AbstractGraphOsuTrackAccu
     protected forcedMode = GameMode.Catch;
 }
 
-// Mania
 @Category(ECommandCategory.Mania)
 @Command({
     name: "maniagraphosutrackaccuracy",
