@@ -124,3 +124,40 @@ export const User = SchemaModel.define("User", {
     // Not mapping
     beatmapsetFavoriteCount: Field.Int(),
 });
+
+export const RankingUser = SchemaModel.define("RankingUser", {
+    id: Field.Int(),
+    username: Field.String(),
+    countryCode: Field.String(),
+    avatarUrl: Field.String(),
+
+    online: Field.Boolean().Optional(),
+    lastVisit: Field.Date().Optional(),
+});
+
+export const RankingStatistics = SchemaModel.define("RankingStatistics", {
+    index: Field.Int(),
+
+    globalRank: Field.Int().Optional(),
+    countryRank: Field.Int().Optional(),
+
+    pp: Field.Float(),
+    accuracy: Field.Float(),
+
+    playcount: Field.Int(),
+    playtime: Field.Int().Optional(),
+
+    rankedScore: Field.Int(),
+    totalScore: Field.Int(),
+    totalHits: Field.Int(),
+
+    maxCombo: Field.Int(),
+    replaysWatched: Field.Int(),
+
+    rankChangeSince30Days: Field.Int().Optional(),
+
+    level: Field.Model(UserLevel),
+    grades: Field.Model(UserGrades),
+
+    user: Field.Model(RankingUser),
+});

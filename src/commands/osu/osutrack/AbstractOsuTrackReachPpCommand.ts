@@ -46,9 +46,9 @@ export abstract class AbstractOsuTrackReachPpCommand extends AbstractOsuCommand 
 
         const timestamp = Date.now();
         const profile = await this.osuService.user(target.query, target.mode, target.server);
-        const currentPP = Number(profile.statistics.pp);
+        const currentPP = profile.statistics.pp;
 
-        if (!Number.isFinite(currentPP)) {
+        if (currentPP < 0) {
             throw new Exception(
                 EApplicationError.NOT_FOUND,
                 `${profile.username} does not have a valid PP value in this mode.`,
@@ -56,7 +56,6 @@ export abstract class AbstractOsuTrackReachPpCommand extends AbstractOsuCommand 
         }
 
         const embed = this.profileViewService.createBaseEmbed(profile, timestamp, false);
-
         embed.setFooter({
             text: `${ProfileFormatter.mode(profile.mode)} · ` + "Estimated from recent osu!track history",
             iconURL: ProfileFormatter.modeIcon(profile.mode),
@@ -160,7 +159,7 @@ export abstract class AbstractOsuTrackReachPpCommand extends AbstractOsuCommand 
                         inline: true,
                     },
                     {
-                        name: "Trend confidence",
+                        name: "Confidence",
                         value: trend.confidence,
                         inline: true,
                     },
@@ -200,7 +199,7 @@ export abstract class AbstractOsuTrackReachPpCommand extends AbstractOsuCommand 
                     inline: true,
                 },
                 {
-                    name: "Trend confidence",
+                    name: "Confidence",
                     value: trend.confidence,
                     inline: true,
                 },

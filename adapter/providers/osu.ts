@@ -1,8 +1,8 @@
 import { Field, Mapping, SchemaProvider } from "../builder";
 import { Beatmap, Beatmapset } from "../models/beatmap";
-import { GameMode, Genre, Grade, Language, Status } from "../models/common";
+import { GameMode, Genre, Grade, Language, RankingType, Status } from "../models/common";
 import { Score } from "../models/score";
-import { User } from "../models/user";
+import { RankingStatistics, User } from "../models/user";
 
 //#region Transformers
 
@@ -80,6 +80,14 @@ const modeToPlain: Record<string, string> = {
     [GameMode.Taiko]: "taiko",
     [GameMode.Catch]: "fruits",
     [GameMode.Mania]: "mania",
+};
+
+// Ranking type
+const rankingTypeToPlain: Record<string, string> = {
+    [RankingType.Performance]: "performance",
+    [RankingType.Score]: "score",
+    [RankingType.Country]: "country",
+    [RankingType.Charts]: "charts",
 };
 
 //#endregion
@@ -421,6 +429,50 @@ const ScoreMapping: Mapping = {
     weight: "weight",
 };
 
+const RankingStatisticsMapping: Mapping = {
+    index: "$index",
+    globalRank: "global_rank",
+    countryRank: "country_rank",
+    pp: "pp",
+    accuracy: "accuracy",
+    playcount: "play_count",
+    playtime: "play_time",
+    rankedScore: "ranked_score",
+    totalScore: "total_score",
+    totalHits: "total_hits",
+    maxCombo: "maximum_combo",
+    replaysWatched: "replays_watched_by_others",
+    rankChangeSince30Days: "rank_change_since_30_days",
+    level: {
+        path: "level",
+        nested: {
+            current: "current",
+            progress: "progress",
+        },
+    },
+    grades: {
+        path: "grade_counts",
+        nested: {
+            ss: "ss",
+            ssh: "ssh",
+            s: "s",
+            sh: "sh",
+            a: "a",
+        },
+    },
+    user: {
+        path: "user",
+        nested: {
+            id: "id",
+            username: "username",
+            countryCode: "country_code",
+            avatarUrl: "avatar_url",
+            online: "is_online",
+            lastVisit: "last_visit",
+        },
+    },
+};
+
 //#endregion
 
 export const OsuProvider = SchemaProvider.define("osu", {
@@ -433,6 +485,9 @@ export const OsuProvider = SchemaProvider.define("osu", {
         [GameMode.$name]: {
             toPlain: (v) => modeToPlain[v],
             toInstance: (v) => modeToInstance[v],
+        },
+        [RankingType.$name]: {
+            toPlain: (v) => rankingTypeToPlain[v],
         },
     },
     formatters: {
@@ -473,6 +528,42 @@ export const OsuProvider = SchemaProvider.define("osu", {
                 if (args.offset) options += `&offset=${args.offset}`;
                 if (args.legacyOnly) options += `&legacy_only=1`;
                 return `/users/${args.id}/scores/best?${options}`;
+            },
+            method: "GET",
+            returns: { model: Score, isArray: true },
+            mapping: ScoreMapping,
+        },
+        pinned: {
+            args: {
+                id: Field.Int(),
+                mode: Field.Enum(GameMode),
+                limit: Field.Int(),
+                offset: Field.Int().Optional(),
+                legacyOnly: Field.Boolean().Optional(),
+            },
+            path: (args) => {
+                let options = `mode=${args.mode}&limit=${args.limit}`;
+                if (args.offset) options += `&offset=${args.offset}`;
+                if (args.legacyOnly) options += `&legacy_only=1`;
+                return `/users/${args.id}/scores/pinned?${options}`;
+            },
+            method: "GET",
+            returns: { model: Score, isArray: true },
+            mapping: ScoreMapping,
+        },
+        firsts: {
+            args: {
+                id: Field.Int(),
+                mode: Field.Enum(GameMode),
+                limit: Field.Int(),
+                offset: Field.Int().Optional(),
+                legacyOnly: Field.Boolean().Optional(),
+            },
+            path: (args) => {
+                let options = `mode=${args.mode}&limit=${args.limit}`;
+                if (args.offset) options += `&offset=${args.offset}`;
+                if (args.legacyOnly) options += `&legacy_only=1`;
+                return `/users/${args.id}/scores/firsts?${options}`;
             },
             method: "GET",
             returns: { model: Score, isArray: true },
@@ -566,6 +657,45 @@ export const OsuProvider = SchemaProvider.define("osu", {
                 dataPath: "scores",
             },
             mapping: ScoreMapping,
+        },
+        rankings: {
+            args: {
+                mode: Field.Enum(GameMode),
+                type: Field.Enum(RankingType),
+                country: Field.String().Optional(),
+                filter: Field.String().Optional(),
+                variant: Field.String().Optional(),
+                page: Field.Int().Optional(),
+            },
+            path: (args) => {
+                const params = new URLSearchParams();
+
+                if (args.country) {
+                    params.set("country", args.country);
+                }
+
+                if (args.filter) {
+                    params.set("filter", args.filter);
+                }
+
+                if (args.variant) {
+                    params.set("variant", args.variant);
+                }
+
+                if (args.page) {
+                    params.set("cursor[page]", String(args.page));
+                }
+
+                const query = params.toString();
+                return `/rankings/${args.mode}/${args.type}${query ? `?${query}` : ""}`;
+            },
+            method: "GET",
+            returns: {
+                model: RankingStatistics,
+                isArray: true,
+                dataPath: "ranking",
+            },
+            mapping: RankingStatisticsMapping,
         },
     },
 });

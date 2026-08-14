@@ -106,7 +106,7 @@ export class ScoresAttributesCalculator {
 
             comboCounts.set(comboKey, (comboCounts.get(comboKey) || 0) + 1);
 
-            const weightedPP = score.weight.pp;
+            const weightedPP = score.weight?.pp || 0;
             comboPp.set(comboKey, (comboPp.get(comboKey) || 0) + weightedPP);
 
             for (const acronym of acronyms) {
