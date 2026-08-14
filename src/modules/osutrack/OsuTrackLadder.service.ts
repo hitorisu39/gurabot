@@ -123,7 +123,7 @@ export class OsuTrackLadderService extends AbstractService {
 
     private validateProvider(provider: AdapterProvider): void {
         if (provider !== AdapterProvider.Bancho) {
-            throw new Exception(EApplicationError.NOT_FOUND, "osu!track graphs are only available for Bancho users.");
+            throw new Exception(EApplicationError.NOT_FOUND, "osu!track data is only available for Bancho users.");
         }
     }
 

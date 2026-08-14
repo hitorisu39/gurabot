@@ -52,9 +52,9 @@ export abstract class AbstractOsuTrackDecayRankCommand extends AbstractOsuComman
 
         const timestamp = Date.now();
         const profile = await this.osuService.user(target.query, target.mode, target.server);
-        const currentRank = Number(profile.statistics.globalRank);
+        const currentRank = profile.statistics.globalRank;
 
-        if (!Number.isFinite(currentRank) || currentRank < 1) {
+        if (currentRank < 1) {
             throw new Exception(
                 EApplicationError.NOT_FOUND,
                 `${profile.username} does not have a global rank in this mode.`,

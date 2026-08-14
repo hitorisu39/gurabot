@@ -1,5 +1,13 @@
 import { AbstractService } from "@/core/framework/AbstractService";
-import { AdapterProvider, Beatmap, Beatmapset, GameMode, Score } from "@generated/adapter/types";
+import {
+    AdapterProvider,
+    Beatmap,
+    Beatmapset,
+    GameMode,
+    RankingStatistics,
+    RankingType,
+    Score,
+} from "@generated/adapter/types";
 import { Import, Trace } from "@/core/decorators";
 import { CalculatorService } from "./calculator/Calculator.service";
 import { PopulatedUser } from "@domain/osu/Profile.dto";
@@ -13,10 +21,12 @@ import { BeatmapUtils } from "@domain/osu/utils/BeatmapUtils";
 import { ParsedMod } from "@generated/adapter/mods";
 import { scoreFetchBestLimit } from "@domain/osu/configs/Score.config";
 
+export type UserScoreType = "best" | "recent" | "firsts" | "pinned";
+
 interface IUserWithScoresInput {
     nameOrID: string | number;
     mode: GameMode;
-    type: "best" | "recent" | "firsts" | "pinned";
+    type: UserScoreType;
     limit: number;
     includeFails?: boolean;
     provider?: AdapterProvider;
@@ -93,7 +103,6 @@ export class OsuService extends AbstractService {
 
             if (cachedUser) {
                 this.logger.debug(`Redis cache hit for user: ${normalizedNameOrID}`);
-
                 return plainToInstance(PopulatedUser, cachedUser);
             }
         }
@@ -215,6 +224,34 @@ export class OsuService extends AbstractService {
     }
 
     @Trace()
+    public async pinned(
+        id: number,
+        mode: GameMode,
+        limit: number,
+        provider: AdapterProvider = AdapterProvider.Bancho,
+    ): Promise<Array<Score>> {
+        return await this.adapter[provider].pinned({
+            id,
+            mode,
+            limit,
+        });
+    }
+
+    @Trace()
+    public async firsts(
+        id: number,
+        mode :GameMode,
+        limit: number,
+        provider: AdapterProvider = AdapterProvider.Bancho
+    ): Promise<Array<Score>> {
+        return await this.adapter[provider].firsts({
+            id,
+            mode,
+            limit
+        });
+    }
+
+    @Trace()
     public async recent(
         id: number,
         mode: GameMode,
@@ -227,6 +264,28 @@ export class OsuService extends AbstractService {
             mode,
             limit,
             includeFails,
+        });
+    }
+
+    @Trace()
+    public async rankings(
+        mode: GameMode,
+        type: RankingType,
+        options?: {
+            country?: string;
+            filter?: string;
+            variant?: string;
+            page?: number;
+        },
+        provider: AdapterProvider = AdapterProvider.Bancho,
+    ): Promise<Array<RankingStatistics>> {
+        return await this.adapter[provider].rankings({
+            mode,
+            type,
+            country: options?.country,
+            filter: options?.filter,
+            variant: options?.variant,
+            page: options?.page,
         });
     }
 
@@ -259,16 +318,12 @@ export class OsuService extends AbstractService {
             }
         }
 
-        const apiData = await this.adapter[provider].beatmap({
-            id,
-        });
-
+        const apiData = await this.adapter[provider].beatmap({ id });
         if (!apiData) {
             return null;
         }
 
         await this.upsertBeatmap(apiData);
-
         return apiData;
     }
 
@@ -303,7 +358,6 @@ export class OsuService extends AbstractService {
         });
 
         const cachedMaps = plainToInstance(Beatmap, cached);
-
         const mapsByID = new Map<number, Beatmap>();
 
         for (const map of cachedMaps) {
@@ -323,7 +377,6 @@ export class OsuService extends AbstractService {
         }
 
         const missingIDs = uniqueIDs.filter((id) => !mapsByID.has(id));
-
         if (missingIDs.length > 0) {
             const fetchedMaps = await this.fetchMissingBeatmaps(missingIDs, provider);
 
@@ -368,10 +421,7 @@ export class OsuService extends AbstractService {
             }
         }
 
-        const apiData = await this.adapter[provider].beatmapset({
-            id,
-        });
-
+        const apiData = await this.adapter[provider].beatmapset({ id });
         if (!apiData) {
             return null;
         }
@@ -900,26 +950,20 @@ export class OsuService extends AbstractService {
     private async fetchScoresByType(
         id: number,
         mode: GameMode,
-        type: "best" | "recent" | "firsts" | "pinned",
+        type: UserScoreType,
         limit: number,
         includeFails: boolean = false,
         provider: AdapterProvider,
     ): Promise<Array<Score>> {
         switch (type) {
             case "recent":
-                return await this.adapter[provider].recent({
-                    id,
-                    mode,
-                    limit,
-                    includeFails,
-                });
-
+                return await this.recent(id, mode, limit, includeFails, provider);
+            case "pinned":
+                return await this.pinned(id, mode, limit, provider);
+            case "firsts":
+                return await this.firsts(id, mode, limit, provider);
             default:
-                return await this.adapter[provider].best({
-                    id,
-                    mode,
-                    limit,
-                });
+                return await this.best(id, mode, limit, provider);
         }
     }
 

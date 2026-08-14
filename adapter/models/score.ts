@@ -57,7 +57,7 @@ export const Score = SchemaModel.define("Score", {
     pp: Field.Float().Optional(),
     totalScore: Field.Int(),
     attributes: Field.Model(ScoreAttributes).Optional(),
-    weight: Field.Model(ScoreWeight),
+    weight: Field.Model(ScoreWeight).Optional(),
     beatmap: Field.Model(Beatmap).Optional(),
     beatmapset: Field.Model(Beatmapset).Optional(),
     user: Field.Model(User).Optional(),
