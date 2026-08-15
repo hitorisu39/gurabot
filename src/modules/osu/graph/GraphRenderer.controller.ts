@@ -2,7 +2,7 @@ import { Import, On } from "@/core/decorators";
 import { AbstractController } from "@/core/framework/AbstractController";
 import { GraphRendererService } from "./GraphRenderer.service";
 
-export class ChartRendererController extends AbstractController {
+export class GraphRendererController extends AbstractController {
     @Import() declare private readonly graphRendererService: GraphRendererService;
 
     @On("app", "ready")
