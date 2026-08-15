@@ -38,8 +38,6 @@ interface ISkillCardThemeAssets {
 }
 
 export class SkillCardViewService extends AbstractService {
-    private static readonly maximumAvatarBytes = 10 * 1024 * 1024;
-
     @Import() declare private readonly profileViewService: ProfileViewService;
     @Import() declare private readonly skillRankService: SkillRankService;
 
@@ -49,6 +47,7 @@ export class SkillCardViewService extends AbstractService {
     private readonly assetCache = new Map<string, Promise<ICachedImageAsset>>();
     private readonly modeIconCache = new Map<GameMode, Promise<Buffer>>();
     private readonly textMeasurementContext = createCanvas(1, 1).getContext("2d");
+    private readonly maximumAvatarBytes = 10 * 1024 * 1024;
 
     public async init(): Promise<void> {
         this.assets = path.join(process.cwd(), this.config.app.resources, "cards");
@@ -79,7 +78,6 @@ export class SkillCardViewService extends AbstractService {
         ]);
 
         const barComposites = await this.createSkillBarComposites(data.profile.mode, data.categories, assets);
-
         const foreground = Buffer.from(this.createForegroundSvg(data, skillRank));
 
         const composites: Array<OverlayOptions> = [
@@ -408,10 +406,10 @@ export class SkillCardViewService extends AbstractService {
             );
         }
 
-        if (source.length > SkillCardViewService.maximumAvatarBytes) {
+        if (source.length > this.maximumAvatarBytes) {
             throw new Exception(
                 EApplicationError.INTERNAL_ERROR,
-                `Avatar for osu! user ${data.profile.id} exceeds ${SkillCardViewService.maximumAvatarBytes} bytes.`,
+                `Avatar for osu! user ${data.profile.id} exceeds ${this.maximumAvatarBytes} bytes.`,
             );
         }
 
