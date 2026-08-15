@@ -16,26 +16,37 @@ export class PpTargetViewService extends AbstractService {
 
         const username = data.profile.username;
         const resolution = data.rankResolution;
+        const targetUser = data.targetUser;
 
         const target = resolution
             ? ProfileFormatter.rank(resolution.rank, resolution.countryCode)
-            : ProfileFormatter.pp(data.targetPP);
+            : targetUser
+              ? targetUser.username
+              : ProfileFormatter.pp(data.targetPP);
+
         const ppDifference = data.targetPP - data.profile.statistics.pp;
 
         let description = "";
 
         if (resolution) {
             const rank = ProfileFormatter.rank(resolution.rank, resolution.countryCode);
+
             if (resolution.source === ERankPpResolutionSource.Ranking && resolution.holder) {
                 description +=
                     `Rank ${rank} is currently held by \`${resolution.holder.username}\` ` +
                     `with **${ProfileFormatter.pp(resolution.pp)}**, so `;
             } else {
-                description += `Rank ${rank} is currently approx. **${ProfileFormatter.pp(resolution.pp)}**, so `;
+                description += `Rank ${rank} is currently approx. ` + `**${ProfileFormatter.pp(resolution.pp)}**, so `;
             }
+        } else if (targetUser) {
+            description +=
+                `\`${targetUser.username}\` currently has ` +
+                `**${ProfileFormatter.pp(targetUser.statistics.pp)}**, so `;
         }
 
-        description += `${username} needs **+${ProfileFormatter.pp(ppDifference)}**. They could reach that with **${this.route(data.calculation.primary)}**`;
+        description +=
+            `${username} needs **+${ProfileFormatter.pp(ppDifference)}**. ` +
+            `They could reach that with **${this.route(data.calculation.primary)}**`;
 
         if (data.calculation.alternative) {
             description += ` or ${this.route(data.calculation.alternative)}`;

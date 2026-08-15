@@ -16,6 +16,10 @@ export class PpTargetViewDataDto {
     declare rankResolution?: RankPpResolutionDto;
 
     @Expose()
+    @Type(() => PopulatedUser)
+    declare targetUser?: PopulatedUser;
+
+    @Expose()
     @Type(() => PpTargetCalculationDto)
     declare calculation: PpTargetCalculationDto;
 }

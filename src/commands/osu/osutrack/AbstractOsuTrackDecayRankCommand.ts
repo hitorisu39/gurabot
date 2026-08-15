@@ -91,7 +91,7 @@ export abstract class AbstractOsuTrackDecayRankCommand extends AbstractOsuComman
                     `**${ProfileFormatter.rank(currentRank)}** to ` +
                     `**${ProfileFormatter.rank(targetRank)}** after approximately ` +
                     `**${DateFormatter.estimateDays(days)}**. ` +
-                    `That's a loss of **${DiscordFormatter.number(rankLoss)} ranks**.`,
+                    `That's a loss of **${DiscordFormatter.quantity(rankLoss, "rank")}**.`,
             )
             .setFooter({
                 text: `${ProfileFormatter.mode(profile.mode)} · ` + "Estimated from osu!track history data",

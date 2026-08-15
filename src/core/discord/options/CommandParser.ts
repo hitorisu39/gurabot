@@ -143,7 +143,7 @@ export class CommandParser {
             return result;
         }
 
-        const tokens = content.split(/\s+/).filter(Boolean);
+        const tokens = CommandParser.tokenizeInjectedContent(content);
         const matchOptions = injected.filter((meta) => meta.inject === EInjectMode.Match);
 
         for (const meta of matchOptions) {
@@ -676,5 +676,73 @@ export class CommandParser {
         }
 
         return content.replace(kvRegex, "").replace(/\s+/g, " ").trim();
+    }
+
+    private static tokenizeInjectedContent(content: string): Array<string> {
+        const tokens: Array<string> = [];
+
+        let current = "";
+        let closingQuote: '"' | "”" | null = null;
+        let escaped = false;
+
+        const push = () => {
+            if (!current.length) {
+                return;
+            }
+
+            tokens.push(current);
+            current = "";
+        };
+
+        for (const char of content) {
+            if (escaped) {
+                current += char;
+                escaped = false;
+                continue;
+            }
+
+            if (char === "\\") {
+                escaped = true;
+                continue;
+            }
+
+            if (closingQuote) {
+                if (char === closingQuote) {
+                    closingQuote = null;
+                } else {
+                    current += char;
+                }
+
+                continue;
+            }
+
+            if (char === '"') {
+                closingQuote = '"';
+                continue;
+            }
+
+            if (char === "“") {
+                closingQuote = "”";
+                continue;
+            }
+
+            if (/\s/.test(char)) {
+                push();
+                continue;
+            }
+
+            current += char;
+        }
+
+        if (escaped) {
+            current += "\\";
+        }
+
+        if (closingQuote) {
+            throw new Exception(EApplicationError.INPUT_ERROR, "Unclosed quote in command arguments.");
+        }
+
+        push();
+        return tokens;
     }
 }
