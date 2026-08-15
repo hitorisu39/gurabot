@@ -53,12 +53,13 @@ export class UsernameAvailabilityViewService extends AbstractService {
     }
 
     private availableLater(data: UsernameAvailabilityDto): string {
-        if (!data.availableAt) {
+        if (!data.availableAt || !data.user?.lastVisit) {
             return `\`${data.username}\` is currently unavailable.`;
         }
 
         return (
-            `\`${data.username}\` is expected to become available ` + `${DateFormatter.discord(data.availableAt, "R")}.`
+            `\`${data.username}\` was last seen ${DateFormatter.discord(data.user.lastVisit, "R")}, ` +
+            `so the username is expected to become available ${DateFormatter.discord(data.availableAt, "R")}.`
         );
     }
 
