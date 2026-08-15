@@ -27,6 +27,11 @@ export class DateFormatter {
         return DateFormatter.parse(date).format("MMM Do YYYY");
     }
 
+    // Jan 23, 2012
+    public static shortDate(date?: Date | number | string): string {
+        return DateFormatter.parse(date).utc().format("MMM D, YYYY");
+    }
+
     // 22nd October
     public static dayMonth(date?: Date | number | string): string {
         return DateFormatter.parse(date).format("Do MMMM");

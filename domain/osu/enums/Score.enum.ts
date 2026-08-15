@@ -9,6 +9,7 @@ export enum EScoreQuerySort {
     Length = "Length",
     BPM = "BPM",
     PPFC = "PPFC",
+    RankDate = "RankDate",
 }
 
 export enum ESortOrder {

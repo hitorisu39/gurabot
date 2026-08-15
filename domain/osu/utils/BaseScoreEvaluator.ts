@@ -134,6 +134,10 @@ export class BaseScoreEvaluator<Q extends BaseScoreQueryDto = BaseScoreQueryDto>
         if (typeof r === "number") return `=${r}`;
         if (r instanceof Date) return `=${r.toISOString().split("T")[0]}`;
 
+        if ("display" in r && r.display) {
+            return r.display;
+        }
+
         if (r.exact !== undefined) {
             return `=${r.exact instanceof Date ? r.exact.toISOString().split("T")[0] : r.exact}`;
         }

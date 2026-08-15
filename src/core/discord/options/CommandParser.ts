@@ -45,12 +45,12 @@ export class CommandParser {
                 content = content.replace(modsRegex, " ").trim();
             }
 
-            injectedContent = this.extractKeyValuePairs(content, prefixMap);
+            injectedContent = CommandParser.extractKeyValuePairs(content, prefixMap);
         }
 
         const injectedValues = ctx.isSlash
             ? new Map<string, string>()
-            : this.distributeInjectedContent(optionsMeta, injectedContent, prefixMap);
+            : CommandParser.distributeInjectedContent(optionsMeta, injectedContent, prefixMap);
 
         for (const meta of optionsMeta) {
             let rawValue: any = null;
@@ -61,7 +61,7 @@ export class CommandParser {
                 if (ctx.isSlash) {
                     rawValue = (ctx as SlashContext).interaction.options.getString(meta.name);
                 } else {
-                    rawValue = extractedMods ?? this.getOptionValue(meta, prefixMap);
+                    rawValue = extractedMods ?? CommandParser.getOptionValue(meta, prefixMap);
                 }
             } else if (meta.type === EOptionType.Attachment) {
                 if (ctx.isSlash) {
@@ -73,7 +73,7 @@ export class CommandParser {
                 if (ctx.isSlash) {
                     rawValue = (ctx as SlashContext).interaction.options.getString(meta.name);
                 } else {
-                    const explicitValue = this.getOptionValue(meta, prefixMap);
+                    const explicitValue = CommandParser.getOptionValue(meta, prefixMap);
                     if (explicitValue !== undefined) {
                         rawValue = explicitValue;
                     } else if (
@@ -94,7 +94,7 @@ export class CommandParser {
                     }
                 }
             } else if (meta.inject !== undefined && !ctx.isSlash) {
-                const explicitValue = this.getOptionValue(meta, prefixMap);
+                const explicitValue = CommandParser.getOptionValue(meta, prefixMap);
                 rawValue = explicitValue ?? injectedValues.get(meta.propertyKey) ?? null;
             } else if (ctx.isSlash && !internalState) {
                 const slashCtx = ctx as SlashContext;
@@ -105,7 +105,7 @@ export class CommandParser {
                     rawValue = slashCtx.interaction.options.get(meta.name)?.value;
                 }
             } else {
-                rawValue = this.getOptionValue(meta, prefixMap);
+                rawValue = CommandParser.getOptionValue(meta, prefixMap);
             }
 
             if ((rawValue === null || rawValue === undefined || rawValue === "") && meta.required) {
@@ -117,7 +117,7 @@ export class CommandParser {
                 continue;
             }
 
-            const finalValue = await this.validateType(meta, rawValue, ctx, prefixMap);
+            const finalValue = await CommandParser.validateType(meta, rawValue, ctx, prefixMap);
 
             parsedData[meta.propertyKey] = new CommandOption(finalValue);
         }
@@ -137,7 +137,9 @@ export class CommandParser {
 
         const injected = optionsMeta.filter(
             (meta) =>
-                meta.inject !== undefined && meta.type !== EOptionType.Query && !this.hasOptionValue(meta, prefixMap),
+                meta.inject !== undefined &&
+                meta.type !== EOptionType.Query &&
+                !CommandParser.hasOptionValue(meta, prefixMap),
         );
         if (!injected.length) {
             return result;
@@ -195,7 +197,7 @@ export class CommandParser {
     }
 
     private static getOptionValue(meta: IOptionMetadata, prefixMap: Map<string, string>): string | undefined {
-        for (const key of this.getOptionKeys(meta)) {
+        for (const key of CommandParser.getOptionKeys(meta)) {
             const value = prefixMap.get(key);
 
             if (value !== undefined) {
@@ -207,7 +209,7 @@ export class CommandParser {
     }
 
     private static hasOptionValue(meta: IOptionMetadata, prefixMap: Map<string, string>): boolean {
-        return this.getOptionKeys(meta).some((key) => prefixMap.has(key));
+        return CommandParser.getOptionKeys(meta).some((key) => prefixMap.has(key));
     }
 
     private static async validateType(
@@ -235,11 +237,11 @@ export class CommandParser {
         const strVal = String(value).trim();
 
         if (meta.type === EOptionType.Mods) {
-            return this.parseMods(strVal);
+            return CommandParser.parseMods(strVal);
         }
 
         if (meta.type === EOptionType.Query) {
-            return this.parseQueryDto(meta, strVal, ctx, prefixMap);
+            return CommandParser.parseQueryDto(meta, strVal, ctx, prefixMap);
         }
 
         switch (meta.type) {
@@ -266,10 +268,10 @@ export class CommandParser {
             }
 
             case EOptionType.Date:
-                return this.parseDate(meta.name, strVal);
+                return CommandParser.parseDate(meta.name, strVal);
 
             case EOptionType.DateRange:
-                return this.parseDateRange(meta.name, strVal);
+                return CommandParser.parseDateRange(meta.name, strVal);
 
             case EOptionType.String: {
                 if (meta.min !== undefined && strVal.length < meta.min) {
@@ -339,7 +341,7 @@ export class CommandParser {
             }
 
             case EOptionType.Range:
-                return this.parseRange(meta.name, strVal);
+                return CommandParser.parseRange(meta.name, strVal);
 
             case EOptionType.Boolean: {
                 const lowerVal = strVal.toLowerCase();
@@ -401,18 +403,18 @@ export class CommandParser {
         let queryPrefixMap = new Map<string, string>();
         let cleanedContent = stringContent;
 
-        const hasExplicitQuery = this.hasOptionValue(meta, globalPrefixMap);
+        const hasExplicitQuery = CommandParser.hasOptionValue(meta, globalPrefixMap);
 
         if (ctx.isSlash) {
-            cleanedContent = this.extractKeyValuePairs(cleanedContent, queryPrefixMap);
+            cleanedContent = CommandParser.extractKeyValuePairs(cleanedContent, queryPrefixMap);
         } else if (hasExplicitQuery) {
-            cleanedContent = this.extractKeyValuePairs(cleanedContent, queryPrefixMap);
+            cleanedContent = CommandParser.extractKeyValuePairs(cleanedContent, queryPrefixMap);
         } else {
             queryPrefixMap = globalPrefixMap;
             cleanedContent = meta.inject === EInjectMode.Greedy ? stringContent : "";
         }
 
-        const parsedDtoFields = await this.parseAndValidate(ctx, properties, {
+        const parsedDtoFields = await CommandParser.parseAndValidate(ctx, properties, {
             prefixMap: queryPrefixMap,
             rawContent: cleanedContent,
         });
@@ -441,6 +443,65 @@ export class CommandParser {
         return date;
     }
 
+    private static parseDatePeriod(name: string, input: string): { start: Date; end: Date } | null {
+        const match = input.trim().match(/^(\d{4})(?:-(\d{1,2})(?:-(\d{1,2}))?)?$/);
+
+        if (!match) {
+            return null;
+        }
+
+        const year = Number(match[1]);
+        const month = match[2] !== undefined ? Number(match[2]) : undefined;
+        const day = match[3] !== undefined ? Number(match[3]) : undefined;
+
+        if (month !== undefined && (month < 1 || month > 12)) {
+            throw new Exception(
+                EApplicationError.INPUT_ERROR,
+                `Option \`${name}\` must be a valid date (e.g., YYYY, YYYY-MM, or YYYY-MM-DD).`,
+            );
+        }
+
+        if (day !== undefined) {
+            if (month === undefined) {
+                throw new Exception(
+                    EApplicationError.INPUT_ERROR,
+                    `Option \`${name}\` must be a valid date (e.g., YYYY, YYYY-MM, or YYYY-MM-DD).`,
+                );
+            }
+
+            const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+
+            if (day < 1 || day > daysInMonth) {
+                throw new Exception(
+                    EApplicationError.INPUT_ERROR,
+                    `Option \`${name}\` must be a valid date (e.g., YYYY, YYYY-MM, or YYYY-MM-DD).`,
+                );
+            }
+        }
+
+        // Whole year
+        if (month === undefined) {
+            return {
+                start: new Date(Date.UTC(year, 0, 1)),
+                end: new Date(Date.UTC(year + 1, 0, 1) - 1),
+            };
+        }
+
+        // Whole month
+        if (day === undefined) {
+            return {
+                start: new Date(Date.UTC(year, month - 1, 1)),
+                end: new Date(Date.UTC(year, month, 1) - 1),
+            };
+        }
+
+        // Whole day
+        return {
+            start: new Date(Date.UTC(year, month - 1, day)),
+            end: new Date(Date.UTC(year, month - 1, day + 1) - 1),
+        };
+    }
+
     private static parseDateRange(name: string, input: string): ICommandDateRange {
         const rangeObj: ICommandDateRange = {
             minInclusive: false,
@@ -450,8 +511,8 @@ export class CommandParser {
         /*
          * Operators:
          *
-         * >2023-01-01
-         * >=2023-01-01
+         * >2012
+         * >=2012-01
          * <2023-01-01
          * <=2023-01-01
          */
@@ -459,19 +520,34 @@ export class CommandParser {
 
         if (operatorMatch) {
             const operator = operatorMatch[1]!;
-            const dateVal = this.parseDate(name, operatorMatch[2]!.trim());
+            const rawDate = operatorMatch[2]!.trim();
+
+            const period = CommandParser.parseDatePeriod(name, rawDate);
+
+            /*
+             * For partial calendar dates:
+             *
+             * >=2012 => >= 2012-01-01 00:00:00.000
+             * >2012  => >  2012-12-31 23:59:59.999
+             *
+             * <=2012 => <= 2012-12-31 23:59:59.999
+             * <2012  => <  2012-01-01 00:00:00.000
+             */
+            const exactDate = period ? null : CommandParser.parseDate(name, rawDate);
 
             if (operator === ">") {
-                rangeObj.min = dateVal;
+                rangeObj.min = period?.end ?? exactDate!;
             } else if (operator === ">=") {
-                rangeObj.min = dateVal;
+                rangeObj.min = period?.start ?? exactDate!;
                 rangeObj.minInclusive = true;
             } else if (operator === "<") {
-                rangeObj.max = dateVal;
+                rangeObj.max = period?.start ?? exactDate!;
             } else if (operator === "<=") {
-                rangeObj.max = dateVal;
+                rangeObj.max = period?.end ?? exactDate!;
                 rangeObj.maxInclusive = true;
             }
+
+            rangeObj.display = `${operator}${rawDate}`;
 
             return rangeObj;
         }
@@ -479,22 +555,53 @@ export class CommandParser {
         /*
          * Split ranges:
          *
-         * 2023-01-01..2023-12-31
+         * 2012..2014
+         * 2012-01..2012-06
          * 2023-01-01 / 2023-12-31
          * 2023-01-01 to 2023-12-31
          */
         const splitMatch = input.split(/(?:\.\.|\/|\s+to\s+)/i);
 
         if (splitMatch.length === 2) {
-            rangeObj.min = this.parseDate(name, splitMatch[0]!.trim());
-            rangeObj.max = this.parseDate(name, splitMatch[1]!.trim());
+            const rawMin = splitMatch[0]!.trim();
+            const rawMax = splitMatch[1]!.trim();
+
+            const minPeriod = CommandParser.parseDatePeriod(name, rawMin);
+            const maxPeriod = CommandParser.parseDatePeriod(name, rawMax);
+
+            rangeObj.min = minPeriod?.start ?? CommandParser.parseDate(name, rawMin);
+            rangeObj.max = maxPeriod?.end ?? CommandParser.parseDate(name, rawMax);
+
             rangeObj.minInclusive = true;
             rangeObj.maxInclusive = true;
+            rangeObj.display = `=${rawMin}..${rawMax}`;
 
             return rangeObj;
         }
 
-        const exactDate = this.parseDate(name, input);
+        /*
+         * Exact calendar period:
+         *
+         * 2012       => whole year
+         * 2012-01    => whole month
+         * 2012-01-23 => whole day
+         */
+        const period = CommandParser.parseDatePeriod(name, input);
+
+        if (period) {
+            return {
+                min: period.start,
+                max: period.end,
+                minInclusive: true,
+                maxInclusive: true,
+                display: `=${input}`,
+            };
+        }
+
+        /*
+         * Fallback for complete timestamps / other Date-compatible input.
+         */
+        const exactDate = CommandParser.parseDate(name, input);
 
         return {
             min: exactDate,
@@ -502,6 +609,7 @@ export class CommandParser {
             minInclusive: true,
             maxInclusive: true,
             exact: exactDate,
+            display: `=${input}`,
         };
     }
 
