@@ -14,10 +14,13 @@ import { PpTargetCalculationDto, RankPpResolutionDto } from "@domain/osu/Reach.d
 import { ProfileFormatter } from "@domain/osu/formatters/Profile.formatter";
 import { ERankPpResolutionSource } from "@domain/osu/enums/Reach.enum";
 
-export type TResolvedPpTarget = { type: "pp"; pp: number } | { type: "rank"; resolution: RankPpResolutionDto };
+export type TResolvedPpTarget =
+    | { type: "pp"; pp: number }
+    | { type: "rank"; resolution: RankPpResolutionDto }
+    | { type: "user"; user: PopulatedUser };
 
 export abstract class AbstractPpTargetCommand extends AbstractOsuCommand {
-    @Import() declare private readonly osuService: OsuService;
+    @Import() declare protected readonly osuService: OsuService;
     @Import() declare private readonly ppTargetViewService: PpTargetViewService;
 
     @Option("plays", "Number of new plays used to reach the target")
@@ -27,6 +30,8 @@ export abstract class AbstractPpTargetCommand extends AbstractOsuCommand {
     @Option("each", "PP value of each new play used to reach the target")
     @IsNumber(0, 99999)
     declare private readonly each: CommandOption<number>;
+
+    protected abstract resolvePpTarget(mode: GameMode, provider: AdapterProvider): Promise<TResolvedPpTarget>;
 
     public async execute(ctx: CommandContext): Promise<void> {
         this.validateOptions();
@@ -45,7 +50,7 @@ export abstract class AbstractPpTargetCommand extends AbstractOsuCommand {
         }
 
         const resolved = await this.resolvePpTarget(target.mode, target.server);
-        const targetPP = resolved.type === "pp" ? resolved.pp : resolved.resolution.pp;
+        const targetPP = this.targetPP(resolved);
 
         if (user.statistics.pp >= targetPP)
             throw new Exception(EApplicationError.INPUT_ERROR, this.reachedMessage(user, resolved));
@@ -57,13 +62,12 @@ export abstract class AbstractPpTargetCommand extends AbstractOsuCommand {
             profile: user,
             targetPP,
             rankResolution: resolved.type === "rank" ? resolved.resolution : undefined,
+            targetUser: resolved.type === "user" ? resolved.user : undefined,
             calculation,
         };
 
         await ctx.respond(this.ppTargetViewService.build(data));
     }
-
-    protected abstract resolvePpTarget(mode: GameMode, provider: AdapterProvider): Promise<TResolvedPpTarget>;
 
     private calculate(calculator: PpTargetCalculator, targetPP: number): PpTargetCalculationDto {
         if (this.plays.some()) {
@@ -105,9 +109,31 @@ export abstract class AbstractPpTargetCommand extends AbstractOsuCommand {
         return result;
     }
 
+    private targetPP(target: TResolvedPpTarget): number {
+        switch (target.type) {
+            case "pp":
+                return target.pp;
+            case "rank":
+                return target.resolution.pp;
+            case "user":
+                return target.user.statistics.pp;
+        }
+    }
+
     private reachedMessage(user: PopulatedUser, resolvedTarget: TResolvedPpTarget): string {
         if (resolvedTarget.type === "pp") {
             return `${user.username} is already above ${ProfileFormatter.pp(resolvedTarget.pp)} with ${ProfileFormatter.pp(user.statistics.pp)}.`;
+        }
+
+        if (resolvedTarget.type === "user") {
+            const target = resolvedTarget.user;
+            const samePP = user.statistics.pp === target.statistics.pp;
+
+            return (
+                `${target.username} currently has ${ProfileFormatter.pp(target.statistics.pp)}, ` +
+                `so ${user.username} is ${samePP ? "already at that" : "already above that"} ` +
+                `with ${ProfileFormatter.pp(user.statistics.pp)}.`
+            );
         }
 
         const resolution = resolvedTarget.resolution;
