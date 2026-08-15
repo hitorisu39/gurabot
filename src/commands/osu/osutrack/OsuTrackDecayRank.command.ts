@@ -14,7 +14,7 @@ export class OsuTrackDecayRankSubcommand extends AbstractOsuTrackDecayRankComman
 @Command({
     name: "osutrackdecayrank",
     description: "Estimates how long it takes to naturally decay to a target rank.",
-    aliases: ["otdr"],
+    aliases: ["otdr", "decay"],
     prefixOnly: true,
 })
 export class OsuTrackDecayRankCommand extends AbstractOsuTrackDecayRankCommand {}
