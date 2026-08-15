@@ -26,7 +26,14 @@ export class UsernameAvailabilityDto {
 
     @Expose()
     @Type(() => Date)
+    declare availableBy?: Date;
+
+    @Expose()
+    @Type(() => Date)
     declare availableIfInactiveFromNow?: Date;
+
+    @Expose()
+    declare formerUsername?: boolean;
 
     @Expose()
     @Type(() => PopulatedUser)

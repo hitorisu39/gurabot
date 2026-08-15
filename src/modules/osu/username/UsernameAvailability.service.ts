@@ -42,6 +42,8 @@ export class UsernameAvailabilityService extends AbstractService {
         }
 
         const user = users[0]!;
+        const isFormerUsername = user.username.toLowerCase() !== username.toLowerCase();
+
         const protectionReasons = this.protectionReasons(users);
 
         if (protectionReasons.length > 0) {
@@ -51,6 +53,19 @@ export class UsernameAvailabilityService extends AbstractService {
                 validationIssues: [],
                 protectionReasons,
                 user,
+                formerUsername: isFormerUsername,
+            };
+        }
+
+        if (isFormerUsername) {
+            return {
+                username,
+                status: EUsernameAvailabilityStatus.Unknown,
+                validationIssues: [],
+                protectionReasons: [],
+                user,
+                formerUsername: true,
+                availableBy: new Date(Date.now() + this.inactiveDays * 24 * 60 * 60 * 1000),
             };
         }
 
@@ -103,7 +118,7 @@ export class UsernameAvailabilityService extends AbstractService {
             issues.push(EUsernameValidationIssue.TooLong);
         }
 
-        if (!/^[A-Za-z0-9\-\[\]_ ]+$/.test(username)) {
+        if (!/^[A-Za-z0-9_[\] -]+$/.test(username)) {
             issues.push(EUsernameValidationIssue.InvalidCharacters);
         }
 
