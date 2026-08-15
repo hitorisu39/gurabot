@@ -126,7 +126,6 @@ export abstract class AbstractOsuCommand extends AbstractSessionCommand {
 
     private parseDiscordMention(value: string): string | null {
         const match = value.match(/^<@!?(\d+)>$/);
-
         return match?.[1] ?? null;
     }
 
