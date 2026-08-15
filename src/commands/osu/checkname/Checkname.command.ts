@@ -24,7 +24,7 @@ import { UsernameAvailabilityService } from "@/modules/osu/username/UsernameAvai
 @Command({
     name: "checkname",
     description: "Checks whether an osu! username is available.",
-    aliases: ["namecheck", "claimname", "nameclaim", "nc"],
+    aliases: ["namecheck", "claimname", "nameclaim", "cn"],
 })
 export class CheckNameCommand extends AbstractCommand {
     @Import() declare private readonly usernameAvailabilityService: UsernameAvailabilityService;
