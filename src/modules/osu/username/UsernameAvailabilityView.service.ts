@@ -65,6 +65,14 @@ export class UsernameAvailabilityViewService extends AbstractService {
     private unknownAvailability(data: UsernameAvailabilityDto): string {
         const name = `\`${data.username}\``;
 
+        if (data.formerUsername && data.user) {
+            return (
+                `${name} was previously used by \`${data.user.username}\`. ` +
+                `It may already be available; otherwise, it should become available ` +
+                `no later than ${DateFormatter.discord(data.availableBy!, "R")}.`
+            );
+        }
+
         if (!data.availableIfInactiveFromNow) {
             return (
                 `${name} is currently in use, but their last visit isn't available publicly, ` +
