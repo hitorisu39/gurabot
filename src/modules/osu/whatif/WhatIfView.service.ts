@@ -22,7 +22,7 @@ export class WhatIfViewService extends AbstractService {
         let description =
             `This would become ${possessive} top #${DiscordFormatter.number(data.placement)} performance play.\n` +
             `Their total pp would change by **${ppSign}${ppDifference}pp** ` +
-            `to **${this.pp(data.projectedPP)}**`;
+            `to **${ProfileFormatter.pp(data.projectedPP)}**`;
 
         if (data.projectedRank !== undefined) {
             const rankDifference = data.currentRank - data.projectedRank;
@@ -37,7 +37,7 @@ export class WhatIfViewService extends AbstractService {
         description += ".";
 
         embed
-            .setTitle(`What if ${username} got a new ${this.pp(data.playPP)} play?`)
+            .setTitle(`What if ${username} got a new ${ProfileFormatter.pp(data.playPP)} play?`)
             .setDescription(description)
             .setFooter({
                 text: ProfileFormatter.mode(data.profile.mode),
@@ -47,10 +47,5 @@ export class WhatIfViewService extends AbstractService {
         return {
             embeds: [embed],
         };
-    }
-
-    private pp(value: number): string {
-        const rounded = DiscordFormatter.fixed(value);
-        return `${DiscordFormatter.number(rounded)}pp`;
     }
 }
