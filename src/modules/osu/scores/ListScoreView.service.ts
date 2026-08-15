@@ -137,15 +137,16 @@ export class ListScoreView extends AbstractScoreView {
                         case "Length":
                             attrStrings.push(`Length: ${MapFormatter.length(liveLength)}`);
                             break;
-                        case "RankDate":
-                            attrStrings.push(
-                                `Ranked: ${
-                                    score.beatmapset.rankedDate
-                                        ? DateFormatter.shortDate(score.beatmapset.rankedDate)
-                                        : "Unranked"
-                                }`,
-                            );
+                        case "RankDate": {
+                            const rankedDate = score.beatmapset.rankedDate;
+                            if (!rankedDate) {
+                                attrStrings.push("Ranked: Unranked");
+                                break;
+                            }
+
+                            attrStrings.push(`${score.beatmapset.status}: ${DateFormatter.shortDate(rankedDate)}`);
                             break;
+                        }
                     }
                 }
 
