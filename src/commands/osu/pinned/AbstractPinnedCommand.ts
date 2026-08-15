@@ -32,6 +32,7 @@ import { scorePinnedQueryLimit } from "@domain/osu/configs/Score.config";
 
     **Mapset Filters**
     Exact strings: \`artist\`, \`creator\`, \`title\`.
+    Date ranges: \`rankdate\` (supports \`YYYY\`, \`YYYY-MM\`, or \`YYYY-MM-DD\`).
 
     **Score Filters**
     Ranges supported: \`accuracy\`, \`combo\`, \`index\`, \`misses\`, \`pp\`, \`ppfc\`.

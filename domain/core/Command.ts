@@ -44,6 +44,7 @@ export interface ICommandDateRange {
     minInclusive: boolean;
     maxInclusive: boolean;
     exact?: Date;
+    display?: string;
 }
 
 /**

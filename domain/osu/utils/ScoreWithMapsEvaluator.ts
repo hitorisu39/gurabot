@@ -12,8 +12,17 @@ export class ScoreWithMapsEvaluator<
     public get withMaps(): boolean {
         if (this.cleanedContent) return true;
 
-        if (!this.query) return super.withMaps;
+        if (!this.query) {
+            return (
+                super.withMaps ||
+                this.sortType === EScoreQuerySort.Length ||
+                this.sortType === EScoreQuerySort.BPM ||
+                this.sortType === EScoreQuerySort.RankDate
+            );
+        }
+
         const q = this.query;
+
         return (
             super.withMaps ||
             q.artist.some() ||
@@ -28,7 +37,8 @@ export class ScoreWithMapsEvaluator<
             q.hp.some() ||
             q.od.some() ||
             this.sortType === EScoreQuerySort.Length ||
-            this.sortType === EScoreQuerySort.BPM
+            this.sortType === EScoreQuerySort.BPM ||
+            this.sortType === EScoreQuerySort.RankDate
         );
     }
 
@@ -86,12 +96,12 @@ export class ScoreWithMapsEvaluator<
                         !score.beatmap.version.toLowerCase().includes(q.version.unwrap().toLowerCase())
                     )
                         return false;
-                    if (
-                        q.rankedDate.some() &&
-                        score.beatmapset.rankedDate &&
-                        !dateRangeContains(q.rankedDate.unwrap(), score.beatmapset.rankedDate)
-                    )
-                        return false;
+                    if (q.rankedDate.some()) {
+                        const rankedDate = score.beatmapset.rankedDate;
+                        if (!rankedDate || !dateRangeContains(q.rankedDate.unwrap(), rankedDate)) {
+                            return false;
+                        }
+                    }
 
                     const attrs = BeatmapAttributesCalculator.calculate(score.beatmap, score.mods);
                     const liveLength = BeatmapAttributesCalculator.length(score.beatmap.totalLength, attrs.clockRate);
@@ -113,18 +123,33 @@ export class ScoreWithMapsEvaluator<
 
     public getActiveAttributes(): Array<string> {
         const attrs = super.getActiveAttributes();
-        if (this.query) {
-            if (this.query.cs.some()) attrs.push("CS");
-            if (this.query.ar.some()) attrs.push("AR");
-            if (this.query.od.some()) attrs.push("OD");
-            if (this.query.hp.some()) attrs.push("HP");
-            if (this.query.bpm.some() || this.sortType === EScoreQuerySort.BPM) attrs.push("BPM");
-            if (this.query.length.some() || this.sortType === EScoreQuerySort.Length) attrs.push("Length");
+        const q = this.query;
+
+        if (q?.cs.some()) attrs.push("CS");
+        if (q?.ar.some()) attrs.push("AR");
+        if (q?.od.some()) attrs.push("OD");
+        if (q?.hp.some()) attrs.push("HP");
+
+        if (q?.bpm.some() || this.sortType === EScoreQuerySort.BPM) {
+            attrs.push("BPM");
         }
+
+        if (q?.length.some() || this.sortType === EScoreQuerySort.Length) {
+            attrs.push("Length");
+        }
+
+        if (q?.rankedDate.some() || this.sortType === EScoreQuerySort.RankDate) {
+            attrs.push("RankDate");
+        }
+
         return attrs;
     }
 
     protected getSortValue(score: Score): number {
+        if (this.sortType === EScoreQuerySort.RankDate) {
+            return score.beatmapset?.rankedDate?.getTime() ?? 0;
+        }
+
         if (!score.beatmap) return super.getSortValue(score);
 
         const clockRate = ModUtils.clockRate(score.mods);
@@ -152,6 +177,8 @@ export class ScoreWithMapsEvaluator<
         if (q.creator.some()) parts.push(`creator="${q.creator.unwrap()}"`);
         if (q.title.some()) parts.push(`title="${q.title.unwrap()}"`);
         if (q.version.some()) parts.push(`diff="${q.version.unwrap()}"`);
+
+        if (q.rankedDate.some()) parts.push(`rankdate${this.formatRange(q.rankedDate.unwrap())}`);
 
         if (q.length.some()) parts.push(`length${this.formatRange(q.length.unwrap())}`);
         if (q.bpm.some()) parts.push(`bpm${this.formatRange(q.bpm.unwrap())}`);

@@ -137,6 +137,15 @@ export class ListScoreView extends AbstractScoreView {
                         case "Length":
                             attrStrings.push(`Length: ${MapFormatter.length(liveLength)}`);
                             break;
+                        case "RankDate":
+                            attrStrings.push(
+                                `Ranked: ${
+                                    score.beatmapset.rankedDate
+                                        ? DateFormatter.shortDate(score.beatmapset.rankedDate)
+                                        : "Unranked"
+                                }`,
+                            );
+                            break;
                     }
                 }
 
