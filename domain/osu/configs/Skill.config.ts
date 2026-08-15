@@ -8,11 +8,11 @@ export interface ISkillRankThreshold {
 
 export const skillRankThresholds: Array<ISkillRankThreshold> = [
     { threshold: 0, rank: ESkillRank.Weak },
-    { threshold: 3, rank: ESkillRank.Common },
-    { threshold: 5, rank: ESkillRank.Average },
-    { threshold: 6.5, rank: ESkillRank.Expert },
-    { threshold: 8, rank: ESkillRank.Elite },
-    { threshold: 9, rank: ESkillRank.Master },
+    { threshold: 2, rank: ESkillRank.Common },
+    { threshold: 4.5, rank: ESkillRank.Average },
+    { threshold: 5.5, rank: ESkillRank.Expert },
+    { threshold: 6.8, rank: ESkillRank.Elite },
+    { threshold: 8.5, rank: ESkillRank.Master },
     { threshold: 10, rank: ESkillRank.Legend },
 ];
 
