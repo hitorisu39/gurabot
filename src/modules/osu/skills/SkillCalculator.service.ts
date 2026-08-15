@@ -57,9 +57,9 @@ interface ISkillDefinition {
 }
 
 export class SkillCalculatorService extends AbstractService {
-    private static readonly topScoreCount = 3;
-    private static readonly standardWeightDecay = 0.901;
-    private static readonly standardWeightDivisor = 10;
+    private readonly topScoreCount = 3;
+    private readonly standardWeightDecay = 0.901;
+    private readonly standardWeightDivisor = 10;
 
     public calculate(mode: GameMode, scores: Array<PopulatedScore>): SkillCalculationResultDto {
         const evaluated = this.evaluateScores(mode, scores);
@@ -443,7 +443,7 @@ export class SkillCalculatorService extends AbstractService {
             type: definition.type,
             label: definition.label,
             average: weighted ? this.calculateWeightedAverage(results) : this.calculateArithmeticAverage(results),
-            topScores: results.slice(0, SkillCalculatorService.topScoreCount),
+            topScores: results.slice(0, this.topScoreCount),
         };
     }
 
@@ -492,10 +492,10 @@ export class SkillCalculatorService extends AbstractService {
 
         for (const score of scores) {
             total += score.value * weight;
-            weight *= SkillCalculatorService.standardWeightDecay;
+            weight *= this.standardWeightDecay;
         }
 
-        return total / SkillCalculatorService.standardWeightDivisor;
+        return total / this.standardWeightDivisor;
     }
 
     private calculateArithmeticAverage(scores: Array<SkillScoreResultDto>): number {
