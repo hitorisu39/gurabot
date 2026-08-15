@@ -181,8 +181,8 @@ export class GraphStrainService extends AbstractService {
             });
 
             return imageBuffer ? await loadImage(imageBuffer) : null;
-        } catch {
-            this.logger.warn(`Failed to load cover image for graph: ${coverUrl}`);
+        } catch (error) {
+            this.logger.warn(error, `Failed to load cover image for graph: ${coverUrl}`);
             return null;
         }
     }
