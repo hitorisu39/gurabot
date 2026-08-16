@@ -63,7 +63,7 @@ export class CompareScoreView extends AbstractScoreView {
             const hitsString = `${ScoreFormatter.statistics(firstScore.statistics, data.profile.mode, "/")}`;
             const statsSecondRow = [pp, comboRatioString, hitsString].filter(Boolean).join(scoreStatsDelimiter);
 
-            const attrs = BeatmapAttributesCalculator.calculate(firstScore.beatmap, firstScore.mods);
+            const attrs = firstScore.calculated.difficulty.beatmap;
             const liveBpm = BeatmapAttributesCalculator.bpm(firstScore.beatmap.bpm, attrs.clockRate);
             const liveLength = BeatmapAttributesCalculator.length(firstScore.beatmap.totalLength, attrs.clockRate);
 
