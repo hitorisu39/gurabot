@@ -78,7 +78,7 @@ export abstract class AbstractScoreView extends AbstractService {
         const hitsString = `${ScoreFormatter.statistics(score.statistics, data.profile.mode, "/")}`;
         const statsSecondRow = [pp, comboRatioString, hitsString].filter(Boolean).join(scoreStatsDelimiter);
 
-        const attrs = BeatmapAttributesCalculator.calculate(score.beatmap, score.mods);
+        const attrs = score.calculated.difficulty.beatmap;
         const liveBpm = BeatmapAttributesCalculator.bpm(score.beatmap.bpm, attrs.clockRate);
         const liveLength = BeatmapAttributesCalculator.length(score.beatmap.totalLength, attrs.clockRate);
 
