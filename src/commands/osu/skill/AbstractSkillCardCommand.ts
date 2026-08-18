@@ -14,11 +14,11 @@ import { ECommandCategory } from "@domain/core/Command";
     \`osu!mania\`: 30% Strain, 30% Speed, 40% Accuracy.
 
     **Rank**
-    \`Total value < 3\`: Weak
-    \`Total value < 5\`: Common
-    \`Total value < 6.5\`: Average
-    \`Total value < 8\`: Expert
-    \`Total value < 9\`: Elite
+    \`Total value < 2\`: Weak
+    \`Total value < 4.5\`: Common
+    \`Total value < 5.5\`: Average
+    \`Total value < 6.8\`: Expert
+    \`Total value < 8.5\`: Elite
     \`Total value < 10\`: Master
     \`Total value >= 10\`: Legend
 
