@@ -17,7 +17,10 @@ export class GuildDto {
     declare mode: GameMode | null;
 
     @Expose()
-    declare scoreListSize: EScoreListSize;
+    declare scoreListSize: EScoreListSize | null;
+
+    @Expose()
+    declare spoilMedals: boolean;
 }
 
 //#region API
@@ -27,6 +30,7 @@ export class GuildConfigUpdateDto {
     declare server?: AdapterProvider | null;
     declare mode?: GameMode | null;
     declare scoreListSize?: EScoreListSize | null;
+    declare spoilMedals?: boolean;
 }
 
 //#endregion

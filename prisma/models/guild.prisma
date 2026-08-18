@@ -6,6 +6,7 @@ model Guild {
     mode            String?     // GameMode
 
     scoreListSize   String?     @map("score_list_size") // EScoreListSize
+    spoilMedals     Boolean     @map("spoil_medals") @default(true)
 
     @@map("guilds")
 }

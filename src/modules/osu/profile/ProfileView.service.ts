@@ -448,11 +448,14 @@ export class ProfileViewService extends AbstractViewService<ProfileViewDto, EPro
         profile: PopulatedUser,
         timestamp: number | null = Date.now(),
         footer: boolean = true,
+        ranking: boolean = true,
     ): Embed {
         const { statistics, username } = profile;
 
         const team = profile.team ? `[${ProfileFormatter.team(profile.team)}]` : "";
-        const author = `${team} ${username}: ${ProfileFormatter.pp(statistics.pp)} (${ProfileFormatter.rank(statistics.globalRank)} ${ProfileFormatter.rank(statistics.countryRank, profile.countryCode, "")})`;
+        const author = ranking
+            ? `${team} ${username}: ${ProfileFormatter.pp(statistics.pp)} (${ProfileFormatter.rank(statistics.globalRank)} ${ProfileFormatter.rank(statistics.countryRank, profile.countryCode, "")})`
+            : `${team} ${username}`;
 
         const embed = new Embed()
             .setThumbnail(ProfileFormatter.avatar(profile.provider, profile.id, timestamp))

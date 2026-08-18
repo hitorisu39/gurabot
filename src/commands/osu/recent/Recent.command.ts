@@ -107,7 +107,7 @@ export class CatchRecentPassCommand extends AbstractRecentCommand {
     name: "maniarecent",
     description: "Shows most recent play of an osu!mania player.",
     prefixOnly: true,
-    aliases: ["mr", "rm", "recentmania"],
+    aliases: ["rm", "recentmania"],
 })
 export class ManiaRecentCommand extends AbstractRecentCommand {
     protected forcedMode = GameMode.Mania;

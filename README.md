@@ -166,6 +166,7 @@ Special thanks to:
 - [o!rdr](https://ordr.issou.best/) for replay rendering functionality.
 - [osu!daily](https://osudaily.net/) for pp <-> rank conversion functionality.
 - [osu!track](https://ameobea.me/osutrack/) for historic ranking data.
+- [osekai](https://inex.osekai.net/) for medals and other data.
 - everyone who has contributed code, testing, bug reports, suggestions, or provided other support.
 
 # License

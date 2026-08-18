@@ -49,11 +49,18 @@ export abstract class AbstractOsuCommand extends AbstractSessionCommand {
     declare protected readonly server: CommandOption<AdapterProvider>;
 
     protected forcedMode?: GameMode;
+    protected forcedServer?: AdapterProvider;
 
     protected async resolveContext(ctx: CommandContext): Promise<IResolvedOsuContext> {
         const performer = await this.userService.get(ctx.author.id);
         const guild = ctx.guild ? await this.guildService.get(ctx.guild.id) : null;
-        const server = this.server.unwrapUnchecked() ?? performer?.server ?? guild?.server ?? AdapterProvider.Bancho;
+
+        const server =
+            this.forcedServer ??
+            this.server.unwrapUnchecked() ??
+            performer?.server ??
+            guild?.server ??
+            AdapterProvider.Bancho;
 
         const mode =
             this.forcedMode ?? this.mode.unwrapUnchecked() ?? performer?.mode ?? guild?.mode ?? GameMode.Standard;
