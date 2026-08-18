@@ -1,8 +1,7 @@
 import { EApplicationError, Exception } from "@domain/core/Exception";
-import { GuildOnly, Import, IsEnum, IsString, Option, Subcommand, UserPermissions } from "@/core/decorators";
+import { GuildOnly, Import, IsBoolean, IsEnum, IsString, Option, Subcommand, UserPermissions } from "@/core/decorators";
 import { AbstractCommand } from "@/core/discord/AbstractCommand";
 import { CommandContext } from "@/core/discord/context/CommandContext";
-import { Embed } from "@/core/discord/ui/Embed";
 import { GuildService } from "@/modules/guild/Guild.service";
 import { discordRegexSpecialCharacters } from "@domain/discord/configs/Discord.config";
 import { PermissionFlagsBits } from "discord.js";
@@ -10,6 +9,7 @@ import { CommandOption } from "@domain/core/Command";
 import { EScoreListSize } from "@domain/osu/enums/Score.enum";
 import { GuildConfigUpdateDto } from "@domain/guild/Guild.dto";
 import { AdapterProvider, GameMode } from "@generated/adapter/types";
+import { ConfigViewService } from "@/modules/general/config/ConfigView.service";
 
 @Subcommand({
     root: "config",
@@ -21,6 +21,7 @@ import { AdapterProvider, GameMode } from "@generated/adapter/types";
 @UserPermissions(PermissionFlagsBits.ManageChannels)
 export class ConfigGuildSubcommand extends AbstractCommand {
     @Import() declare private readonly guildService: GuildService;
+    @Import() declare private readonly configViewService: ConfigViewService;
 
     @Option("prefix", "Specify the prefix to utilize for message commands.")
     @IsString(1, 3)
@@ -38,19 +39,26 @@ export class ConfigGuildSubcommand extends AbstractCommand {
     @IsEnum(EScoreListSize)
     declare private readonly scoreListSize: CommandOption<EScoreListSize>;
 
+    @Option("spoil_medals", "Hide medal solutions behind Discord spoilers.")
+    @IsBoolean()
+    declare private readonly spoilMedals: CommandOption<boolean>;
+
     public async execute(ctx: CommandContext): Promise<void> {
-        if (!ctx.guild)
+        if (!ctx.guild) {
             throw new Exception(EApplicationError.INPUT_ERROR, "This command is only available to be used in guilds.");
+        }
 
         const updates: GuildConfigUpdateDto = {};
 
         if (this.prefix.some()) {
             const newPrefix = this.prefix.unwrap();
-            if (!discordRegexSpecialCharacters.test(newPrefix))
+
+            if (!discordRegexSpecialCharacters.test(newPrefix)) {
                 throw new Exception(
                     EApplicationError.INPUT_ERROR,
                     "Prefix must contain at least one special character: `! > < ? | \\ / ^ @ # $ % & *`",
                 );
+            }
 
             updates.prefix = newPrefix;
         }
@@ -58,8 +66,14 @@ export class ConfigGuildSubcommand extends AbstractCommand {
         if (this.scoreListSize.some()) updates.scoreListSize = this.scoreListSize.unwrap();
         if (this.server.some()) updates.server = this.server.unwrap();
         if (this.mode.some()) updates.mode = this.mode.unwrap();
+        if (this.spoilMedals.some()) updates.spoilMedals = this.spoilMedals.unwrap();
 
-        await this.guildService.update(ctx.guild.id, updates);
-        await ctx.respond(Embed.success("The guild configuration was updated."));
+        const hasUpdates = Object.keys(updates).length > 0;
+
+        const config = hasUpdates
+            ? await this.guildService.update(ctx.guild.id, updates)
+            : await this.guildService.get(ctx.guild.id);
+
+        await ctx.respond(this.configViewService.guild(config, hasUpdates));
     }
 }

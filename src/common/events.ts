@@ -1,3 +1,4 @@
+import { AutocompleteContext } from "@/core/discord/context/AutocompleteContext";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { ComponentContext } from "@/core/discord/context/ComponentContext";
 
@@ -8,5 +9,6 @@ export interface IApplicationEvents {
     discord: {
         command(ctx: CommandContext): void;
         component(ctx: ComponentContext): void;
+        autocomplete(ctx: AutocompleteContext): void;
     };
 }

@@ -1,4 +1,5 @@
 import { discordSpaceUnicode } from "../configs/Discord.config";
+import { TextFormatter } from "./Text.formatter";
 
 export class DiscordFormatter {
     public static number(num?: number | string): string {
@@ -22,7 +23,7 @@ export class DiscordFormatter {
         return `${domain}/${fileName}.${extension}`;
     }
 
-    public static link(label: string | number, url: string, name?: string | number, backtick?: boolean): string {
+    public static link(label: string | number, url: string, name?: string | number | null, backtick?: boolean): string {
         const formattedLabel = backtick ? `\`${label}\`` : label;
         if (name) return `[${formattedLabel}](${url} "${name}")`;
 
@@ -81,14 +82,14 @@ export class DiscordFormatter {
         preferredCols = 3,
         widthLimit = 64,
         join = " > ",
+        labelLimit = 17,
+        valueLimit = 12,
     ): string {
         if (items.length === 0) return "*None*";
 
-        const truncate = (str: string, max: number) => (str.length > max ? str.slice(0, max - 1) + "…" : str);
-
         const processedItems = items.map((i) => ({
-            label: truncate(i.label, 17),
-            value: truncate(i.value, 12),
+            label: TextFormatter.truncate(i.label, labelLimit),
+            value: TextFormatter.truncate(i.value, valueLimit),
         }));
 
         const maxLabelLen = Math.max(...processedItems.map((i) => i.label.length));

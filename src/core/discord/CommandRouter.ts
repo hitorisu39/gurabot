@@ -34,6 +34,7 @@ import { AbstractMiddleware } from "./middleware/AbstractMiddleware";
 import { Embed } from "./ui/Embed";
 import { InteractionProfiler, ProfilerStorage } from "../profiler";
 import { ECommandCategory } from "@domain/core/Command";
+import { AutocompleteContext } from "./context/AutocompleteContext";
 
 export class CommandRouter {
     /**
@@ -83,6 +84,7 @@ export class CommandRouter {
         });
 
         this.dispatcher.on("discord", "command", this.handleCommand.bind(this));
+        this.dispatcher.on("discord", "autocomplete", this.handleAutocomplete.bind(this));
     }
 
     //#region Registration
@@ -614,6 +616,41 @@ export class CommandRouter {
     //#endregion
 
     //#region Execution
+
+    private async handleAutocomplete(ctx: AutocompleteContext): Promise<void> {
+        const commandName = ctx.commandName.toLowerCase();
+        const groupName = ctx.getSubcommandGroup();
+        const subName = ctx.getSubcommand();
+
+        let targetCommand: AbstractCommand | undefined;
+
+        if (groupName && subName) {
+            targetCommand = this.slashSubcommands.get(`${commandName}:${groupName}:${subName}`);
+        } else if (subName) {
+            targetCommand = this.slashSubcommands.get(`${commandName}:${subName}`);
+        } else {
+            targetCommand = this.slashRootCommands.get(commandName);
+        }
+
+        if (!targetCommand) {
+            return await ctx.respond([]);
+        }
+
+        try {
+            await targetCommand.autocomplete?.(ctx);
+        } catch (error) {
+            this.logger.error(
+                {
+                    error,
+                    command: commandName,
+                    option: ctx.getFocused().name,
+                },
+                `Error handling autocomplete for "${commandName}"`,
+            );
+
+            await ctx.respond([]).catch(() => {});
+        }
+    }
 
     private async handleCommand(ctx: CommandContext): Promise<void> {
         let targetCommand: AbstractCommand | undefined;

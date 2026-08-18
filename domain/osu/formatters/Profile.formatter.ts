@@ -19,10 +19,10 @@ export class ProfileFormatter {
         return delimiter + DiscordFormatter.number(rank);
     }
 
-    public static mode(mode: GameMode): string {
+    public static mode(mode: GameMode, explicit?: boolean): string {
         switch (mode) {
             case GameMode.Standard:
-                return "osu!";
+                return explicit ? "osu!standard" : "osu!";
             case GameMode.Taiko:
                 return "osu!taiko";
             case GameMode.Catch:

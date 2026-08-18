@@ -203,6 +203,7 @@ export interface IOptionMetadata {
     aliases?: Array<string>;
     queryDto?: any;
     isInlineIndex?: boolean;
+    autocomplete?: boolean;
 }
 
 function getOrCreateProperties(target: any): Array<IOptionMetadata> {
@@ -234,6 +235,12 @@ export function Option(name: string, description: string) {
 export function Required() {
     return function (target: any, propertyKey: string | symbol) {
         updateProperty(target, propertyKey, { required: true });
+    };
+}
+
+export function Autocomplete() {
+    return function (target: any, propertyKey: string | symbol) {
+        updateProperty(target, propertyKey, { autocomplete: true });
     };
 }
 

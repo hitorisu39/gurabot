@@ -1,7 +1,7 @@
 import { Import, IsEnum, Option, Subcommand } from "@/core/decorators";
 import { AbstractCommand } from "@/core/discord/AbstractCommand";
 import { CommandContext } from "@/core/discord/context/CommandContext";
-import { Embed } from "@/core/discord/ui/Embed";
+import { ConfigViewService } from "@/modules/general/config/ConfigView.service";
 import { UserService } from "@/modules/user/User.service";
 import { CommandOption } from "@domain/core/Command";
 import { EApplicationError, Exception } from "@domain/core/Exception";
@@ -17,6 +17,7 @@ import { AdapterProvider, GameMode } from "@generated/adapter/types";
 })
 export class ConfigUserSubcommand extends AbstractCommand {
     @Import() declare private readonly userService: UserService;
+    @Import() declare private readonly configViewService: ConfigViewService;
 
     @Option("mode", "Specify your default osu! game mode.")
     @IsEnum(GameMode)
@@ -31,7 +32,7 @@ export class ConfigUserSubcommand extends AbstractCommand {
     declare private readonly scoreListSize: CommandOption<EScoreListSize>;
 
     public async execute(ctx: CommandContext): Promise<void> {
-        const user = await this.userService.getLinked(ctx.author.id);
+        let user = await this.userService.getLinked(ctx.author.id);
 
         if (!user || !user.linked?.length) {
             throw new Exception(
@@ -46,7 +47,9 @@ export class ConfigUserSubcommand extends AbstractCommand {
         if (this.mode.some()) updates.mode = this.mode.unwrap();
         if (this.server.some()) updates.server = this.server.unwrap();
 
-        await this.userService.update(ctx.author.id, updates);
-        await ctx.respond(Embed.success("Your user configuration was updated."));
+        const hasUpdates = Object.keys(updates).length > 0;
+        if (hasUpdates) user = await this.userService.update(ctx.author.id, updates);
+
+        await ctx.respond(await this.configViewService.user(user, hasUpdates));
     }
 }

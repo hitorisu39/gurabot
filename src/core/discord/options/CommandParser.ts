@@ -692,6 +692,32 @@ export class CommandParser {
     }
 
     public static mapToDiscordOption(meta: IOptionMetadata): any {
+        if (meta.autocomplete && meta.type === EOptionType.Enum) {
+            throw new Exception(
+                EApplicationError.INTERNAL_ERROR,
+                `Option \`${meta.name}\` cannot use autocomplete because it has predefined enum choices.`,
+            );
+        }
+
+        if (
+            meta.autocomplete &&
+            ![
+                EOptionType.String,
+                EOptionType.Number,
+                EOptionType.Integer,
+                EOptionType.Range,
+                EOptionType.Date,
+                EOptionType.DateRange,
+                EOptionType.Mods,
+                EOptionType.Query,
+            ].includes(meta.type)
+        ) {
+            throw new Exception(
+                EApplicationError.INTERNAL_ERROR,
+                `Option \`${meta.name}\` cannot use autocomplete with type ${meta.type}.`,
+            );
+        }
+
         const base = {
             name: meta.name.toLowerCase(),
             description: meta.description,
@@ -705,15 +731,21 @@ export class CommandParser {
             };
         }
 
-        if (
-            meta.type === EOptionType.String ||
-            meta.type === EOptionType.Range ||
-            meta.type === EOptionType.Date ||
-            meta.type === EOptionType.DateRange
-        ) {
+        if (meta.type === EOptionType.String) {
             return {
                 ...base,
                 type: ApplicationCommandOptionType.String,
+                minLength: meta.min,
+                maxLength: meta.max,
+                autocomplete: meta.autocomplete || undefined,
+            };
+        }
+
+        if (meta.type === EOptionType.Range || meta.type === EOptionType.Date || meta.type === EOptionType.DateRange) {
+            return {
+                ...base,
+                type: ApplicationCommandOptionType.String,
+                autocomplete: meta.autocomplete || undefined,
             };
         }
 
@@ -723,6 +755,7 @@ export class CommandParser {
                 type: ApplicationCommandOptionType.Integer,
                 minValue: meta.min,
                 maxValue: meta.max,
+                autocomplete: meta.autocomplete || undefined,
             };
         }
 
@@ -732,6 +765,7 @@ export class CommandParser {
                 type: ApplicationCommandOptionType.Number,
                 minValue: meta.min,
                 maxValue: meta.max,
+                autocomplete: meta.autocomplete || undefined,
             };
         }
 
@@ -763,6 +797,7 @@ export class CommandParser {
         return {
             ...base,
             type: ApplicationCommandOptionType.String,
+            autocomplete: meta.autocomplete || undefined,
         };
     }
 

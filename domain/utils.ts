@@ -44,6 +44,10 @@ export function isValidNumber(value: number | undefined): value is number {
     return typeof value === "number" && Number.isFinite(value);
 }
 
+export function isValidDate(value: Date | null): value is Date {
+    return value instanceof Date && Number.isFinite(value.getTime());
+}
+
 export function isTimezoneOffset(value: string): boolean {
     return /^(?:UTC|Z|(?:UTC)?[+-]\d{1,2}(?::\d{2})?)$/i.test(value);
 }
