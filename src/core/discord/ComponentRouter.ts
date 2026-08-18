@@ -1,11 +1,10 @@
-import { ICommandOptions, IComponentOptions } from "../decorators";
+import { IComponentOptions } from "../decorators";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { METAKEY_COMPONENT_OPTIONS } from "../metakeys";
 import { InteractionProfiler, ProfilerStorage } from "../profiler";
-import { IApplicationContext, TDispatcher, TLogger, TMetrics } from "../types";
+import { TDispatcher, TLogger, TMetrics } from "../types";
 import { AbstractComponent } from "./AbstractComponent";
 import { ComponentContext } from "./context/ComponentContext";
-import { Embed } from "./ui/Embed";
 import { EComponentType } from "@domain/core/Component";
 
 interface IRouteStore {

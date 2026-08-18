@@ -45,7 +45,9 @@ export class GuildService extends AbstractService {
 
     //#region API
 
-    public async get(guildID: string): Promise<GuildDto | null> {
+    public async get(guildID?: string | null): Promise<GuildDto | null> {
+        if (!guildID) return null;
+
         const cachedGuild = await this.cache.get("guild", guildID);
         if (cachedGuild) return plainToInstance(GuildDto, cachedGuild);
 

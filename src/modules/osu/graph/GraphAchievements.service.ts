@@ -50,27 +50,21 @@ export class GraphAchievementsService extends AbstractService {
                     {
                         label: "Achievements",
                         data: points.map((point) => point.total),
-
                         backgroundColor: graphColors.achievements.bg,
                         borderColor: graphColors.achievements.border,
-
                         borderWidth: 2,
                         fill: true,
                         stepped: "after",
-
                         pointRadius: 0,
                         pointHoverRadius: 0,
                         pointHitRadius: 0,
-
                         spanGaps: false,
                     },
                 ],
             },
-
             options: {
                 responsive: false,
                 animation: false,
-
                 layout: {
                     padding: {
                         top: 58,
@@ -79,34 +73,27 @@ export class GraphAchievementsService extends AbstractService {
                         bottom: 4,
                     },
                 },
-
                 plugins: {
                     legend: {
                         display: false,
                     },
                 },
-
                 scales: {
                     y: {
                         beginAtZero: true,
-
                         ticks: {
                             color: graphColors.tickText,
                             precision: 0,
                             padding: 10,
-
                             font: {
                                 size: 13,
                                 weight: "bold",
                             },
-
                             callback: (value) => DiscordFormatter.number(Number(value)),
                         },
-
                         grid: {
                             color: graphColors.grid,
                         },
-
                         border: {
                             display: false,
                         },
@@ -114,25 +101,20 @@ export class GraphAchievementsService extends AbstractService {
 
                     x: {
                         type: "category",
-
                         ticks: {
                             color: graphColors.axisText,
-
                             font: {
                                 size: 12,
                                 weight: "bold",
                             },
-
                             autoSkip: true,
                             maxTicksLimit: 12,
                             maxRotation: 0,
                         },
-
                         grid: {
                             color: graphColors.axisText,
                             drawOnChartArea: false,
                         },
-
                         border: {
                             display: false,
                         },
@@ -157,7 +139,6 @@ export class GraphAchievementsService extends AbstractService {
             }
 
             const month = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1);
-
             countsByMonth.set(month, (countsByMonth.get(month) ?? 0) + 1);
         }
 
