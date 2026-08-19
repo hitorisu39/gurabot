@@ -4,10 +4,7 @@ import { GameMode, Grade } from "@generated/adapter/types";
 
 export class ScoreGradeEvaluator {
     public static evaluate(mode: GameMode, statistics: HitResultResponse, mods: Array<ParsedMod>): Grade {
-        const hidden = ["HD", "FL", "FI"].some((acronym) => ModUtils.has(mods, acronym));
-        const accuracy = statistics.accuracy;
-
-        if (accuracy == 100.0) return hidden ? Grade.SSH : Grade.SS;
+        const silver = ["HD", "FL"].some((acronym) => ModUtils.has(mods, acronym));
 
         let grade: Grade;
 
@@ -15,52 +12,85 @@ export class ScoreGradeEvaluator {
             case GameMode.Standard:
                 grade = this.standard(statistics);
                 break;
-
             case GameMode.Catch:
-                grade = this.fromThresholds(accuracy, [
-                    [0.98, Grade.S],
-                    [0.94, Grade.A],
-                    [0.9, Grade.B],
-                    [0.85, Grade.C],
-                ]);
+                grade = this.catch(statistics.accuracy);
                 break;
-
-            case GameMode.Taiko:
             case GameMode.Mania:
+                grade = this.mania(statistics);
+                break;
+            case GameMode.Taiko:
             default:
-                grade = this.fromThresholds(accuracy, [
-                    [0.95, Grade.S],
-                    [0.9, Grade.A],
-                    [0.8, Grade.B],
-                    [0.7, Grade.C],
-                ]);
+                grade = this.default(statistics.accuracy);
                 break;
         }
 
-        if (grade === Grade.S && hidden) return Grade.SH;
+        if (silver) {
+            if (grade === Grade.SS) {
+                return Grade.SSH;
+            }
+
+            if (grade === Grade.S) {
+                return Grade.SH;
+            }
+        }
+
         return grade;
     }
 
     private static standard(statistics: HitResultResponse): Grade {
-        const total = statistics.count300 + statistics.count100 + statistics.count50 + statistics.countMiss;
+        let grade = this.default(statistics.accuracy);
 
-        if (total <= 0) return Grade.SS;
+        if ((grade === Grade.SS || grade === Grade.S) && statistics.countMiss > 0) {
+            grade = Grade.A;
+        }
 
-        const ratio300 = statistics.count300 / total;
-        const ratio50 = statistics.count50 / total;
-        const misses = statistics.countMiss;
+        return grade;
+    }
 
-        if (ratio300 > 0.9 && ratio50 < 0.01 && misses === 0) return Grade.S;
-        if ((ratio300 > 0.8 && misses === 0) || ratio300 > 0.9) return Grade.A;
-        if ((ratio300 > 0.7 && misses === 0) || ratio300 > 0.8) return Grade.B;
-        if (ratio300 > 0.6) return Grade.C;
+    private static catch(accuracy: number): Grade {
+        if (accuracy === 1) {
+            return Grade.SS;
+        }
 
-        return Grade.D;
+        return this.fromThresholds(accuracy, [
+            [0.98, Grade.S],
+            [0.94, Grade.A],
+            [0.9, Grade.B],
+            [0.85, Grade.C],
+        ]);
+    }
+
+    private static mania(statistics: HitResultResponse): Grade {
+        const grade = this.default(statistics.accuracy);
+
+        if (grade !== Grade.S) {
+            return grade;
+        }
+
+        const hasImperfect =
+            statistics.countKatu > 0 || statistics.count100 > 0 || statistics.count50 > 0 || statistics.countMiss > 0;
+
+        return hasImperfect ? Grade.S : Grade.SS;
+    }
+
+    private static default(accuracy: number): Grade {
+        if (accuracy === 1) {
+            return Grade.SS;
+        }
+
+        return this.fromThresholds(accuracy, [
+            [0.95, Grade.S],
+            [0.9, Grade.A],
+            [0.8, Grade.B],
+            [0.7, Grade.C],
+        ]);
     }
 
     private static fromThresholds(accuracy: number, thresholds: Array<readonly [number, Grade]>): Grade {
         for (const [threshold, grade] of thresholds) {
-            if (accuracy >= threshold) return grade;
+            if (accuracy >= threshold) {
+                return grade;
+            }
         }
 
         return Grade.D;
