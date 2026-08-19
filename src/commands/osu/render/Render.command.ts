@@ -19,7 +19,7 @@ import { plainToInstance } from "class-transformer";
     description: "Renders an osu! replay using o!rdr.",
     defer: true,
     ephemeral: false,
-    aliases: ["upload"]
+    aliases: ["upload"],
 })
 @NoUserInstall()
 export class RenderCommand extends AbstractSessionCommand {
