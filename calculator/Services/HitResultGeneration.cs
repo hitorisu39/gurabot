@@ -21,8 +21,11 @@ public class HitResultGeneration
         int? countGreat = score.HasCount300 ? checked((int)score.Count300) : null;
 
         int? countLargeTickMisses = score.HasCountLargeTickMisses ? checked((int)score.CountLargeTickMisses) : null;
-
         int? countSliderTailMisses = score.HasCountSliderTailMisses ? checked((int)score.CountSliderTailMisses) : null;
+
+        int? countSmallTickHits = score.HasCountSmallTickHits ? checked((int)score.CountSmallTickHits) : null;
+        int? countSmallTickMisses = score.HasCountSmallTickMisses ? checked((int)score.CountSmallTickMisses) : null;
+        int? countLargeTickHits = score.HasCountLargeTickHits ? checked((int)score.CountLargeTickHits) : null;
 
         return rulesetId switch
         {
@@ -37,7 +40,14 @@ public class HitResultGeneration
                 countSliderTailMisses
             ),
             1 => GenerateTaiko(accuracy, beatmap, countMiss, countOk),
-            2 => GenerateCatch(beatmap, accuracy, countMiss, countMeh, countOk),
+            2 => GenerateCatch(
+                beatmap,
+                accuracy,
+                countMiss,
+                countSmallTickHits ?? countMeh,
+                countSmallTickMisses ?? countGood,
+                countLargeTickHits ?? countOk
+            ),
             3 => GenerateMania(beatmap, mods, accuracy, countMiss, countMeh, countOk, countGood, countGreat),
             _ => throw new ArgumentException("Invalid ruleset ID", nameof(rulesetId)),
         };
@@ -119,9 +129,7 @@ public class HitResultGeneration
             if (relevantAccuracy >= 0.25)
             {
                 double ratio50To100 = Math.Pow(1 - (relevantAccuracy - 0.25) / 0.75, 2);
-
                 double count100Estimate = 6 * relevantResultCount * (1 - relevantAccuracy) / (5 * ratio50To100 + 4);
-
                 double count50Estimate = count100Estimate * ratio50To100;
 
                 countOk = (int)Math.Round(count100Estimate);
@@ -195,12 +203,11 @@ public class HitResultGeneration
         IBeatmap beatmap,
         double accuracy,
         int countMiss,
-        int? countMeh,
-        int? countGood
+        int? countTinyDropletHits,
+        int? countTinyDropletMisses,
+        int? countDropletHits
     )
     {
-        int maxCombo = beatmap.GetMaxCombo();
-
         int maxTinyDroplets = 0;
         int maxDroplets = 0;
         int maxFruits = 0;
@@ -223,11 +230,9 @@ public class HitResultGeneration
                     case TinyDroplet:
                         maxTinyDroplets++;
                         break;
-
                     case Droplet:
                         maxDroplets++;
                         break;
-
                     case Fruit:
                         maxFruits++;
                         break;
@@ -235,20 +240,71 @@ public class HitResultGeneration
             }
         }
 
-        int countDroplets = countGood ?? Math.Max(0, maxDroplets - countMiss);
-        int countFruits = maxFruits - (countMiss - (maxDroplets - countDroplets));
+        int maxCombo = maxFruits + maxDroplets;
 
-        int countTinyDroplets =
-            countMeh ?? (int)Math.Round(accuracy * (maxCombo + maxTinyDroplets)) - countFruits - countDroplets;
+        countMiss = Math.Clamp(countMiss, 0, maxCombo);
+        accuracy = Math.Clamp(accuracy, 0, 1);
 
-        int countTinyMisses = maxTinyDroplets - countTinyDroplets;
+        int caughtDroplets;
+        int missedDroplets;
+
+        if (countDropletHits.HasValue)
+        {
+            caughtDroplets = Math.Clamp(countDropletHits.Value, 0, maxDroplets);
+
+            missedDroplets = maxDroplets - caughtDroplets;
+            if (missedDroplets > countMiss)
+            {
+                int recoveredDroplets = missedDroplets - countMiss;
+                caughtDroplets += recoveredDroplets;
+            }
+        }
+        else
+        {
+            caughtDroplets = Math.Max(0, maxDroplets - countMiss);
+        }
+
+        caughtDroplets = Math.Clamp(caughtDroplets, 0, maxDroplets);
+
+        missedDroplets = maxDroplets - caughtDroplets;
+        int missedFruits = Math.Clamp(countMiss - missedDroplets, 0, maxFruits);
+        int caughtFruits = maxFruits - missedFruits;
+
+        int caughtTinyDroplets;
+        int missedTinyDroplets;
+
+        if (countTinyDropletHits.HasValue)
+        {
+            caughtTinyDroplets = Math.Clamp(countTinyDropletHits.Value, 0, maxTinyDroplets);
+
+            if (countTinyDropletMisses.HasValue)
+            {
+                missedTinyDroplets = Math.Clamp(countTinyDropletMisses.Value, 0, maxTinyDroplets - caughtTinyDroplets);
+            }
+            else
+            {
+                missedTinyDroplets = maxTinyDroplets - caughtTinyDroplets;
+            }
+        }
+        else if (countTinyDropletMisses.HasValue)
+        {
+            missedTinyDroplets = Math.Clamp(countTinyDropletMisses.Value, 0, maxTinyDroplets);
+            caughtTinyDroplets = maxTinyDroplets - missedTinyDroplets;
+        }
+        else
+        {
+            int totalAccuracyObjects = maxFruits + maxDroplets + maxTinyDroplets;
+            int targetHits = (int)Math.Round(accuracy * totalAccuracyObjects, MidpointRounding.AwayFromZero);
+            caughtTinyDroplets = Math.Clamp(targetHits - caughtFruits - caughtDroplets, 0, maxTinyDroplets);
+            missedTinyDroplets = maxTinyDroplets - caughtTinyDroplets;
+        }
 
         return new Dictionary<HitResult, int>(5)
         {
-            [HitResult.Great] = countFruits,
-            [HitResult.LargeTickHit] = countDroplets,
-            [HitResult.SmallTickHit] = countTinyDroplets,
-            [HitResult.SmallTickMiss] = countTinyMisses,
+            [HitResult.Great] = caughtFruits,
+            [HitResult.LargeTickHit] = caughtDroplets,
+            [HitResult.SmallTickHit] = caughtTinyDroplets,
+            [HitResult.SmallTickMiss] = missedTinyDroplets,
             [HitResult.Miss] = countMiss,
         };
     }

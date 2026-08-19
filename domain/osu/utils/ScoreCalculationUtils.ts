@@ -41,24 +41,27 @@ export class ScoreCalculationUtils {
         return {
             kind: ScoreStateKind.ACTUAL,
 
-            maxCombo: this.count(score.maxCombo),
-            accuracy: score.accuracy,
+            maxCombo: this.optionalCount(score.maxCombo),
+            accuracy: this.optionalAccuracy(score.accuracy),
 
-            count300: this.count(statistics.great),
-            count100: this.count(statistics.ok),
-            count50: this.count(statistics.meh),
-            countMiss: this.count(statistics.miss),
-            countGeki: this.count(statistics.perfect),
-            countKatu: this.count(statistics.good),
+            count300: this.optionalCount(statistics.great),
+            count100: this.optionalCount(statistics.ok),
+            count50: this.optionalCount(statistics.meh),
+            countMiss: this.optionalCount(statistics.miss),
+            countGeki: this.optionalCount(statistics.perfect),
+            countKatu: this.optionalCount(statistics.good),
 
-            countSmallTickHits: this.count(statistics.smallTickHit),
-            countSmallTickMisses: this.count(statistics.smallTickMiss),
-            countLargeTickHits: this.count(statistics.largeTickHit),
-            countLargeTickMisses: this.count(statistics.largeTickMiss),
-            countSliderTailHits: isStandard ? this.count(statistics.ignoreHit) : undefined,
-            countSliderTailMisses: isStandard ? this.count(statistics.ignoreMiss) : undefined,
-            countSmallBonus: this.count(statistics.smallBonus),
-            countLargeBonus: this.count(statistics.largeBonus),
+            countSmallTickHits: this.optionalCount(statistics.smallTickHit),
+            countSmallTickMisses: this.optionalCount(statistics.smallTickMiss),
+            countLargeTickHits: this.optionalCount(statistics.largeTickHit),
+            countLargeTickMisses: this.optionalCount(statistics.largeTickMiss),
+
+            countSliderTailHits: isStandard ? this.optionalCount(statistics.ignoreHit) : undefined,
+
+            countSliderTailMisses: isStandard ? this.optionalCount(statistics.ignoreMiss) : undefined,
+
+            countSmallBonus: this.optionalCount(statistics.smallBonus),
+            countLargeBonus: this.optionalCount(statistics.largeBonus),
         };
     }
 
@@ -67,14 +70,22 @@ export class ScoreCalculationUtils {
             return undefined;
         }
 
-        return values.reduce((total, value) => total! + (value ?? 0), 0);
+        return values.reduce((total, value) => total! + value!, 0);
     }
 
-    private static count(value: unknown): number {
+    private static optionalCount(value: unknown): number | undefined {
         if (typeof value !== "number" || !Number.isFinite(value)) {
-            return 0;
+            return undefined;
         }
 
         return Math.max(0, Math.trunc(value));
+    }
+
+    private static optionalAccuracy(value: unknown): number | undefined {
+        if (typeof value !== "number" || !Number.isFinite(value)) {
+            return undefined;
+        }
+
+        return Math.max(0, Math.min(1, value));
     }
 }

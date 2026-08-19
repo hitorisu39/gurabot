@@ -26,7 +26,7 @@ import { scoreBestQueryLimit } from "@domain/osu/configs/Score.config";
     Use \`miss=<number>\` to restrict which scores are unchoked.
     For example, \`miss=2\` only unchokes scores containing two or fewer misses.
 `)
-@Examples("nochoke", "nochoke mrekk", "nochoke mrekk miss=2", "nochoke miss=1")
+@Examples("nochoke mrekk", "nochoke mrekk miss=2", "nochoke miss=1")
 @Category(ECommandCategory.Osu)
 export abstract class AbstractNoChokeCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
@@ -93,7 +93,6 @@ export abstract class AbstractNoChokeCommand extends AbstractOsuCommand {
 
         projectedScores.sort((a, b) => {
             const ppDifference = b.noChoke.projectedPP - a.noChoke.projectedPP;
-
             if (ppDifference !== 0) {
                 return ppDifference;
             }
@@ -106,7 +105,6 @@ export abstract class AbstractNoChokeCommand extends AbstractOsuCommand {
         }
 
         const currentWeightedPP = ScoreUtils.weightedPPValues(projectedScores.map((score) => score.noChoke.originalPP));
-
         const projectedWeightedPP = ScoreUtils.weightedPPValues(
             projectedScores.map((score) => score.noChoke.projectedPP),
         );

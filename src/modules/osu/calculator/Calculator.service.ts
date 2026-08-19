@@ -8,7 +8,7 @@ import { ScoreWithMaps, PopulatedScore } from "@domain/osu/Score.dto";
 import { BeatmapAttributesCalculator } from "@domain/osu/utils/BeatmapAttributesCalculator";
 import { ParsedMod } from "@generated/adapter/mods";
 import { ScoreCalculationUtils } from "@domain/osu/utils/ScoreCalculationUtils";
-import { ScoreStateKind } from "@generated/calculator/calculator";
+import { ScoreState, ScoreStateKind } from "@generated/calculator/calculator";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 
 export class CalculatorService extends AbstractService {
@@ -212,6 +212,29 @@ export class CalculatorService extends AbstractService {
             const scoreState = ScoreCalculationUtils.scoreState(score, mode);
             const misses = Math.max(0, scoreState.countMiss ?? 0);
 
+            const fcScoreState: ScoreState =
+                mode === GameMode.Catch
+                    ? {
+                        ...scoreState,
+                        kind: ScoreStateKind.SIMULATION,
+                        count300: undefined,
+                        count100: undefined,
+                        count50: undefined,
+                        countKatu: undefined,
+                        countLargeTickHits: undefined,
+                        countSmallTickHits: scoreState.countSmallTickHits,
+                        countSmallTickMisses: scoreState.countSmallTickMisses,
+                        countMiss: 0,
+                        maxCombo: fullDifficulty.maxCombo,
+                    }
+                    : {
+                        ...scoreState,
+                        kind: ScoreStateKind.SIMULATION,
+                        count300: (scoreState.count300 ?? 0) + misses,
+                        countMiss: 0,
+                        maxCombo: fullDifficulty.maxCombo,
+                    };
+
             streamRequests.push({
                 mode,
                 beatmapPath: this.calculatorMapService.getPath(
@@ -220,14 +243,7 @@ export class CalculatorService extends AbstractService {
                 precalculatedDifficulty: fullDifficulty,
                 referenceId: fcReferenceID,
                 mods: protoMods,
-
-                score: {
-                    ...scoreState,
-                    kind: ScoreStateKind.SIMULATION,
-                    count300: (scoreState.count300 ?? 0) + misses,
-                    countMiss: 0,
-                    maxCombo: fullDifficulty.maxCombo,
-                },
+                score: fcScoreState,
             });
         });
 
