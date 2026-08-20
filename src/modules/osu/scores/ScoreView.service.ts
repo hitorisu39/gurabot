@@ -5,13 +5,12 @@ import { ScoresViewDto } from "@domain/osu/views/Scores.view";
 import { AdapterProvider, GameMode, Score } from "@generated/adapter/types";
 import { OsuService } from "../Osu.service";
 import { EScoreListSize, EScoreViewLayout } from "@domain/osu/enums/Score.enum";
-
-// Views
 import { AbstractScoreView } from "./AbstractScoreView";
 import { ListScoreView } from "./ListScoreView.service";
 import { CompareScoreView } from "./CompareScoreView.service";
 import { ScoreUtils } from "@domain/osu/utils/ScoreUtils";
 import { AbstractViewService } from "@/modules/AbstractViewService";
+import { Embed } from "@/core/discord/ui/Embed";
 
 interface IScoreViewPopulateContext {
     personalScores?: Array<Score> | Promise<Array<Score>>;
@@ -47,11 +46,7 @@ export class ScoreViewService extends AbstractViewService<ScoresViewDto, Record<
         const pageScores = data.scores.slice(start, end);
 
         const components = totalPages > 1 ? [Pagination.build("osu_scores", sessionID, data.page, totalPages)] : [];
-
-        const embed =
-            data.scores.length === 1 && pageScores[0]
-                ? view.renderSingle(data, pageScores[0])
-                : view.render(data, pageScores, meta);
+        const embed = this.render(data, pageScores, meta);
 
         return {
             content: data.displayQuery ?? undefined,
@@ -90,6 +85,18 @@ export class ScoreViewService extends AbstractViewService<ScoresViewDto, Record<
         });
 
         data.scores.splice(0, data.scores.length, ...placedScores);
+    }
+
+    public render(data: ScoresViewDto, scores: Array<Score>, meta?: Record<string, unknown>): Embed {
+        const layout = data.layout ?? EScoreViewLayout.List;
+
+        const view = this.getView(layout);
+
+        if (scores.length === 1 && scores[0]) {
+            return view.renderSingle(data, scores[0]);
+        }
+
+        return view.render(data, scores, meta);
     }
 
     private shouldPopulatePlacements(data: ScoresViewDto): boolean {

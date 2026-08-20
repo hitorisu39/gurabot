@@ -72,6 +72,22 @@ export function rangeContains(range: ICommandRange, value: number): boolean {
     return passesMin && passesMax;
 }
 
+export function rangeInclusiveMin(range: ICommandRange, step: number): number {
+    if (range.exact !== undefined) {
+        return range.exact;
+    }
+
+    return range.minInclusive ? range.min : range.min + step;
+}
+
+export function rangeInclusiveMax(range: ICommandRange, step: number): number {
+    if (range.exact !== undefined) {
+        return range.exact;
+    }
+
+    return range.maxInclusive ? range.max : range.max - step;
+}
+
 export function dateRangeContains(range: ICommandDateRange, value: Date): boolean {
     if (range.exact !== undefined) return value.getTime() === range.exact.getTime();
 
