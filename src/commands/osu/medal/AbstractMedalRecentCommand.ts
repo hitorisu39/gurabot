@@ -2,15 +2,15 @@ import { Import } from "@/core/decorators";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
 import { OsuService } from "@/modules/osu/Osu.service";
-import { OsekaiMedalsService } from "@/modules/osekai/OsekaiMedals.service";
 import { MedalRecentEntryDto, MedalRecentViewDto } from "@domain/osu/views/MedalRecent.view";
 import { AdapterProvider } from "@generated/adapter/types";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { MedalRecentViewService } from "@/modules/osu/medal/MedalRecentView.service";
+import { OsekaiService } from "@/modules/osekai/Osekai.service";
 
 export abstract class AbstractMedalRecentCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
-    @Import() declare private readonly osekaiMedalsService: OsekaiMedalsService;
+    @Import() declare private readonly osekaiService: OsekaiService;
     @Import() declare private readonly medalRecentViewService: MedalRecentViewService;
 
     protected forcedServer = AdapterProvider.Bancho;
@@ -20,7 +20,7 @@ export abstract class AbstractMedalRecentCommand extends AbstractOsuCommand {
 
         const [profile, osekaiMedals, guild] = await Promise.all([
             this.osuService.user(target.query, target.mode, target.server),
-            this.osekaiMedalsService.getAll(),
+            this.osekaiService.medals(),
             ctx.guild ? this.guildService.get(ctx.guild.id) : Promise.resolve(null),
         ]);
 

@@ -2,14 +2,14 @@ import { Autocomplete, Import, Inject, IsString, Option, Required } from "@/core
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { AbstractCommand } from "@/core/discord/AbstractCommand";
 import { CommandOption } from "@domain/core/Command";
-import { OsekaiMedalsService } from "@/modules/osekai/OsekaiMedals.service";
 import { AutocompleteContext } from "@/core/discord/context/AutocompleteContext";
 import { MedalInfoViewService } from "@/modules/osu/medal/MedalInfoView.service";
 import { MedalInfoViewDto } from "@domain/osu/views/MedalInfo.view";
 import { GuildService } from "@/modules/guild/Guild.service";
+import { OsekaiService } from "@/modules/osekai/Osekai.service";
 
 export abstract class AbstractMedalInfoCommand extends AbstractCommand {
-    @Import() declare private readonly osekaiMedalsService: OsekaiMedalsService;
+    @Import() declare private readonly osekaiService: OsekaiService;
     @Import() declare private readonly medalInfoViewService: MedalInfoViewService;
     @Import() declare private readonly guildService: GuildService;
 
@@ -21,12 +21,12 @@ export abstract class AbstractMedalInfoCommand extends AbstractCommand {
     declare private readonly name: CommandOption<string>;
 
     public async execute(ctx: CommandContext): Promise<void> {
-        const medal = await this.osekaiMedalsService.get(this.name.unwrap());
+        const medal = await this.osekaiService.medal(this.name.unwrap());
         const guild = await this.guildService.get(ctx.guild?.id);
 
         const [beatmapsResult, commentsResult] = await Promise.allSettled([
-            this.osekaiMedalsService.beatmaps(medal.id),
-            this.osekaiMedalsService.comments(medal.id, 2),
+            this.osekaiService.medalBeatmaps(medal.id),
+            this.osekaiService.medalComments(medal.id, 2),
         ]);
 
         const data: MedalInfoViewDto = {
@@ -43,7 +43,7 @@ export abstract class AbstractMedalInfoCommand extends AbstractCommand {
         const focused = ctx.getFocused();
         if (focused.name !== "name") return await ctx.respond([]);
 
-        const medals = await this.osekaiMedalsService.search(String(focused.value));
+        const medals = await this.osekaiService.searchMedal(String(focused.value));
 
         await ctx.respond(
             medals.map((medal) => ({

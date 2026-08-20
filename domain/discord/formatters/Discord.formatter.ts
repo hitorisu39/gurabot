@@ -23,6 +23,16 @@ export class DiscordFormatter {
         return `${domain}/${fileName}.${extension}`;
     }
 
+    public static countryEmoji(countryCode: string): string {
+        const code = countryCode.trim().toUpperCase();
+
+        if (!/^[A-Z]{2}$/.test(code)) {
+            return "🏳️";
+        }
+
+        return String.fromCodePoint(...[...code].map((char) => 0x1f1e6 + char.charCodeAt(0) - 65));
+    }
+
     public static link(label: string | number, url: string, name?: string | number | null, backtick?: boolean): string {
         const formattedLabel = backtick ? `\`${label}\`` : label;
         if (name) return `[${formattedLabel}](${url} "${name}")`;
@@ -78,46 +88,75 @@ export class DiscordFormatter {
     }
 
     public static formatInlineGrid(
-        items: Array<{ label: string; value: string }>,
+        items: Array<{
+            label: string;
+            value: string;
+            prefix?: string;
+        }>,
         preferredCols = 3,
         widthLimit = 64,
         join = " > ",
         labelLimit = 17,
         valueLimit = 12,
+        order: "row" | "column" = "row",
     ): string {
         if (items.length === 0) return "*None*";
 
-        const processedItems = items.map((i) => ({
-            label: TextFormatter.truncate(i.label, labelLimit),
-            value: TextFormatter.truncate(i.value, valueLimit),
+        const processedItems = items.map((item) => ({
+            label: TextFormatter.truncate(item.label, labelLimit),
+            value: TextFormatter.truncate(item.value, valueLimit),
+            prefix: item.prefix ?? "",
         }));
 
-        const maxLabelLen = Math.max(...processedItems.map((i) => i.label.length));
-        const maxValLen = Math.max(...processedItems.map((i) => i.value.length));
+        const maxLabelLen = Math.max(...processedItems.map((item) => item.label.length));
+        const maxValLen = Math.max(...processedItems.map((item) => item.value.length));
 
-        const cellWidth = maxLabelLen + maxValLen + 3;
-        const separatorWidth = 3;
+        const maxPrefixLen = Math.max(...processedItems.map((item) => item.prefix.length));
+
+        const cellWidth = maxPrefixLen + maxLabelLen + maxValLen + 1;
+        const separatorWidth = join.length;
 
         let cols = preferredCols;
+
         while (cols > 1) {
             const estimatedWidth = cellWidth * cols + separatorWidth * (cols - 1);
+
             if (estimatedWidth <= widthLimit) {
                 break;
             }
+
             cols--;
         }
 
-        const cells = processedItems.map((item) => {
+        const cells = processedItems.slice(0, 21).map((item) => {
             const paddedLabel = item.label.padEnd(maxLabelLen, " ");
             const paddedVal = item.value.padStart(maxValLen, " ");
-            return `\`${paddedLabel} ${paddedVal}\``;
+            return `${item.prefix}\`${paddedLabel} ${paddedVal}\``;
         });
 
-        const limitedCells = cells.slice(0, 21);
         const rows: Array<string> = [];
 
-        for (let i = 0; i < limitedCells.length; i += cols) {
-            rows.push(limitedCells.slice(i, i + cols).join(join));
+        if (order === "column" && cols > 1) {
+            const rowCount = Math.ceil(cells.length / cols);
+
+            for (let row = 0; row < rowCount; row++) {
+                const rowCells: Array<string> = [];
+
+                for (let col = 0; col < cols; col++) {
+                    const index = row + col * rowCount;
+                    const cell = cells[index];
+
+                    if (cell) {
+                        rowCells.push(cell);
+                    }
+                }
+
+                rows.push(rowCells.join(join));
+            }
+        } else {
+            for (let i = 0; i < cells.length; i += cols) {
+                rows.push(cells.slice(i, i + cols).join(join));
+            }
         }
 
         return rows.join("\n");

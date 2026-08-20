@@ -11,10 +11,10 @@ import { ProfileViewService } from "@/modules/osu/profile/ProfileView.service";
 import { ECommandCategory } from "@domain/core/Command";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { AdapterProvider } from "@generated/adapter/types";
-import { AttachmentBuilder, EmbedBuilder } from "discord.js";
+import { AttachmentBuilder } from "discord.js";
 import { ProfileFormatter } from "@domain/osu/formatters/Profile.formatter";
 import { EOsuTrackLadderMetric } from "@domain/osutrack/enums/OsuTrackLadder.enum";
-import { discordEmbedColorGeneral } from "@domain/discord/configs/Embed.config";
+import { Embed } from "@/core/discord/ui/Embed";
 
 @Category(ECommandCategory.Osu)
 export abstract class AbstractGraphOsuTrackLadderCommand extends AbstractOsuCommand {
@@ -50,9 +50,7 @@ export abstract class AbstractGraphOsuTrackLadderCommand extends AbstractOsuComm
         const graph = await this.graphOsuTrackLadderService.generate(config, this.metric, marker);
         const filename = `${graph.filename}` + `-${target.mode}` + `${profile ? `-${profile.id}` : "-global"}` + `.png`;
         const title = `${ProfileFormatter.mode(target.mode)} ${graph.title}`;
-        const embed = profile
-            ? this.profileViewService.createBaseEmbed(profile, timestamp, false)
-            : new EmbedBuilder().setColor(discordEmbedColorGeneral);
+        const embed = profile ? this.profileViewService.createBaseEmbed(profile, timestamp, false) : new Embed();
 
         embed.setThumbnail(null).setTitle(title).setImage(`attachment://${filename}`);
 

@@ -2,12 +2,15 @@ import { Trace } from "@/core/decorators";
 import { AbstractService } from "@/core/framework/AbstractService";
 import { HttpClient } from "@/http";
 import { EApplicationError, Exception } from "@domain/core/Exception";
-import { IOsekaiResponse } from "@domain/osekai/Osekai.dto";
+import { osekaiRankingMeta } from "@domain/osekai/configs/OsekaiRanking.config";
+import { EOsekaiRanking, EOsekaiRankingEntryType } from "@domain/osekai/enums/OsekaiRanking.enum";
+import { IOsekaiCompactData, IOsekaiResponse } from "@domain/osekai/Osekai.dto";
 import { OsekaiMedalBeatmapDto, OsekaiMedalCommentDto, OsekaiMedalDto } from "@domain/osekai/OsekaiMedal.dto";
+import { IOsekaiRankingResponse, OsekaiRankingEntryDto, OsekaiRankingPageDto } from "@domain/osekai/OsekaiRanking.dto";
 import { levenshtein } from "@domain/utils";
 import { plainToInstance } from "class-transformer";
 
-export class OsekaiMedalsService extends AbstractService {
+export class OsekaiService extends AbstractService {
     declare private http: HttpClient;
 
     private readonly name = "Osekai";
@@ -19,17 +22,48 @@ export class OsekaiMedalsService extends AbstractService {
      */
     private readonly medalsCacheTtl = 60 * 60;
 
-    /*
-     * Coalesce concurrent get_all calls in this process.
+    /**
+     * For how long we want to cache ranking data in seconds.
      */
+    private readonly rankingCacheTtl = 60;
+
     private pendingMedalsRequest: Promise<Array<OsekaiMedalDto>> | null = null;
+    private readonly pendingRankingRequests = new Map<string, Promise<OsekaiRankingPageDto>>();
 
     public init(): void {
         this.http = new HttpClient(this.logger, { name: this.name, baseURL: this.base });
     }
 
     @Trace()
-    public async getAll(): Promise<Array<OsekaiMedalDto>> {
+    public async ranking(ranking: EOsekaiRanking, offset: number = 0, country?: string): Promise<OsekaiRankingPageDto> {
+        const normalizedCountry = country?.trim().toUpperCase();
+        const cacheKey = [ranking, normalizedCountry ?? "global", offset].join(":");
+
+        const cached = await this.cache.get("osekai_ranking", cacheKey);
+        if (cached) {
+            return plainToInstance(OsekaiRankingPageDto, cached);
+        }
+
+        const pending = this.pendingRankingRequests.get(cacheKey);
+
+        if (pending) {
+            return await pending;
+        }
+
+        const request = this.fetchRanking(ranking, offset, normalizedCountry);
+        this.pendingRankingRequests.set(cacheKey, request);
+
+        try {
+            const result = await request;
+            await this.cache.set("osekai_ranking", result, this.rankingCacheTtl, cacheKey);
+            return result;
+        } finally {
+            this.pendingRankingRequests.delete(cacheKey);
+        }
+    }
+
+    @Trace()
+    public async medals(): Promise<Array<OsekaiMedalDto>> {
         const cached = await this.cache.get("osekai_medals");
         if (cached?.length) return plainToInstance(OsekaiMedalDto, cached);
 
@@ -45,8 +79,8 @@ export class OsekaiMedalsService extends AbstractService {
     }
 
     @Trace()
-    public async get(name: string): Promise<OsekaiMedalDto> {
-        const medals = await this.getAll();
+    public async medal(name: string): Promise<OsekaiMedalDto> {
+        const medals = await this.medals();
         const normalized = this.normalizeName(name);
 
         const medal = medals.find((medal) => this.normalizeName(medal.name) === normalized);
@@ -61,8 +95,8 @@ export class OsekaiMedalsService extends AbstractService {
     }
 
     @Trace()
-    public async search(query: string, limit: number = 25): Promise<Array<OsekaiMedalDto>> {
-        const medals = await this.getAll();
+    public async searchMedal(query: string, limit: number = 25): Promise<Array<OsekaiMedalDto>> {
+        const medals = await this.medals();
         const normalized = this.normalizeName(query);
 
         if (!normalized) {
@@ -103,7 +137,7 @@ export class OsekaiMedalsService extends AbstractService {
     }
 
     @Trace()
-    public async beatmaps(medalID: number, limit?: number | null): Promise<Array<OsekaiMedalBeatmapDto>> {
+    public async medalBeatmaps(medalID: number, limit?: number | null): Promise<Array<OsekaiMedalBeatmapDto>> {
         const response = await this.http.get<IOsekaiResponse<Array<OsekaiMedalBeatmapDto>>>(
             `/medals/${medalID}/beatmaps`,
             { timeout: this.timeout },
@@ -125,7 +159,7 @@ export class OsekaiMedalsService extends AbstractService {
     }
 
     @Trace()
-    public async comments(medalID: number, limit: number = 2): Promise<Array<OsekaiMedalCommentDto>> {
+    public async medalComments(medalID: number, limit: number = 2): Promise<Array<OsekaiMedalCommentDto>> {
         const response = await this.http.post<IOsekaiResponse<Array<OsekaiMedalCommentDto>>>(
             `/comments/Medals_Data/${medalID}/get`,
             { ParentID: null },
@@ -163,6 +197,77 @@ export class OsekaiMedalsService extends AbstractService {
         await this.cache.set("osekai_medals", medals, this.medalsCacheTtl);
 
         return medals;
+    }
+
+    private async fetchRanking(
+        ranking: EOsekaiRanking,
+        offset: number,
+        country?: string,
+    ): Promise<OsekaiRankingPageDto> {
+        const meta = osekaiRankingMeta[ranking];
+        const options: Record<string, string> = {};
+
+        if (meta.optionType) {
+            options.type = meta.optionType;
+        }
+
+        if (country) {
+            options.query = country;
+            options.queryColumn = "Country";
+        }
+
+        const response = await this.http.post<IOsekaiResponse<IOsekaiRankingResponse>>(
+            "/rankings/get",
+            {
+                compress: true,
+                offset,
+                options,
+                type: meta.type,
+            },
+            {
+                timeout: this.timeout,
+            },
+        );
+
+        if (!response?.success) {
+            throw new Exception(
+                EApplicationError.INTERNAL_ERROR,
+                response?.message || `${this.name} returned an error`,
+            );
+        }
+
+        if (!response.content) {
+            throw new Exception(EApplicationError.INTERNAL_ERROR, `${this.name} returned no ranking data`);
+        }
+
+        const rows = this.decodeCompact(response.content.data);
+
+        const entries = rows.map((row, index): OsekaiRankingEntryDto => {
+            const rank = offset + index + 1;
+            const value = Number(row[meta.valueField] ?? 0);
+
+            if (meta.entryType === EOsekaiRankingEntryType.Medal) {
+                return {
+                    rank,
+                    name: String(row.Name ?? "Unknown"),
+                    value,
+                };
+            }
+
+            const userID = Number(row.ID ?? 0);
+            return {
+                rank,
+                name: String(row.Name ?? "Unknown"),
+                value,
+                userID: userID || undefined,
+                countryCode: String(row.Country_Code ?? ""),
+            };
+        });
+
+        return plainToInstance(OsekaiRankingPageDto, {
+            entries,
+            total: response.content.max,
+        });
     }
 
     private suggestFrom(query: string, medals: ReadonlyArray<OsekaiMedalDto>, limit: number): Array<OsekaiMedalDto> {
@@ -217,5 +322,24 @@ export class OsekaiMedalsService extends AbstractService {
 
     private normalizeName(name: string): string {
         return name.trim().replace(/\s+/g, " ").toLowerCase();
+    }
+
+    private decodeCompact(data: IOsekaiCompactData): Array<Record<string, unknown>> {
+        if (!Array.isArray(data?.k) || !Array.isArray(data?.d)) {
+            throw new Exception(
+                EApplicationError.INTERNAL_ERROR,
+                `${this.name} returned malformed compact ranking data`,
+            );
+        }
+
+        return data.d.map((values) => {
+            const entry: Record<string, unknown> = {};
+
+            for (let i = 0; i < data.k.length; i++) {
+                entry[data.k[i]!] = values[i];
+            }
+
+            return entry;
+        });
     }
 }

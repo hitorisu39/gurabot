@@ -3,7 +3,6 @@ import { CommandContext } from "@/core/discord/context/CommandContext";
 import { AutocompleteContext } from "@/core/discord/context/AutocompleteContext";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
 import { OsuService } from "@/modules/osu/Osu.service";
-import { OsekaiMedalsService } from "@/modules/osekai/OsekaiMedals.service";
 import { MedalListEntryDto, MedalListViewDto } from "@domain/osu/views/MedalList.view";
 import { OsekaiMedalDto } from "@domain/osekai/OsekaiMedal.dto";
 import { CommandOption } from "@domain/core/Command";
@@ -11,10 +10,11 @@ import { AdapterProvider, GameMode } from "@generated/adapter/types";
 import { MedalFormatter } from "@domain/osu/formatters/Medal.formatter";
 import { EMedalCollectionSort } from "@domain/osu/enums/Medal.enum";
 import { MedalListViewService } from "@/modules/osu/medal/MedalListView.service";
+import { OsekaiService } from "@/modules/osekai/Osekai.service";
 
 export abstract class AbstractMedalListCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
-    @Import() declare private readonly osekaiMedalsService: OsekaiMedalsService;
+    @Import() declare private readonly osekaiService: OsekaiService;
     @Import() declare private readonly medalListViewService: MedalListViewService;
 
     @Option("sort", "Specify how achieved medals should be sorted")
@@ -33,7 +33,7 @@ export abstract class AbstractMedalListCommand extends AbstractOsuCommand {
 
         const [profile, osekaiMedals] = await Promise.all([
             this.osuService.user(target.query, target.mode, target.server),
-            this.osekaiMedalsService.getAll(),
+            this.osekaiService.medals(),
         ]);
 
         const sort = this.sort.unwrapOr(EMedalCollectionSort.Osekai);
@@ -74,7 +74,7 @@ export abstract class AbstractMedalListCommand extends AbstractOsuCommand {
             return await ctx.respond([]);
         }
 
-        const medals = await this.osekaiMedalsService.getAll();
+        const medals = await this.osekaiService.medals();
         const query = String(focused.value).trim().toLowerCase();
 
         const groups = Array.from(
