@@ -1,7 +1,8 @@
-import { Exclude, Expose, instanceToPlain, Type } from "class-transformer";
+import { SerializableDto } from "@domain/core/Data";
+import { Exclude, Expose, Type } from "class-transformer";
 
 @Exclude()
-export class OsuTrackPeakDto {
+export class OsuTrackPeakDto extends SerializableDto {
     @Expose({ name: "best_global_rank" })
     declare peakRank: number;
 
@@ -15,14 +16,10 @@ export class OsuTrackPeakDto {
     @Expose({ name: "best_acc_timestamp" })
     @Type(() => Date)
     declare peakAccuracyDate: Date;
-
-    toJSON() {
-        return instanceToPlain(this, { excludeExtraneousValues: true });
-    }
 }
 
 @Exclude()
-export class OsuTrackStatsHistoryDto {
+export class OsuTrackStatsHistoryDto extends SerializableDto {
     @Expose()
     declare count300: number;
 
@@ -65,18 +62,12 @@ export class OsuTrackStatsHistoryDto {
     @Expose()
     @Type(() => Date)
     declare timestamp: Date;
-
-    toJSON() {
-        return instanceToPlain(this, {
-            excludeExtraneousValues: true,
-        });
-    }
 }
 
 export type TOsuTrackLadderPoint = [number, number];
 
 @Exclude()
-export class OsuTrackLadderSimulationConfigDto {
+export class OsuTrackLadderSimulationConfigDto extends SerializableDto {
     @Expose({ name: "rank_to_decay" })
     declare rankToDecay: Array<TOsuTrackLadderPoint>;
 
@@ -85,12 +76,6 @@ export class OsuTrackLadderSimulationConfigDto {
 
     @Expose({ name: "rank_to_pp" })
     declare rankToPp: Array<TOsuTrackLadderPoint>;
-
-    toJSON() {
-        return instanceToPlain(this, {
-            excludeExtraneousValues: true,
-        });
-    }
 }
 
 export class OsuTrackPeakQueryDto {

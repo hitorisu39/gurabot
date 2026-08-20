@@ -1,8 +1,9 @@
 import Redis from "ioredis";
 import { TConfig } from "./env";
-import { TLogger, TMetrics } from "./core";
+import { TConstructor, TLogger, TMetrics } from "./core";
 import { ICacheSchema } from "@domain/core/Cache";
 import { EApplicationError, Exception } from "@domain/core/Exception";
+import { plainToInstance } from "class-transformer";
 
 export class Cache {
     private redis: Redis | null;
@@ -75,6 +76,23 @@ export class Cache {
         } catch {
             return data as unknown as ICacheSchema[K];
         }
+    }
+
+    /**
+     * Gets a typed value as instance from Redis.
+     */
+    public async getInstance<T>(
+        baseKey: keyof ICacheSchema,
+        type: TConstructor<T>,
+        id?: string | number,
+    ): Promise<T | null> {
+        const value = await this.get(baseKey, id);
+
+        if (value === null) {
+            return null;
+        }
+
+        return plainToInstance(type, value);
     }
 
     /**

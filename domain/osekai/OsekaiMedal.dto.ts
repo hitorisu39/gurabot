@@ -1,12 +1,13 @@
-import { Exclude, Expose, instanceToPlain, Transform, TransformationType, Type } from "class-transformer";
+import { Exclude, Expose, Transform, TransformationType, Type } from "class-transformer";
 import { osekaiMedalBase } from "./configs/OsekaiMedal.config";
+import { SerializableDto } from "@domain/core/Data";
 
 function transformBoolean(value: unknown): boolean {
     return value === true || value === 1 || value === "1";
 }
 
 @Exclude()
-export class OsekaiMedalDto {
+export class OsekaiMedalDto extends SerializableDto {
     @Expose({ name: "Medal_ID" })
     @Type(() => Number)
     declare id: number;
@@ -111,16 +112,10 @@ export class OsekaiMedalDto {
     public url(): string {
         return `${osekaiMedalBase}${encodeURIComponent(this.name)}`;
     }
-
-    toJSON() {
-        return instanceToPlain(this, {
-            excludeExtraneousValues: true,
-        });
-    }
 }
 
 @Exclude()
-export class OsekaiMedalBeatmapDto {
+export class OsekaiMedalBeatmapDto extends SerializableDto {
     @Expose({ name: "Beatmap_ID" })
     @Type(() => Number)
     declare beatmapID: number;
@@ -140,16 +135,10 @@ export class OsekaiMedalBeatmapDto {
     @Expose({ name: "VoteCount" })
     @Type(() => Number)
     declare votes: number;
-
-    toJSON() {
-        return instanceToPlain(this, {
-            excludeExtraneousValues: true,
-        });
-    }
 }
 
 @Exclude()
-export class OsekaiMedalCommentDto {
+export class OsekaiMedalCommentDto extends SerializableDto {
     @Expose({ name: "ID" })
     @Type(() => Number)
     declare id: number;
@@ -179,10 +168,4 @@ export class OsekaiMedalCommentDto {
     @Expose({ name: "Is_Pinned" })
     @Transform(({ value }) => value === true || value === 1 || value === "1", { toClassOnly: true })
     declare pinned: boolean;
-
-    toJSON() {
-        return instanceToPlain(this, {
-            excludeExtraneousValues: true,
-        });
-    }
 }

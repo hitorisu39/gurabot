@@ -167,6 +167,7 @@ Special thanks to:
 - [osu!daily](https://osudaily.net/) for pp <-> rank conversion functionality.
 - [osu!track](https://ameobea.me/osutrack/) for historic ranking data.
 - [osekai](https://inex.osekai.net/) for medals and other data.
+- [osu!stats](https://osustats.ppy.sh/) for scores data.
 - everyone who has contributed code, testing, bug reports, suggestions, or provided other support.
 
 # License

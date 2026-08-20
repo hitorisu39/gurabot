@@ -16,6 +16,13 @@ import { NoChokeViewDto } from "@domain/osu/views/NoChoke.view";
 import { ProfileViewDto } from "@domain/osu/views/Profile.view";
 import { ScoresViewDto } from "@domain/osu/views/Scores.view";
 import { SimulateViewDto } from "@domain/osu/views/Simulate.view";
+import { OsuStatsBestScoresDto } from "@domain/osustats/OsuStatsBest.dto";
+import { OsuStatsCountsDto } from "@domain/osustats/OsuStatsCounts.dto";
+import { OsuStatsPlayersPageDto } from "@domain/osustats/OsuStatsPlayers.dto";
+import { OsuStatsScoresPageDto } from "@domain/osustats/OsuStatsScores.dto";
+import { OsuStatsBestViewDto } from "@domain/osustats/views/OsuStatsBest.view";
+import { OsuStatsPlayersViewDto } from "@domain/osustats/views/OsuStatsPlayers.view";
+import { OsuStatsScoresViewDto } from "@domain/osustats/views/OsuStatsScores.view";
 import { OsuTrackLadderSimulationConfigDto, OsuTrackStatsHistoryDto } from "@domain/osutrack/OsuTrack.dto";
 
 export interface ICacheSchema {
@@ -36,6 +43,10 @@ export interface ICacheSchema {
 
     osekai_ranking_view: OsekaiRankingViewDto;
 
+    osustats_players_view: OsuStatsPlayersViewDto;
+    osustats_scores_view: OsuStatsScoresViewDto;
+    osustats_best_view: OsuStatsBestViewDto;
+
     ordr_config_view: OrdrConfigViewDto;
     ordr_render_view: OrdrRenderViewDto;
 
@@ -47,6 +58,12 @@ export interface ICacheSchema {
     // osu!track
     osutrack_stats_history: Array<OsuTrackStatsHistoryDto>;
     osutrack_ladder_simulation_config: OsuTrackLadderSimulationConfigDto;
+
+    // osu!stats
+    osu_stats_counts: OsuStatsCountsDto;
+    osu_stats_players: OsuStatsPlayersPageDto;
+    osu_stats_scores: OsuStatsScoresPageDto;
+    osu_stats_best: OsuStatsBestScoresDto;
 
     // Osekai
     osekai_medals: Array<OsekaiMedalDto>;

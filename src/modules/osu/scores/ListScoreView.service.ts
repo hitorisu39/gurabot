@@ -157,7 +157,7 @@ export class ListScoreView extends AbstractScoreView {
         }
 
         const footer =
-            data.profile.provider === AdapterProvider.Bancho
+            data.profile.provider === AdapterProvider.Bancho && pageScores.some((score) => score.id)
                 ? "Tip: click the grade to view the score"
                 : ProviderMeta[data.profile.provider].name;
 
