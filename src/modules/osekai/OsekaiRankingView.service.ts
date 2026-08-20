@@ -28,14 +28,14 @@ export class OsekaiRankingViewService extends AbstractViewService<OsekaiRankingV
 
         const items = data.entries.map((entry) => {
             const rank = `#${entry.rank}`.padEnd(rankWidth, " ");
-            const prefixParts = [`\`${rank}\``];
 
-            if (entry.countryCode) {
-                prefixParts.push(DiscordFormatter.countryEmoji(entry.countryCode));
-            }
+            const flag =
+                meta.entryType === EOsekaiRankingEntryType.User
+                    ? DiscordFormatter.countryEmoji(entry.countryCode!)
+                    : "";
 
             return {
-                prefix: `${prefixParts.join(" ")} `,
+                prefix: flag ? `\`${rank}\`${flag}` : `\`${rank}\` `,
                 label: entry.name,
                 value: this.formatValue(entry.value, meta.valueFormat),
             };
