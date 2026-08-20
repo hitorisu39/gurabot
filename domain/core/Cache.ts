@@ -4,6 +4,8 @@ import { GuildDto } from "@domain/guild/Guild.dto";
 import { OrdrConfigViewDto } from "@domain/ordr/views/OrdrConfig.view";
 import { OrdrRenderViewDto } from "@domain/ordr/views/OrdrRender.view";
 import { OsekaiMedalDto } from "@domain/osekai/OsekaiMedal.dto";
+import { OsekaiRankingPageDto } from "@domain/osekai/OsekaiRanking.dto";
+import { OsekaiRankingViewDto } from "@domain/osekai/views/OsekaiRanking.view";
 import { PopulatedUser } from "@domain/osu/Profile.dto";
 import { LeaderboardViewDto } from "@domain/osu/views/Leaderboard.view";
 import { MapViewDto } from "@domain/osu/views/Map.view";
@@ -32,6 +34,8 @@ export interface ICacheSchema {
     osu_medal_missing_view: MedalMissingViewDto;
     osu_medal_list_view: MedalListViewDto;
 
+    osekai_ranking_view: OsekaiRankingViewDto;
+
     ordr_config_view: OrdrConfigViewDto;
     ordr_render_view: OrdrRenderViewDto;
 
@@ -46,6 +50,7 @@ export interface ICacheSchema {
 
     // Osekai
     osekai_medals: Array<OsekaiMedalDto>;
+    osekai_ranking: OsekaiRankingPageDto;
 
     // Auth
     auth_osu_state: AuthOsuStateDto;

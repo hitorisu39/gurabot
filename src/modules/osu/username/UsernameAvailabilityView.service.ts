@@ -1,6 +1,5 @@
 import { AbstractService } from "@/core/framework/AbstractService";
 import { TMessagePayload } from "@/core/discord/context/CommandContext";
-import { EmbedBuilder } from "discord.js";
 import { UsernameAvailabilityDto } from "@domain/osu/UsernameAvailability.dto";
 import {
     EUsernameAvailabilityStatus,
@@ -8,14 +7,11 @@ import {
     EUsernameValidationIssue,
 } from "@domain/osu/enums/UsernameAvailability.enum";
 import { DateFormatter } from "@domain/discord/formatters/Date.formatter";
-import { discordEmbedColorGeneral } from "@domain/discord/configs/Embed.config";
+import { Embed } from "@/core/discord/ui/Embed";
 
 export class UsernameAvailabilityViewService extends AbstractService {
     public build(data: UsernameAvailabilityDto): TMessagePayload {
-        const embed = new EmbedBuilder()
-            .setColor(discordEmbedColorGeneral)
-            .setTitle(`Is ${data.username} available?`)
-            .setDescription(this.description(data));
+        const embed = new Embed().setTitle(`Is ${data.username} available?`).setDescription(this.description(data));
 
         if (data.status === EUsernameAvailabilityStatus.Available) {
             embed.setFooter({

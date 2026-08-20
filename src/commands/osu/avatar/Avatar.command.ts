@@ -5,7 +5,6 @@ import { ProfileViewService } from "@/modules/osu/profile/ProfileView.service";
 import { OsuService } from "@/modules/osu/Osu.service";
 import { ProfileFormatter } from "@domain/osu/formatters/Profile.formatter";
 import { ECommandCategory } from "@domain/core/Command";
-import { OsekaiMedalsService } from "@/modules/osekai/OsekaiMedals.service";
 
 @Category(ECommandCategory.Osu)
 @Command({
@@ -16,7 +15,6 @@ import { OsekaiMedalsService } from "@/modules/osekai/OsekaiMedals.service";
 export class AvatarCommand extends AbstractOsuCommand {
     @Import() declare private readonly profileViewService: ProfileViewService;
     @Import() declare private readonly osuService: OsuService;
-    @Import() declare private readonly osekaiMedalsService: OsekaiMedalsService;
 
     public async execute(ctx: CommandContext): Promise<void> {
         const target = await this.resolveTarget(ctx);
