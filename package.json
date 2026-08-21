@@ -18,21 +18,20 @@
         "lint:fix": "eslint . --fix",
         "format": "prettier --write .",
         "format:check": "prettier --check .",
-
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "bench": "vitest bench",
         "docker:network": "docker network inspect gurabot_monitoring >/dev/null 2>&1 || docker network create gurabot_monitoring",
-
         "docker:prod": "docker compose --profile prod pull && docker compose --profile prod up -d --no-build --remove-orphans --wait",
         "docker:prod:up": "docker compose --profile prod up -d --no-build --remove-orphans --wait",
         "docker:prod:down": "docker compose --profile prod down",
         "docker:prod:logs": "docker compose --profile prod logs -f --tail 100",
         "docker:prod:status": "docker compose --profile prod ps",
-
         "docker:monitoring": "docker compose --env-file .env -f monitoring/docker-compose.yml pull && docker compose --env-file .env -f monitoring/docker-compose.yml up -d --remove-orphans",
         "docker:monitoring:up": "docker compose --env-file .env -f monitoring/docker-compose.yml up -d --remove-orphans --wait",
         "docker:monitoring:down": "docker compose --env-file .env -f monitoring/docker-compose.yml down",
         "docker:monitoring:logs": "docker compose --env-file .env -f monitoring/docker-compose.yml logs -f --tail 100",
         "docker:monitoring:status": "docker compose --env-file .env -f monitoring/docker-compose.yml ps",
-
         "docker:all": "yarn docker:network && yarn docker:monitoring && yarn docker:prod",
         "docker:all:status": "yarn docker:monitoring:status && yarn docker:prod:status"
     },
@@ -83,6 +82,9 @@
         "ts-proto": "^2.11.5",
         "tsc-alias": "^1.8.16",
         "typescript": "^5.9.3",
-        "typescript-eslint": "^8.57.0"
+        "typescript-eslint": "^8.57.0",
+        "vite": "7",
+        "vite-tsconfig-paths": "^6.1.1",
+        "vitest": "4.1.7"
     }
 }
