@@ -859,17 +859,6 @@ async function generateMods(): Promise<void> {
         return this.parse(acronyms);
     }
 
-    static areIncompatible(first: KnownModAcronym | string, second: KnownModAcronym | string): boolean {
-        if (first === second) {
-            return false;
-        }
-
-        const firstIncompatible = MOD_METADATA[first]?.incompatibleWith ?? [];
-        const secondIncompatible = MOD_METADATA[second]?.incompatibleWith ?? [];
-
-        return firstIncompatible.includes(second) || secondIncompatible.includes(first);
-    }
-
     static fromBits(bits: number): Array<ParsedMod> {
         const acronyms: string[] = [];
 
@@ -968,7 +957,18 @@ async function generateMods(): Promise<void> {
         return 1;
     }
 
-    static findIncompatibilities(mods: Array<ParsedMod>): Record<string, Array<string>> {
+    static areIncompatible(first: KnownModAcronym | string, second: KnownModAcronym | string): boolean {
+        if (first === second) {
+            return false;
+        }
+
+        const firstIncompatible = MOD_METADATA[first]?.incompatibleWith ?? [];
+        const secondIncompatible = MOD_METADATA[second]?.incompatibleWith ?? [];
+
+        return firstIncompatible.includes(second) || secondIncompatible.includes(first);
+    }
+
+    static findIncompatibilities(mods: ReadonlyArray<ParsedMod>): Record<string, Array<string>> {
         const conflicts: Record<string, Array<string>> = {};
 
         if (mods.length < 2) {

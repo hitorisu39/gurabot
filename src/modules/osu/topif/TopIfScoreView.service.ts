@@ -5,36 +5,45 @@ import { AbstractService } from "@/core/framework/AbstractService";
 import { discordMaxVisualLineLength } from "@domain/discord/configs/Discord.config";
 import { DateFormatter } from "@domain/discord/formatters/Date.formatter";
 import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";
-import { scoreDetailedPageSize, scoreStatsDelimiter } from "@domain/osu/configs/Score.config";
+import {
+    scoreDetailedPageSize,
+    scoreStatsCompactDelimiter,
+    scoreStatsDelimiter,
+} from "@domain/osu/configs/Score.config";
 import { MapFormatter } from "@domain/osu/formatters/Map.formatter";
 import { ProfileFormatter } from "@domain/osu/formatters/Profile.formatter";
 import { ScoreFormatter } from "@domain/osu/formatters/Score.formatter";
-import { NoChokeScore } from "@domain/osu/NoChoke.dto";
+import { TopIfScore } from "@domain/osu/TopIf.dto";
 import { ScoreUtils } from "@domain/osu/utils/ScoreUtils";
-import { NoChokeViewDto } from "@domain/osu/views/NoChoke.view";
+import { TopIfViewDto } from "@domain/osu/views/TopIf.view";
+import { GameMode } from "@generated/adapter/types";
 import { ProfileViewService } from "../profile/ProfileView.service";
 
-export class NoChokeScoreView extends AbstractService {
+export class TopIfScoreView extends AbstractService {
     @Import() declare private readonly profileViewService: ProfileViewService;
 
     public getPageSize(): number {
         return scoreDetailedPageSize;
     }
 
-    public render(data: NoChokeViewDto, pageScores: Array<NoChokeScore>): Embed {
+    public render(data: TopIfViewDto, pageScores: Array<TopIfScore>): Embed {
         const embed = this.profileViewService.createBaseEmbed(data.profile, data.timestamp, false);
+
         const description = new DescriptionBuilder();
+        const isMania = data.profile.mode === GameMode.Mania;
 
         for (const score of pageScores) {
             if (!ScoreUtils.isFullyPopulated(score)) {
                 continue;
             }
 
-            const projection = score.noChoke;
+            const projection = score.topIf;
+            const index = projection.projectedIndex;
+
             const stars = MapFormatter.stars(score.fullDifficulty.starRating);
             const mods = ScoreFormatter.mods(score.mods);
 
-            const prefixLength = `${projection.originalIndex}. `.length;
+            const prefixLength = `${index}. `.length;
             const suffixLength = mods ? `[${stars}] ${mods}`.length : `[${stars}]`.length;
             const headerLimit = Math.max(20, discordMaxVisualLineLength - prefixLength - suffixLength);
 
@@ -48,34 +57,43 @@ export class NoChokeScoreView extends AbstractService {
             const modsDisplay = mods ? ` ${mods}` : "";
 
             const top =
-                `**${projection.originalIndex}\\.** ` +
+                `**${index}\\.** ` +
                 `**[${header}](${MapFormatter.link(score.beatmap.id)})` +
                 `${modsDisplay}** [${stars}]`;
 
-            const projectedGrade = ScoreFormatter.grade(projection.projectedGrade, true);
+            const scoreNum = DiscordFormatter.number(score.legacyTotalScore || score.totalScore);
+            const scoreDisplay = isMania ? `**${scoreNum}**` : scoreNum;
 
-            const accuracyChange =
-                `${ScoreFormatter.accuracy(projection.originalAccuracy)}` +
-                ` ➞ ` +
-                `${ScoreFormatter.accuracy(projection.projectedAccuracy)}`;
+            const statistics = ScoreFormatter.statistics(
+                score.statistics,
+                data.profile.mode,
+                scoreStatsCompactDelimiter,
+            );
 
             const ppChange =
                 `${ScoreFormatter.pp(projection.originalPP, undefined, false)}` +
                 ` ➞ ` +
-                `${ScoreFormatter.pp(projection.projectedPP)}`;
+                `${ScoreFormatter.pp(score.calculated.attributes.total, score.calculatedFC?.attributes.total)}`;
 
-            const originalCombo = ScoreFormatter.combo(projection.originalCombo);
-            const projectedCombo = ScoreFormatter.combo(projection.projectedCombo, score.fullDifficulty.maxCombo, true);
-            const comboChange = `${originalCombo} ➞ ${projectedCombo}`;
-
-            const status = this.projectionStatus(score);
-            const firstRow = [`${projectedGrade} ${accuracyChange}`, ppChange].join(scoreStatsDelimiter);
-
-            const secondRow = [comboChange, status, DateFormatter.discord(score.endedAt, "R")]
+            const statsFirstRow = [
+                `${ScoreFormatter.grade(score.grade, score.passed, score.id)} ${ScoreFormatter.accuracy(
+                    score.accuracy,
+                )}`,
+                ppChange,
+                scoreDisplay,
+            ]
                 .filter(Boolean)
                 .join(scoreStatsDelimiter);
 
-            description.add(top).add(firstRow).add(secondRow);
+            const statsSecondRow = [
+                isMania ? null : ScoreFormatter.combo(score.maxCombo, score.fullDifficulty.maxCombo, true),
+                `\`${statistics}\``,
+                DateFormatter.discord(score.endedAt, "R"),
+            ]
+                .filter(Boolean)
+                .join(scoreStatsDelimiter);
+
+            description.add(top).add(statsFirstRow).add(statsSecondRow);
         }
 
         const delta = data.projectedTotalPP - data.originalTotalPP;
@@ -86,19 +104,12 @@ export class NoChokeScoreView extends AbstractService {
             ` ➞ ${ProfileFormatter.pp(data.projectedTotalPP)}` +
             ` (${DiscordFormatter.delta(deltaRounded)}pp)`;
 
-        const limitText =
-            data.maximumMisses === null ? "All missed plays" : `Plays with ${data.maximumMisses} or fewer misses`;
-
         return embed
             .setTitle(title)
             .setDescription(description.buildOr("No scores."))
             .setFooter({
-                text: `${limitText}`,
+                text: "Hypothetical mod changes",
                 iconURL: ProfileFormatter.modeIcon(data.profile.mode),
             });
-    }
-
-    private projectionStatus(score: NoChokeScore): string {
-        return `Removed ${ScoreFormatter.miss(score.noChoke.removedMisses, true)}`;
     }
 }

@@ -51,4 +51,21 @@ export class TextFormatter {
     public static escapeRegExp(value: string): string {
         return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     }
+
+    public static joinClauses(clauses: ReadonlyArray<string>): string {
+        if (clauses.length <= 1) {
+            return clauses[0] ?? "";
+        }
+
+        if (clauses.length === 2) {
+            return `${clauses[0]} and ${clauses[1]}`;
+        }
+
+        return `${clauses.slice(0, -1).join(", ")}, and ${clauses.at(-1)}`;
+    }
+
+    public static possessive(value: string, backticks: boolean = false): string {
+        const formatted = backticks ? `\`${value}\`` : value;
+        return /s$/i.test(value) ? `${formatted}'` : `${formatted}'s`;
+    }
 }
