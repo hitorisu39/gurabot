@@ -829,12 +829,45 @@ async function generateMods(): Promise<void> {
     }
 
     static fromString(value: string): Array<ParsedMod> {
-        if (!value) {
+        const normalized = value.trim().toUpperCase();
+
+        if (!normalized) {
             return [];
         }
 
-        const acronyms = value.match(/.{1,2}/g) ?? [];
+        const knownAcronyms = Object.keys(MOD_METADATA).sort((a, b) => b.length - a.length);
+
+        const acronyms: Array<string> = [];
+        let offset = 0;
+
+        while (offset < normalized.length) {
+            const matched = knownAcronyms.find((acronym) => normalized.startsWith(acronym, offset));
+            if (matched) {
+                acronyms.push(matched);
+                offset += matched.length;
+                continue;
+            }
+
+            const remaining = normalized.length - offset;
+            const length = Math.min(2, remaining);
+
+            acronyms.push(normalized.slice(offset, offset + length));
+
+            offset += length;
+        }
+
         return this.parse(acronyms);
+    }
+
+    static areIncompatible(first: KnownModAcronym | string, second: KnownModAcronym | string): boolean {
+        if (first === second) {
+            return false;
+        }
+
+        const firstIncompatible = MOD_METADATA[first]?.incompatibleWith ?? [];
+        const secondIncompatible = MOD_METADATA[second]?.incompatibleWith ?? [];
+
+        return firstIncompatible.includes(second) || secondIncompatible.includes(first);
     }
 
     static fromBits(bits: number): Array<ParsedMod> {
