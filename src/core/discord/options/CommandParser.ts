@@ -14,6 +14,37 @@ import {
 } from "@domain/core/Command";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 
+interface ICommandToken {
+    /**
+     * Original token, preserving quotes and escapes.
+     *
+     * Example:
+     *   query="hatsune miku"
+     */
+    raw: string;
+
+    /**
+     * Decoded token value.
+     *
+     * Example:
+     *   query=hatsune miku
+     */
+    value: string;
+
+    /**
+     * Whether the whole token started as a quoted value.
+     *
+     * `"hatsune miku cs=4"` => true
+     * `query="hatsune miku"` => false
+     */
+    startsQuoted: boolean;
+
+    /**
+     * Whether quotes occurred anywhere in this token.
+     */
+    hadQuotes: boolean;
+}
+
 /**
  * The class responsible for parsing command options.
  */
@@ -35,25 +66,15 @@ export class CommandParser {
 
         if (!internalState && !ctx.isSlash) {
             const messageContext = ctx as MessageContext;
-            let content = messageContext.rawContent;
 
-            /*
-             * Standalone mod syntax is extracted before greedy option injection.
-             * We only do this for commands that actually declare a Mods or
-             * ModsArray option so +XX-like content is otherwise left untouched.
-             */
             const hasModsOption = optionsMeta.some(
                 (meta) => meta.type === EOptionType.Mods || meta.type === EOptionType.ModsArray,
             );
 
-            if (hasModsOption) {
-                const extracted = CommandParser.extractStandaloneMods(content);
+            const parsed = CommandParser.preprocessPrefixContent(messageContext.rawContent, prefixMap, hasModsOption);
 
-                content = extracted.content;
-                extractedMods = extracted.mods;
-            }
-
-            injectedContent = CommandParser.extractKeyValuePairs(content, prefixMap);
+            injectedContent = parsed.content;
+            extractedMods = parsed.mods;
         }
 
         const injectedValues = ctx.isSlash
@@ -71,10 +92,6 @@ export class CommandParser {
                 } else {
                     const explicitValue = CommandParser.getOptionValue(meta, prefixMap);
 
-                    /*
-                     * A normal Mods option represents one mod expression (e.g., +HD!, +HDHR, -HD!).
-                     * If a command wants multiple operations, it should use @IsModsArray() instead.
-                     */
                     if (extractedMods.length > 1) {
                         throw new Exception(
                             EApplicationError.INPUT_ERROR,
@@ -89,21 +106,6 @@ export class CommandParser {
                     rawValue = (ctx as SlashContext).interaction.options.getString(meta.name);
                 } else {
                     const explicitValue = CommandParser.getOptionValue(meta, prefixMap);
-
-                    /*
-                     * Operation order matters for a ModsArray:
-                     *
-                     *   +DT! +HD
-                     *
-                     * is different from:
-                     *
-                     *   +HD +DT!
-                     *
-                     * extractKeyValuePairs() stores explicit options in a Map,
-                     * which loses their position relative to standalone tokens.
-                     * Therefore mixing the two forms would make ordering
-                     * ambiguous.
-                     */
                     if (explicitValue !== undefined && extractedMods.length > 0) {
                         throw new Exception(
                             EApplicationError.INPUT_ERROR,
@@ -244,7 +246,7 @@ export class CommandParser {
         return result;
     }
 
-    private static getOptionKeys(meta: IOptionMetadata): string[] {
+    private static getOptionKeys(meta: IOptionMetadata): Array<string> {
         return [meta.name.toLowerCase(), ...(meta.aliases ?? []).map((alias) => alias.toLowerCase())];
     }
 
@@ -286,12 +288,20 @@ export class CommandParser {
             return value as Attachment;
         }
 
+        /*
+         * A mods array may arrive as:
+         *
+         * Prefix:
+         *   ["+HD", "-HR!"]
+         *
+         * Slash/explicit:
+         *   "+HD -HR!"
+         */
         if (meta.type === EOptionType.ModsArray) {
             return CommandParser.parseModsArray(value);
         }
 
         const strVal = String(value).trim();
-
         if (meta.type === EOptionType.Mods) {
             return CommandParser.parseMods(strVal);
         }
@@ -423,6 +433,7 @@ export class CommandParser {
 
     private static parseMods(input: string): ICommandMods {
         const normalized = input.trim().toUpperCase();
+
         const match = normalized.match(/^([+-])([A-Z0-9]{2,})(!)?$/);
 
         if (!match) {
@@ -542,7 +553,6 @@ export class CommandParser {
             }
 
             const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
-
             if (day < 1 || day > daysInMonth) {
                 throw new Exception(
                     EApplicationError.INPUT_ERROR,
@@ -551,7 +561,6 @@ export class CommandParser {
             }
         }
 
-        // Whole year
         if (month === undefined) {
             return {
                 start: new Date(Date.UTC(year, 0, 1)),
@@ -559,7 +568,6 @@ export class CommandParser {
             };
         }
 
-        // Whole month
         if (day === undefined) {
             return {
                 start: new Date(Date.UTC(year, month - 1, 1)),
@@ -567,7 +575,6 @@ export class CommandParser {
             };
         }
 
-        // Whole day
         return {
             start: new Date(Date.UTC(year, month - 1, day)),
             end: new Date(Date.UTC(year, month - 1, day + 1) - 1),
@@ -580,14 +587,6 @@ export class CommandParser {
             maxInclusive: false,
         };
 
-        /*
-         * Operators:
-         *
-         * >2012
-         * >=2012-01
-         * <2023-01-01
-         * <=2023-01-01
-         */
         const operatorMatch = input.match(/^([<>]=?)(.+)$/);
 
         if (operatorMatch) {
@@ -595,16 +594,6 @@ export class CommandParser {
             const rawDate = operatorMatch[2]!.trim();
 
             const period = CommandParser.parseDatePeriod(name, rawDate);
-
-            /*
-             * For partial calendar dates:
-             *
-             * >=2012 => >= 2012-01-01 00:00:00.000
-             * >2012  => >  2012-12-31 23:59:59.999
-             *
-             * <=2012 => <= 2012-12-31 23:59:59.999
-             * <2012  => <  2012-01-01 00:00:00.000
-             */
             const exactDate = period ? null : CommandParser.parseDate(name, rawDate);
 
             if (operator === ">") {
@@ -624,14 +613,6 @@ export class CommandParser {
             return rangeObj;
         }
 
-        /*
-         * Split ranges:
-         *
-         * 2012..2014
-         * 2012-01..2012-06
-         * 2023-01-01 / 2023-12-31
-         * 2023-01-01 to 2023-12-31
-         */
         const splitMatch = input.split(/(?:\.\.|\/|\s+to\s+)/i);
 
         if (splitMatch.length === 2) {
@@ -651,13 +632,6 @@ export class CommandParser {
             return rangeObj;
         }
 
-        /*
-         * Exact calendar period:
-         *
-         * 2012       => whole year
-         * 2012-01    => whole month
-         * 2012-01-23 => whole day
-         */
         const period = CommandParser.parseDatePeriod(name, input);
 
         if (period) {
@@ -670,9 +644,6 @@ export class CommandParser {
             };
         }
 
-        /*
-         * Fallback for complete timestamps / other Date-compatible input.
-         */
         const exactDate = CommandParser.parseDate(name, input);
 
         return {
@@ -693,12 +664,6 @@ export class CommandParser {
             maxInclusive: false,
         };
 
-        /*
-         * Exact value:
-         *
-         * 5
-         * 5.5
-         */
         if (/^\d+(?:\.\d+)?$/.test(input)) {
             const value = Number(input);
 
@@ -711,35 +676,24 @@ export class CommandParser {
             };
         }
 
-        /*
-         * Dash range:
-         *
-         * 1-6
-         * 1.5-6.5
-         */
         const dashMatch = input.match(/^(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)$/);
 
         if (dashMatch) {
             rangeObj.min = Number(dashMatch[1]);
+
             rangeObj.max = Number(dashMatch[2]);
+
             rangeObj.minInclusive = true;
             rangeObj.maxInclusive = true;
 
             return rangeObj;
         }
 
-        /*
-         * Operator range:
-         *
-         * >5
-         * >=5
-         * <10
-         * <=10
-         */
         const operatorMatch = input.match(/^([<>]=?)(\d+(?:\.\d+)?)$/);
 
         if (operatorMatch) {
             const operator = operatorMatch[1]!;
+
             const value = Number(operatorMatch[2]);
 
             if (operator === ">") {
@@ -867,9 +821,6 @@ export class CommandParser {
             };
         }
 
-        /*
-         * Mods, ModsArray, Query, etc. are represented as Discord strings.
-         */
         return {
             ...base,
             type: ApplicationCommandOptionType.String,
@@ -877,116 +828,63 @@ export class CommandParser {
         };
     }
 
-    private static extractKeyValuePairs(content: string, prefixMap: Map<string, string>): string {
-        const kvRegex = /([a-zA-Z0-9_]+)([=><]+|:(?!\/\/))(?:"([^"]+)"|([^\s]+))/g;
-
-        let match: RegExpExecArray | null;
-
-        while ((match = kvRegex.exec(content)) !== null) {
-            const key = match[1]!.toLowerCase();
-            const operator = match[2]!;
-            let value = match[3] !== undefined ? match[3] : match[4]!;
-
-            if (!["=", ":", "=="].includes(operator)) {
-                value = operator + value;
-            }
-
-            prefixMap.set(key, value);
-        }
-
-        return content.replace(kvRegex, "").replace(/\s+/g, " ").trim();
-    }
-
     /**
-     * Extracts standalone shorthand mod expressions from prefix content while
-     * leaving quoted content untouched.
+     * Performs prefix preprocessing in a single token-aware pass.
      *
-     * Example:
+     * Extracts:
      *
-     *   mrekk +HD -HR!
+     *   creator=sotarks
+     *   pp>=500
+     *   query="hatsune miku"
      *
-     * becomes:
+     * and optionally standalone mod shorthand:
      *
-     *   content: "mrekk"
-     *   mods: ["+HD", "-HR!"]
+     *   +HD
+     *   +DT!
+     *   -HR!
      *
-     * Explicit key/value options such as:
+     * Quoted standalone content is never interpreted as an option:
      *
-     *   mods="+HD -HR!"
-     *
-     * are not handled here. extractKeyValuePairs() handles those.
+     *   "name cs=4"
+     *   "+HD"
      */
-    private static extractStandaloneMods(content: string): {
+    private static preprocessPrefixContent(
+        content: string,
+        prefixMap: Map<string, string>,
+        extractMods: boolean,
+    ): {
         content: string;
         mods: Array<string>;
     } {
-        const mods: Array<string> = [];
+        const tokens = CommandParser.tokenizeContent(content);
+
         const remaining: Array<string> = [];
+        const mods: Array<string> = [];
 
-        let current = "";
-        let closingQuote: '"' | "”" | null = null;
-        let escaped = false;
+        for (const token of tokens) {
+            const option = CommandParser.parseKeyValueToken(token);
 
-        const push = () => {
-            if (!current.length) {
-                return;
-            }
-
-            const token = current.trim();
-
-            if (CommandParser.isModsExpression(token)) {
-                mods.push(token);
-            } else {
-                remaining.push(current);
-            }
-
-            current = "";
-        };
-
-        for (const char of content) {
-            if (escaped) {
-                current += char;
-                escaped = false;
-                continue;
-            }
-
-            if (char === "\\") {
-                current += char;
-                escaped = true;
-                continue;
-            }
-
-            if (closingQuote) {
-                current += char;
-
-                if (char === closingQuote) {
-                    closingQuote = null;
-                }
+            if (option) {
+                prefixMap.set(option.key, option.value);
 
                 continue;
             }
 
-            if (char === '"') {
-                current += char;
-                closingQuote = '"';
+            if (extractMods && !token.hadQuotes && CommandParser.isModsExpression(token.value)) {
+                mods.push(token.value);
                 continue;
             }
 
-            if (char === "“") {
-                current += char;
-                closingQuote = "”";
-                continue;
-            }
-
-            if (/\s/.test(char)) {
-                push();
-                continue;
-            }
-
-            current += char;
+            /*
+             * Preserve the original token rather than token.value.
+             *
+             * This is important because remaining content may later be
+             * tokenized again for injected arguments.
+             *
+             * `"spaced name"` must remain one token.
+             */
+            remaining.push(token.raw);
         }
-
-        push();
 
         return {
             content: remaining.join(" ").trim(),
@@ -995,58 +893,148 @@ export class CommandParser {
     }
 
     /**
-     * Determines whether a complete standalone token represents shorthand mod syntax.
-     *  e.g., +HD, +HDDT, +DT!, -DT!, +SV2, +10K
+     * Extracts only key/value options.
+     *
+     * This remains as a convenience wrapper because query DTO parsing needs
+     * the same behavior without interpreting mod shorthand.
      */
+    private static extractKeyValuePairs(content: string, prefixMap: Map<string, string>): string {
+        return CommandParser.preprocessPrefixContent(content, prefixMap, false).content;
+    }
+
+    /**
+     * Attempts to interpret one token as a key/value option.
+     *
+     * Examples:
+     *
+     * creator=sotarks
+     * pp>=500
+     * rankdate=2024
+     * query="hatsune miku"
+     */
+    private static parseKeyValueToken(token: ICommandToken): { key: string; value: string } | null {
+        /*
+         * A token beginning with a quote is plain positional content.
+         *
+         * `"hatsune miku cs=4"`
+         *
+         * should not expose cs=4 as a command option.
+         */
+        if (token.startsQuoted) {
+            return null;
+        }
+
+        const match = token.value.match(/^([a-zA-Z0-9_]+)(==|>=|<=|>|<|=|:(?!\/\/))(.+)$/);
+        if (!match) {
+            return null;
+        }
+
+        const key = match[1]!.toLowerCase();
+        const operator = match[2]!;
+        let value = match[3]!;
+
+        /*
+         * For range operators, keep the operator as part of the resulting
+         * value because IsRange/IsDateRange consume it.
+         *
+         * pp>=500
+         *
+         * becomes:
+         *
+         * key   = pp
+         * value = >=500
+         */
+        if (!["=", ":", "=="].includes(operator)) {
+            value = operator + value;
+        }
+
+        return {
+            key,
+            value,
+        };
+    }
+
     private static isModsExpression(value: string): boolean {
         return /^(?:\+[a-zA-Z0-9]{2,}!?|-[a-zA-Z0-9]{2,}!)$/.test(value);
     }
 
-    private static tokenizeInjectedContent(content: string): Array<string> {
-        const tokens: Array<string> = [];
+    /**
+     * Tokenizes prefix input while respecting:
+     *
+     * - normal quotes: "..."
+     * - smart quotes:  “...”
+     * - backslash escaping
+     *
+     * Quotes are removed from `value`, but preserved in `raw`.
+     */
+    private static tokenizeContent(content: string): Array<ICommandToken> {
+        const tokens: Array<ICommandToken> = [];
 
-        let current = "";
+        let raw = "";
+        let value = "";
+
         let closingQuote: '"' | "”" | null = null;
+
         let escaped = false;
+        let startsQuoted = false;
+        let hadQuotes = false;
 
         const push = () => {
-            if (!current.length) {
+            if (!raw.length) {
                 return;
             }
 
-            tokens.push(current);
-            current = "";
+            tokens.push({
+                raw,
+                value,
+                startsQuoted,
+                hadQuotes,
+            });
+
+            raw = "";
+            value = "";
+            startsQuoted = false;
+            hadQuotes = false;
         };
 
         for (const char of content) {
             if (escaped) {
-                current += char;
+                raw += char;
+                value += char;
                 escaped = false;
+
                 continue;
             }
 
             if (char === "\\") {
+                raw += char;
                 escaped = true;
+
                 continue;
             }
 
             if (closingQuote) {
+                raw += char;
+
                 if (char === closingQuote) {
                     closingQuote = null;
                 } else {
-                    current += char;
+                    value += char;
                 }
 
                 continue;
             }
 
-            if (char === '"') {
-                closingQuote = '"';
-                continue;
-            }
+            if (char === '"' || char === "“") {
+                if (!raw.length) {
+                    startsQuoted = true;
+                }
 
-            if (char === "“") {
-                closingQuote = "”";
+                raw += char;
+                hadQuotes = true;
+
+                closingQuote = char === '"' ? '"' : "”";
+
                 continue;
             }
 
@@ -1055,11 +1043,15 @@ export class CommandParser {
                 continue;
             }
 
-            current += char;
+            raw += char;
+            value += char;
         }
 
+        /*
+         * Preserve a trailing escaped backslash in the decoded value.
+         */
         if (escaped) {
-            current += "\\";
+            value += "\\";
         }
 
         if (closingQuote) {
@@ -1068,5 +1060,9 @@ export class CommandParser {
 
         push();
         return tokens;
+    }
+
+    private static tokenizeInjectedContent(content: string): Array<string> {
+        return CommandParser.tokenizeContent(content).map((token) => token.value);
     }
 }
