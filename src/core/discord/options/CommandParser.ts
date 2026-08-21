@@ -31,18 +31,26 @@ export class CommandParser {
         const prefixMap = internalState?.prefixMap ?? new Map<string, string>();
 
         let injectedContent = internalState?.rawContent ?? "";
-        let extractedMods: string | null = null;
+        let extractedMods: Array<string> = [];
 
         if (!internalState && !ctx.isSlash) {
             const messageContext = ctx as MessageContext;
             let content = messageContext.rawContent;
 
-            const modsRegex = /(?:^|\s)(\+[a-zA-Z]{2,}!?|-[a-zA-Z]{2,}!)(?=\s|$)/;
-            const modMatch = content.match(modsRegex);
+            /*
+             * Standalone mod syntax is extracted before greedy option injection.
+             * We only do this for commands that actually declare a Mods or
+             * ModsArray option so +XX-like content is otherwise left untouched.
+             */
+            const hasModsOption = optionsMeta.some(
+                (meta) => meta.type === EOptionType.Mods || meta.type === EOptionType.ModsArray,
+            );
 
-            if (modMatch) {
-                extractedMods = modMatch[1]!;
-                content = content.replace(modsRegex, " ").trim();
+            if (hasModsOption) {
+                const extracted = CommandParser.extractStandaloneMods(content);
+
+                content = extracted.content;
+                extractedMods = extracted.mods;
             }
 
             injectedContent = CommandParser.extractKeyValuePairs(content, prefixMap);
@@ -61,7 +69,50 @@ export class CommandParser {
                 if (ctx.isSlash) {
                     rawValue = (ctx as SlashContext).interaction.options.getString(meta.name);
                 } else {
-                    rawValue = extractedMods ?? CommandParser.getOptionValue(meta, prefixMap);
+                    const explicitValue = CommandParser.getOptionValue(meta, prefixMap);
+
+                    /*
+                     * A normal Mods option represents one mod expression (e.g., +HD!, +HDHR, -HD!).
+                     * If a command wants multiple operations, it should use @IsModsArray() instead.
+                     */
+                    if (extractedMods.length > 1) {
+                        throw new Exception(
+                            EApplicationError.INPUT_ERROR,
+                            `Option \`${meta.name}\` only accepts one mod expression.`,
+                        );
+                    }
+
+                    rawValue = extractedMods[0] ?? explicitValue ?? null;
+                }
+            } else if (meta.type === EOptionType.ModsArray) {
+                if (ctx.isSlash) {
+                    rawValue = (ctx as SlashContext).interaction.options.getString(meta.name);
+                } else {
+                    const explicitValue = CommandParser.getOptionValue(meta, prefixMap);
+
+                    /*
+                     * Operation order matters for a ModsArray:
+                     *
+                     *   +DT! +HD
+                     *
+                     * is different from:
+                     *
+                     *   +HD +DT!
+                     *
+                     * extractKeyValuePairs() stores explicit options in a Map,
+                     * which loses their position relative to standalone tokens.
+                     * Therefore mixing the two forms would make ordering
+                     * ambiguous.
+                     */
+                    if (explicitValue !== undefined && extractedMods.length > 0) {
+                        throw new Exception(
+                            EApplicationError.INPUT_ERROR,
+                            `Option \`${meta.name}\` cannot mix \`${meta.name}=...\` with standalone mod expressions.`,
+                        );
+                    }
+
+                    rawValue =
+                        explicitValue !== undefined ? explicitValue : extractedMods.length > 0 ? extractedMods : null;
                 }
             } else if (meta.type === EOptionType.Attachment) {
                 if (ctx.isSlash) {
@@ -141,6 +192,7 @@ export class CommandParser {
                 meta.type !== EOptionType.Query &&
                 !CommandParser.hasOptionValue(meta, prefixMap),
         );
+
         if (!injected.length) {
             return result;
         }
@@ -232,6 +284,10 @@ export class CommandParser {
             }
 
             return value as Attachment;
+        }
+
+        if (meta.type === EOptionType.ModsArray) {
+            return CommandParser.parseModsArray(value);
         }
 
         const strVal = String(value).trim();
@@ -366,27 +422,43 @@ export class CommandParser {
     }
 
     private static parseMods(input: string): ICommandMods {
-        input = input.toUpperCase();
+        const normalized = input.trim().toUpperCase();
+        const match = normalized.match(/^([+-])([A-Z0-9]{2,})(!)?$/);
 
-        if (!/^(\+[A-Z]{2,}!?|-[A-Z]{2,}!)$/.test(input)) {
+        if (!match) {
+            throw new Exception(EApplicationError.INPUT_ERROR, `Invalid mod combination: \`${input}\``);
+        }
+
+        const sign = match[1]!;
+        const mods = match[2]!;
+        const exact = match[3] === "!";
+
+        if (sign === "-" && !exact) {
             throw new Exception(EApplicationError.INPUT_ERROR, `Invalid mod combination: \`${input}\``);
         }
 
         let type = EModMatchType.Include;
 
-        if (input.startsWith("-")) {
+        if (sign === "-") {
             type = EModMatchType.Exclude;
-        } else if (input.endsWith("!")) {
+        } else if (exact) {
             type = EModMatchType.Match;
         }
 
-        const mods = input.replace(/[+!-]/g, "");
+        return {
+            type,
+            mods,
+        };
+    }
 
-        if (mods.length % 2 !== 0) {
-            throw new Exception(EApplicationError.INPUT_ERROR, `Invalid mod combination: \`${input}\``);
+    private static parseModsArray(input: string | Array<string>): Array<ICommandMods> {
+        const values = Array.isArray(input) ? input : CommandParser.tokenizeInjectedContent(input);
+
+        if (!values.length) {
+            throw new Exception(EApplicationError.INPUT_ERROR, "At least one mod expression must be specified.");
         }
 
-        return { type, mods };
+        return values.map((value) => CommandParser.parseMods(value));
     }
 
     private static async parseQueryDto(
@@ -709,6 +781,7 @@ export class CommandParser {
                 EOptionType.Date,
                 EOptionType.DateRange,
                 EOptionType.Mods,
+                EOptionType.ModsArray,
                 EOptionType.Query,
             ].includes(meta.type)
         ) {
@@ -794,6 +867,9 @@ export class CommandParser {
             };
         }
 
+        /*
+         * Mods, ModsArray, Query, etc. are represented as Discord strings.
+         */
         return {
             ...base,
             type: ApplicationCommandOptionType.String,
@@ -819,6 +895,111 @@ export class CommandParser {
         }
 
         return content.replace(kvRegex, "").replace(/\s+/g, " ").trim();
+    }
+
+    /**
+     * Extracts standalone shorthand mod expressions from prefix content while
+     * leaving quoted content untouched.
+     *
+     * Example:
+     *
+     *   mrekk +HD -HR!
+     *
+     * becomes:
+     *
+     *   content: "mrekk"
+     *   mods: ["+HD", "-HR!"]
+     *
+     * Explicit key/value options such as:
+     *
+     *   mods="+HD -HR!"
+     *
+     * are not handled here. extractKeyValuePairs() handles those.
+     */
+    private static extractStandaloneMods(content: string): {
+        content: string;
+        mods: Array<string>;
+    } {
+        const mods: Array<string> = [];
+        const remaining: Array<string> = [];
+
+        let current = "";
+        let closingQuote: '"' | "”" | null = null;
+        let escaped = false;
+
+        const push = () => {
+            if (!current.length) {
+                return;
+            }
+
+            const token = current.trim();
+
+            if (CommandParser.isModsExpression(token)) {
+                mods.push(token);
+            } else {
+                remaining.push(current);
+            }
+
+            current = "";
+        };
+
+        for (const char of content) {
+            if (escaped) {
+                current += char;
+                escaped = false;
+                continue;
+            }
+
+            if (char === "\\") {
+                current += char;
+                escaped = true;
+                continue;
+            }
+
+            if (closingQuote) {
+                current += char;
+
+                if (char === closingQuote) {
+                    closingQuote = null;
+                }
+
+                continue;
+            }
+
+            if (char === '"') {
+                current += char;
+                closingQuote = '"';
+                continue;
+            }
+
+            if (char === "“") {
+                current += char;
+                closingQuote = "”";
+                continue;
+            }
+
+            if (/\s/.test(char)) {
+                push();
+                continue;
+            }
+
+            current += char;
+        }
+
+        push();
+
+        return {
+            content: remaining.join(" ").trim(),
+            mods,
+        };
+    }
+
+    /**
+     * Determines whether a complete standalone token represents shorthand mod syntax.
+     *  e.g., +HD, +HDDT, +DT!, -DT!, +SV2, +10K
+     */
+    private static isModsExpression(value: string): boolean {
+        return /^(?:\+[a-zA-Z0-9]{2,}!?|-[a-zA-Z0-9]{2,}!)$/.test(value);
     }
 
     private static tokenizeInjectedContent(content: string): Array<string> {

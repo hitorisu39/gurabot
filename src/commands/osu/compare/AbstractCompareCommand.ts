@@ -91,8 +91,7 @@ export abstract class AbstractCompareCommand extends AbstractOsuCommand {
             target.server,
         );
 
-        const mode = this.forcedMode ?? this.mode.unwrapUnchecked() ?? resolved.beatmap.mode;
-
+        const mode = this.forcedMode ?? this.mode.unwrapOr(resolved.beatmap.mode);
         const { user, context } = await this.osuService.userWithBeatmapScoreContext(
             target.query,
             mode,

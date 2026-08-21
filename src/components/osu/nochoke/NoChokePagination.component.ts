@@ -22,7 +22,6 @@ export class NoChokePaginationComponent extends AbstractPaginationButton<"osu_no
 
     protected getTotalPages(data: NoChokeViewDto): number {
         const pageSize = this.noChokeViewService.getPageSize();
-
         return Math.ceil(data.scores.length / pageSize) || 1;
     }
 

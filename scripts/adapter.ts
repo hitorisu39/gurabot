@@ -784,106 +784,64 @@ async function generateMods(): Promise<void> {
 `;
 
     modsFile += `export class ModUtils {
-    static toInstance(
-        data: unknown,
-    ): Array<ParsedMod> {
-        if (
-            typeof data === "number" &&
-            Number.isFinite(data)
-        ) {
+    static toInstance(data: unknown): Array<ParsedMod> {
+        if (typeof data === "number" && Number.isFinite(data)) {
             return this.fromBits(data);
         }
 
-        if (
-            typeof data === "string" &&
-            /^\\d+$/.test(data)
-        ) {
-            return this.fromBits(
-                Number(data),
-            );
+        if (typeof data === "string" && /^\\d+$/.test(data)) {
+            return this.fromBits(Number(data));
         }
 
         if (!Array.isArray(data)) {
             return [];
         }
 
-        return data.map(
-            (value: unknown) => {
-                const raw =
-                    typeof value === "string"
-                        ? {
-                              acronym: value,
-                          }
-                        : value;
-
-                if (
-                    !raw ||
-                    typeof raw !== "object" ||
-                    !("acronym" in raw)
-                ) {
-                    return {
-                        acronym: String(value),
-                        name: "Unknown",
-                        type: "Unknown",
-                    } as ParsedMod;
-                }
-
-                const acronym =
-                    String(raw.acronym);
-
-                const settings =
-                    "settings" in raw
-                        ? raw.settings
-                        : undefined;
-
-                const metadata =
-                    MOD_METADATA[acronym] ?? {
-                        name: "Unknown",
-                        type: "Unknown",
-                        incompatibleWith: [],
-                    };
-
+        return data.map((value: unknown) => {
+            const raw = typeof value === "string" ? { acronym: value } : value;
+            if (!raw || typeof raw !== "object" || !("acronym" in raw)) {
                 return {
-                    acronym,
-                    name: metadata.name,
-                    type: metadata.type,
-                    settings,
+                    acronym: String(value),
+                    name: "Unknown",
+                    type: "Unknown",
                 } as ParsedMod;
-            },
-        );
+            }
+
+            const acronym = String(raw.acronym);
+            const settings = "settings" in raw ? raw.settings : undefined;
+            const metadata = MOD_METADATA[acronym] ?? {
+                name: "Unknown",
+                type: "Unknown",
+                incompatibleWith: [],
+            };
+
+            return {
+                acronym,
+                name: metadata.name,
+                type: metadata.type,
+                settings,
+            } as ParsedMod;
+        });
     }
 
-    static parse(
-        data: unknown,
-    ): Array<ParsedMod> {
+    static parse(data: unknown): Array<ParsedMod> {
         return this.toInstance(data);
     }
 
-    static fromString(
-        value: string,
-    ): Array<ParsedMod> {
+    static fromString(value: string): Array<ParsedMod> {
         if (!value) {
             return [];
         }
 
-        const acronyms =
-            value.match(/.{1,2}/g) ?? [];
-
+        const acronyms = value.match(/.{1,2}/g) ?? [];
         return this.parse(acronyms);
     }
 
-    static fromBits(
-        bits: number,
-    ): Array<ParsedMod> {
+    static fromBits(bits: number): Array<ParsedMod> {
         const acronyms: string[] = [];
 
-        for (
-            const [bit, acronym] of
-            Object.entries(MOD_BITMASK)
-        ) {
-            if (
-                (bits & Number(bit)) !== 0
-            ) {
+        for (const [bit, acronym] of Object.entries(MOD_BITMASK)) {
+            if ((bits & Number(bit)) !== 0) {
                 acronyms.push(acronym);
             }
         }
@@ -891,247 +849,127 @@ async function generateMods(): Promise<void> {
         let filtered = acronyms;
 
         if (acronyms.includes("NC")) {
-            filtered = filtered.filter(
-                (acronym) =>
-                    acronym !== "DT",
-            );
+            filtered = filtered.filter((acronym) => acronym !== "DT");
         }
 
         if (acronyms.includes("PF")) {
-            filtered = filtered.filter(
-                (acronym) =>
-                    acronym !== "SD",
-            );
+            filtered = filtered.filter((acronym) => acronym !== "SD");
         }
 
         return this.parse(filtered);
     }
 
-    static has(
-        mods: Array<ParsedMod>,
-        acronym: KnownModAcronym | string,
-    ): boolean {
-        return mods.some(
-            (mod) =>
-                mod.acronym === acronym,
-        );
+    static has(mods: Array<ParsedMod>, acronym: KnownModAcronym | string): boolean {
+        return mods.some((mod) => mod.acronym === acronym);
     }
 
-    static get<
-        T extends KnownModAcronym,
-    >(
+    static get<T extends KnownModAcronym>(
         mods: Array<ParsedMod>,
         acronym: T,
-    ):
-        | Extract<
-              ParsedMod,
-              { acronym: T }
-          >
-        | undefined {
-        return mods.find(
-            (mod) =>
-                mod.acronym === acronym,
-        ) as
-            | Extract<
-                  ParsedMod,
-                  { acronym: T }
-              >
-            | undefined;
+    ): Extract<ParsedMod, { acronym: T }> | undefined {
+        return mods.find((mod) => mod.acronym === acronym) as Extract<ParsedMod, { acronym: T }> | undefined;
     }
 
-    static filterByType(
-        mods: Array<ParsedMod>,
-        type: ModType,
-    ): Array<ParsedMod> {
+    static filterByType(mods: Array<ParsedMod>, type: ModType): Array<ParsedMod> {
+        return mods.filter((mod) => mod.type === type);
+    }
+
+    static difficultyReduction(mods: Array<ParsedMod>): Array<ParsedMod> {
+        return this.filterByType(mods, "DifficultyReduction");
+    }
+
+    static difficultyIncrease(mods: Array<ParsedMod>): Array<ParsedMod> {
+        return this.filterByType(mods, "DifficultyIncrease");
+    }
+
+    static automation(mods: Array<ParsedMod>): Array<ParsedMod> {
+        return this.filterByType(mods, "Automation");
+    }
+
+    static conversion(mods: Array<ParsedMod>): Array<ParsedMod> {
+        return this.filterByType(mods, "Conversion");
+    }
+
+    static fun(mods: Array<ParsedMod>): Array<ParsedMod> {
+        return this.filterByType(mods, "Fun");
+    }
+
+    static performanceAffecting(mods: Array<ParsedMod>): Array<ParsedMod> {
         return mods.filter(
             (mod) =>
-                mod.type === type,
-        );
-    }
-
-    static difficultyReduction(
-        mods: Array<ParsedMod>,
-    ): Array<ParsedMod> {
-        return this.filterByType(
-            mods,
-            "DifficultyReduction",
-        );
-    }
-
-    static difficultyIncrease(
-        mods: Array<ParsedMod>,
-    ): Array<ParsedMod> {
-        return this.filterByType(
-            mods,
-            "DifficultyIncrease",
-        );
-    }
-
-    static automation(
-        mods: Array<ParsedMod>,
-    ): Array<ParsedMod> {
-        return this.filterByType(
-            mods,
-            "Automation",
-        );
-    }
-
-    static conversion(
-        mods: Array<ParsedMod>,
-    ): Array<ParsedMod> {
-        return this.filterByType(
-            mods,
-            "Conversion",
-        );
-    }
-
-    static fun(
-        mods: Array<ParsedMod>,
-    ): Array<ParsedMod> {
-        return this.filterByType(
-            mods,
-            "Fun",
-        );
-    }
-
-    static performanceAffecting(
-        mods: Array<ParsedMod>,
-    ): Array<ParsedMod> {
-        return mods.filter(
-            (mod) =>
-                mod.type ===
-                    "DifficultyIncrease" ||
-                mod.type ===
-                    "DifficultyReduction" ||
-                mod.type ===
-                    "Conversion" ||
-                mod.type ===
-                    "Automation" ||
+                mod.type === "DifficultyIncrease" ||
+                mod.type === "DifficultyReduction" ||
+                mod.type === "Conversion" ||
+                mod.type === "Automation" ||
                 mod.acronym === "TD" ||
                 mod.acronym === "SO",
         );
     }
 
-    static difficultyAffecting(
-        mods: Array<ParsedMod>,
-    ): Array<ParsedMod> {
+    static difficultyAffecting(mods: Array<ParsedMod>): Array<ParsedMod> {
         return mods.filter(
             (mod) =>
-                mod.type ===
-                    "DifficultyIncrease" ||
-                mod.type ===
-                    "DifficultyReduction" ||
-                mod.type ===
-                    "Conversion" ||
-                mod.type ===
-                    "Automation" ||
+                mod.type === "DifficultyIncrease" ||
+                mod.type === "DifficultyReduction" ||
+                mod.type === "Conversion" ||
+                mod.type === "Automation" ||
                 mod.acronym === "TD",
         );
     }
 
-    static clockRate(
-        mods: Array<ParsedMod>,
-    ): number {
-        const doubleTime =
-            this.get(mods, "DT");
+    static clockRate(mods: Array<ParsedMod>): number {
+        const doubleTime = this.get(mods, "DT");
+        const nightcore = this.get(mods, "NC");
 
-        const nightcore =
-            this.get(mods, "NC");
-
-        if (
-            doubleTime ||
-            nightcore
-        ) {
-            return (
-                doubleTime?.settings
-                    ?.speed_change ??
-                nightcore?.settings
-                    ?.speed_change ??
-                1.5
-            );
+        if (doubleTime || nightcore) {
+            return doubleTime?.settings?.speed_change ?? nightcore?.settings?.speed_change ?? 1.5;
         }
 
-        const halfTime =
-            this.get(mods, "HT");
+        const halfTime = this.get(mods, "HT");
+        const daycore = this.get(mods, "DC");
 
-        const daycore =
-            this.get(mods, "DC");
-
-        if (
-            halfTime ||
-            daycore
-        ) {
-            return (
-                halfTime?.settings
-                    ?.speed_change ??
-                daycore?.settings
-                    ?.speed_change ??
-                0.75
-            );
+        if (halfTime || daycore) {
+            return halfTime?.settings?.speed_change ?? daycore?.settings?.speed_change ?? 0.75;
         }
 
         return 1;
     }
 
-    static findIncompatibilities(
-        mods: Array<ParsedMod>,
-    ): Record<string, Array<string>> {
-        const conflicts:
-            Record<string, Array<string>> =
-                {};
+    static findIncompatibilities(mods: Array<ParsedMod>): Record<string, Array<string>> {
+        const conflicts: Record<string, Array<string>> = {};
 
         if (mods.length < 2) {
             return conflicts;
         }
 
-        const acronyms = new Set(
-            mods.map(
-                (mod) =>
-                    mod.acronym,
-            ),
-        );
+        const acronyms = new Set(mods.map((mod) => mod.acronym));
 
         for (const mod of mods) {
-            const incompatible =
-                MOD_METADATA[
-                    mod.acronym
-                ]?.incompatibleWith ?? [];
-
+            const incompatible = MOD_METADATA[mod.acronym]?.incompatibleWith ?? [];
             const currentConflicts = [
                 ...new Set(
-                    incompatible.filter(
-                        (acronym) =>
-                            acronym !==
-                                mod.acronym &&
-                            acronyms.has(
-                                acronym,
-                            ),
-                    ),
+                    incompatible.filter((acronym) => acronym !== mod.acronym && acronyms.has(acronym)),
                 ),
             ];
 
             if (currentConflicts.length > 0) {
-                conflicts[mod.acronym] =
-                    currentConflicts;
+                conflicts[mod.acronym] = currentConflicts;
             }
         }
 
         return conflicts;
     }
 
-    static toPlain(
-        mods:
-            | ReadonlyArray<ParsedMod>
-            | undefined,
-    ): Array<string> {
+    static incompatibilities(acronym: string): ReadonlyArray<string> {
+        return MOD_METADATA[acronym]?.incompatibleWith ?? [];
+    }
+
+    static toPlain(mods: ReadonlyArray<ParsedMod> | undefined): Array<string> {
         if (!mods?.length) {
             return [];
         }
 
-        return mods.map(
-            (mod) =>
-                mod.acronym,
-        );
+        return mods.map((mod) => mod.acronym);
     }
 }
 `;
