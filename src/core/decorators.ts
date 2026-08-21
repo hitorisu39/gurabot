@@ -176,6 +176,7 @@ export enum EOptionType {
     User = "User",
     Attachment = "Attachment",
     Mods = "Mods",
+    ModsArray = "ModsArray",
     Query = "Query",
     Date = "Date",
     DateRange = "DateRange",
@@ -278,6 +279,12 @@ export function Aliases(...aliases: Array<string>) {
 export function IsMods() {
     return function (target: any, propertyKey: string | symbol) {
         updateProperty(target, propertyKey, { type: EOptionType.Mods });
+    };
+}
+
+export function IsModsArray() {
+    return function (target: any, propertyKey: string | symbol) {
+        updateProperty(target, propertyKey, { type: EOptionType.ModsArray });
     };
 }
 

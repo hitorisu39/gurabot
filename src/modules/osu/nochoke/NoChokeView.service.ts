@@ -9,7 +9,7 @@ import { OsuService } from "../Osu.service";
 import { NoChokeScoreView } from "./NoChokeScoreView.service";
 import { plainToInstance } from "class-transformer";
 
-export class NoChokeViewService extends AbstractViewService<NoChokeViewDto, Record<string, unknown>> {
+export class NoChokeViewService extends AbstractViewService<NoChokeViewDto> {
     @Import() declare private readonly osuService: OsuService;
     @Import() declare private readonly noChokeScoreView: NoChokeScoreView;
 
