@@ -7,6 +7,7 @@ import { DateFormatter } from "@domain/discord/formatters/Date.formatter";
 import { MedalRecentViewDto } from "@domain/osu/views/MedalRecent.view";
 import { MedalFormatter } from "@domain/osu/formatters/Medal.formatter";
 import { ProfileFormatter } from "@domain/osu/formatters/Profile.formatter";
+import { TextFormatter } from "@domain/discord/formatters/Text.formatter";
 
 export class MedalRecentViewService extends AbstractViewService<MedalRecentViewDto> {
     @Import() declare private readonly profileViewService: ProfileViewService;
@@ -23,7 +24,7 @@ export class MedalRecentViewService extends AbstractViewService<MedalRecentViewD
 
         if (!entry) {
             return {
-                content: `Most recent \`${data.profile.username}\`'s medals:`,
+                content: `Most recent ${TextFormatter.possessive(data.profile.username, true)} medals:`,
                 embeds: [embed.setDescription("No medals.")],
                 components,
             };
@@ -71,7 +72,7 @@ export class MedalRecentViewService extends AbstractViewService<MedalRecentViewD
         });
 
         return {
-            content: `Most recent \`${data.profile.username}\`'s medals:`,
+            content: `Most recent ${TextFormatter.possessive(data.profile.username, true)} medals:`,
             embeds: [embed],
             components,
         };

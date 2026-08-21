@@ -9,6 +9,7 @@ import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";
 import { DateFormatter } from "@domain/discord/formatters/Date.formatter";
 import { MedalFormatter } from "@domain/osu/formatters/Medal.formatter";
 import { AttachmentBuilder } from "discord.js";
+import { TextFormatter } from "@domain/discord/formatters/Text.formatter";
 
 interface IMedalAchievement {
     medal: OsekaiMedalDto;
@@ -66,7 +67,7 @@ export class MedalStatsViewService extends AbstractService {
         const filename = "medal-achievements.png";
         if (!achievements.length) {
             return {
-                content: `\`${data.profile.username}\`'s medal statistics:`,
+                content: `${TextFormatter.possessive(data.profile.username, true)} medal statistics:`,
                 embeds: [embed],
             };
         }
@@ -80,7 +81,7 @@ export class MedalStatsViewService extends AbstractService {
 
         embed.setImage(`attachment://${filename}`);
         return {
-            content: `\`${data.profile.username}\`'s medal statistics:`,
+            content: `${TextFormatter.possessive(data.profile.username, true)} medal statistics:`,
             embeds: [embed],
             files: [
                 new AttachmentBuilder(graph, {
