@@ -16,6 +16,9 @@ export class MedalRecentEntryDto {
 @Exclude()
 export class MedalRecentViewDto {
     @Expose()
+    declare timestamp: number;
+
+    @Expose()
     declare authorID: string;
 
     @Expose()

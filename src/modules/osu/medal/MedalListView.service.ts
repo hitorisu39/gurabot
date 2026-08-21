@@ -20,7 +20,7 @@ export class MedalListViewService extends AbstractViewService<MedalListViewDto> 
         const start = (data.page - 1) * this.pageSize;
         const medals = data.medals.slice(start, start + this.pageSize);
 
-        const embed = this.profileViewService.createBaseEmbed(data.profile, null, false, false);
+        const embed = this.profileViewService.createBaseEmbed(data.profile, data.timestamp, false, false);
 
         embed
             .setDescription(medals.length ? this.medals(medals, start) : "No achieved medals matching these filters.")
@@ -62,7 +62,7 @@ export class MedalListViewService extends AbstractViewService<MedalListViewDto> 
             const medalLink = DiscordFormatter.link(medal.name, medal.url());
 
             lines.push(
-                `\`${number}.\` ${medalLink} — **${MedalFormatter.frequency(medal)}** on ${DateFormatter.shortDate(entry.achievedAt)}`,
+                `${number}\\. ${medalLink} — **${MedalFormatter.frequency(medal)}** on ${DateFormatter.shortDate(entry.achievedAt)}`,
             );
         });
 

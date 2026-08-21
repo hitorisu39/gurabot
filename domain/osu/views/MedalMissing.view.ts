@@ -7,6 +7,9 @@ import { GameMode } from "@generated/adapter/types";
 @Exclude()
 export class MedalMissingViewDto {
     @Expose()
+    declare timestamp: number;
+
+    @Expose()
     declare authorID: string;
 
     @Expose()

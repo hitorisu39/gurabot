@@ -19,7 +19,7 @@ export class MedalRecentViewService extends AbstractViewService<MedalRecentViewD
         const components =
             totalPages > 1 ? [Pagination.build("osu_medal_recent", sessionID, data.page, totalPages)] : [];
 
-        const embed = this.profileViewService.createBaseEmbed(data.profile, null, false);
+        const embed = this.profileViewService.createBaseEmbed(data.profile, data.timestamp, false);
 
         if (!entry) {
             return {

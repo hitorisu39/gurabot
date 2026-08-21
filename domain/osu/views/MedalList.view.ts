@@ -18,6 +18,9 @@ export class MedalListEntryDto {
 @Exclude()
 export class MedalListViewDto {
     @Expose()
+    declare timestamp: number;
+
+    @Expose()
     declare authorID: string;
 
     @Expose()

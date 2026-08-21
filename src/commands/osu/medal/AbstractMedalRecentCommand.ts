@@ -46,6 +46,7 @@ export abstract class AbstractMedalRecentCommand extends AbstractOsuCommand {
         }
 
         const data: MedalRecentViewDto = {
+            timestamp: Date.now(),
             authorID: ctx.author.id,
             profile,
             medals,

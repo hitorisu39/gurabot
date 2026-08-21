@@ -48,6 +48,7 @@ export abstract class AbstractMedalMissingCommand extends AbstractOsuCommand {
         missing = this.sortMedals(missing, sort, relevantMedals);
 
         const data: MedalMissingViewDto = {
+            timestamp: Date.now(),
             authorID: ctx.author.id,
             profile,
             medals: missing,

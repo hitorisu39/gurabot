@@ -20,7 +20,7 @@ export class MedalMissingViewService extends AbstractViewService<MedalMissingVie
         const start = (data.page - 1) * this.pageSize;
         const medals = data.medals.slice(start, start + this.pageSize);
 
-        const embed = this.profileViewService.createBaseEmbed(data.profile, null, false, false);
+        const embed = this.profileViewService.createBaseEmbed(data.profile, data.timestamp, false, false);
 
         embed
             .setDescription(medals.length ? this.medals(medals, start) : "No missing medals matching these filters. 🎉")
@@ -79,7 +79,7 @@ export class MedalMissingViewService extends AbstractViewService<MedalMissingVie
 
             const number = offset + index + 1;
             const medalLink = DiscordFormatter.link(medal.name, medal.url());
-            lines.push(`\`${number}.\` ${medalLink} — **${MedalFormatter.frequency(medal)}**`);
+            lines.push(`${number}\\. ${medalLink} — **${MedalFormatter.frequency(medal)}**`);
         });
 
         return lines.join("\n");
