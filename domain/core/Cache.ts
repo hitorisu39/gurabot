@@ -16,6 +16,7 @@ import { NoChokeViewDto } from "@domain/osu/views/NoChoke.view";
 import { ProfileViewDto } from "@domain/osu/views/Profile.view";
 import { ScoresViewDto } from "@domain/osu/views/Scores.view";
 import { SimulateViewDto } from "@domain/osu/views/Simulate.view";
+import { TopIfViewDto } from "@domain/osu/views/TopIf.view";
 import { OsuStatsBestScoresDto } from "@domain/osustats/OsuStatsBest.dto";
 import { OsuStatsCountsDto } from "@domain/osustats/OsuStatsCounts.dto";
 import { OsuStatsPlayersPageDto } from "@domain/osustats/OsuStatsPlayers.dto";
@@ -37,6 +38,7 @@ export interface ICacheSchema {
     osu_simulate_view: SimulateViewDto;
     osu_leaderboard_view: LeaderboardViewDto;
     osu_nochoke_view: NoChokeViewDto;
+    osu_topif_view: TopIfViewDto;
     osu_medal_recent_view: MedalRecentViewDto;
     osu_medal_missing_view: MedalMissingViewDto;
     osu_medal_list_view: MedalListViewDto;
