@@ -1,97 +1,91 @@
-import { Button, Modal, Import } from "@/core/decorators";
-import { AbstractComponent } from "@/core/discord/AbstractComponent";
-import { ComponentContext } from "@/core/discord/context/ComponentContext";
-import { SessionService } from "@/modules/cache/Session.service";
-import { MapViewDto } from "@domain/osu/views/Map.view";
-import { plainToInstance } from "class-transformer";
+import { Button, Import, Modal } from "@/core/decorators";
 import { EApplicationError, Exception } from "@domain/core/Exception";
-import { Pagination } from "@domain/discord/utils/Pagination";
-import { ModalBuilder, TextInputBuilder, TextInputStyle, LabelBuilder } from "discord.js";
+import { MapViewDto } from "@domain/osu/views/Map.view";
 import { MapViewService } from "@/modules/osu/map/MapView.service";
+import { AbstractPaginationButton } from "@/components/AbstractPaginationButton";
+import { AbstractPaginationModal } from "@/components/AbstractPaginationModal";
 
 @Button(/^osu_map_(?<action>first|prev|next|last|modal):(?<sessionID>[a-zA-Z0-9_-]+)$/)
-export class MapPaginationComponent extends AbstractComponent {
-    @Import() declare private readonly sessionService: SessionService;
+export class MapPaginationComponent extends AbstractPaginationButton<"osu_map_view", MapViewDto> {
     @Import() declare private readonly mapViewService: MapViewService;
 
-    public async execute(ctx: ComponentContext): Promise<void> {
-        const { action, sessionID } = ctx.params;
-        if (!sessionID || !action) throw new Exception(EApplicationError.SESSION_EXPIRED);
+    protected readonly paginationID = "osu_map";
+    protected readonly sessionKey = "osu_map_view";
+    protected readonly dto = MapViewDto;
 
-        const plain = await this.sessionService.get("osu_map_view", sessionID);
-        if (!plain) throw new Exception(EApplicationError.SESSION_EXPIRED);
+    protected get viewService(): MapViewService {
+        return this.mapViewService;
+    }
 
-        const data = plainToInstance(MapViewDto, plain);
-        if (data.authorID !== ctx.author.id) throw new Exception(EApplicationError.ACCESS_ERROR);
+    protected getCurrentPage(data: MapViewDto): number {
+        const beatmaps = [...(data.beatmapset.beatmaps ?? [])].sort((a, b) => a.difficulty - b.difficulty);
+        const index = beatmaps.findIndex((beatmap) => beatmap.id === data.beatmapID);
 
-        const beatmaps = [...(data.beatmapset.beatmaps || [])].sort((a, b) => a.difficulty - b.difficulty);
-        const totalPages = beatmaps.length;
-        const currentPage = beatmaps.findIndex((b) => b.id === data.beatmapID) + 1;
-
-        if (action === "modal") {
-            const modal = new ModalBuilder().setCustomId(`osu_map_modal:${sessionID}`).setTitle("Jump to Difficulty");
-            const pageInput = new TextInputBuilder()
-                .setCustomId("page_number")
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true)
-                .setMinLength(1)
-                .setMaxLength(totalPages.toString().length);
-            const pageLabel = new LabelBuilder()
-                .setLabel(`Difficulty Number (1-${totalPages})`)
-                .setTextInputComponent(pageInput);
-
-            modal.addLabelComponents(pageLabel);
-            return await ctx.showModal(modal);
+        if (index === -1) {
+            throw new Exception(EApplicationError.INTERNAL_ERROR, "Current beatmap was not found in beatmapset.");
         }
 
-        const newPage = Pagination.calculateNewPage(action, currentPage, totalPages);
-        if (newPage === currentPage) return;
+        return index + 1;
+    }
 
-        const beatmap = beatmaps[newPage - 1];
-        if (!beatmap) throw new Exception(EApplicationError.INTERNAL_ERROR, `Unknown beatmap index.`);
+    protected getTotalPages(data: MapViewDto): number {
+        return data.beatmapset.beatmaps?.length ?? 0;
+    }
+
+    protected setCurrentPage(data: MapViewDto, page: number): void {
+        const beatmaps = [...(data.beatmapset.beatmaps ?? [])].sort((a, b) => a.difficulty - b.difficulty);
+        const beatmap = beatmaps[page - 1];
+
+        if (!beatmap) {
+            throw new Exception(EApplicationError.INTERNAL_ERROR, "Unknown beatmap index.");
+        }
 
         data.beatmapID = beatmap.id;
+    }
 
-        await ctx.deferUpdate();
-        await this.sessionService.update("osu_map_view", sessionID, data, this.mapViewService.getTtl());
+    protected getModalTitle(): string {
+        return "Jump to Difficulty";
+    }
 
-        const payload = await this.mapViewService.build(sessionID, data);
-        await ctx.update(payload);
+    protected getModalLabel(_data: MapViewDto, totalPages: number): string {
+        return `Difficulty Number (1-${totalPages})`;
     }
 }
 
 @Modal(/^osu_map_modal:(?<sessionID>[a-zA-Z0-9_-]+)$/)
-export class MapPaginationModal extends AbstractComponent {
-    @Import() declare private readonly sessionService: SessionService;
+export class MapPaginationModal extends AbstractPaginationModal<"osu_map_view", MapViewDto> {
     @Import() declare private readonly mapViewService: MapViewService;
 
-    public async execute(ctx: ComponentContext): Promise<void> {
-        const { sessionID } = ctx.params;
-        if (!sessionID) throw new Exception(EApplicationError.SESSION_EXPIRED);
+    protected readonly sessionKey = "osu_map_view";
+    protected readonly dto = MapViewDto;
 
-        const plain = await this.sessionService.get("osu_map_view", sessionID);
-        if (!plain) throw new Exception(EApplicationError.SESSION_EXPIRED);
+    protected get viewService(): MapViewService {
+        return this.mapViewService;
+    }
 
-        const data = plainToInstance(MapViewDto, plain);
-        if (data.authorID !== ctx.author.id) throw new Exception(EApplicationError.ACCESS_ERROR);
+    protected getCurrentPage(data: MapViewDto): number {
+        const beatmaps = [...(data.beatmapset.beatmaps ?? [])].sort((a, b) => a.difficulty - b.difficulty);
+        const index = beatmaps.findIndex((beatmap) => beatmap.id === data.beatmapID);
 
-        const input = ctx.getTextInput("page_number");
-        if (!input) throw new Exception(EApplicationError.INPUT_ERROR);
+        if (index === -1) {
+            throw new Exception(EApplicationError.INTERNAL_ERROR, "Current beatmap was not found in beatmapset.");
+        }
 
-        const newPage = parseInt(input);
-        const beatmaps = [...(data.beatmapset.beatmaps || [])].sort((a, b) => a.difficulty - b.difficulty);
-        const totalPages = beatmaps.length;
+        return index + 1;
+    }
 
-        if (isNaN(newPage) || newPage < 1 || newPage > totalPages) return;
+    protected getTotalPages(data: MapViewDto): number {
+        return data.beatmapset.beatmaps?.length ?? 0;
+    }
 
-        const beatmap = beatmaps[newPage - 1];
-        if (!beatmap) throw new Exception(EApplicationError.INTERNAL_ERROR, `Unknown beatmap index.`);
+    protected setCurrentPage(data: MapViewDto, page: number): void {
+        const beatmaps = [...(data.beatmapset.beatmaps ?? [])].sort((a, b) => a.difficulty - b.difficulty);
+        const beatmap = beatmaps[page - 1];
+
+        if (!beatmap) {
+            throw new Exception(EApplicationError.INTERNAL_ERROR, "Unknown beatmap index.");
+        }
 
         data.beatmapID = beatmap.id;
-
-        await ctx.deferUpdate();
-        await this.sessionService.update("osu_map_view", sessionID, data, this.mapViewService.getTtl());
-        const payload = await this.mapViewService.build(sessionID, data);
-        await ctx.update(payload);
     }
 }

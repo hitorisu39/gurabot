@@ -1,64 +1,66 @@
-import { EApplicationError, Exception } from "@domain/core/Exception";
-import { Button, Import } from "@/core/decorators";
-import { AbstractComponent } from "@/core/discord/AbstractComponent";
-import { ComponentContext } from "@/core/discord/context/ComponentContext";
-import { SessionService } from "@/modules/cache/Session.service";
-import { OsuService } from "@/modules/osu/Osu.service";
+import { Button, Import, Modal } from "@/core/decorators";
 import { ScoresViewDto } from "@domain/osu/views/Scores.view";
-import { plainToInstance } from "class-transformer";
-import { ModalBuilder, TextInputBuilder, TextInputStyle, LabelBuilder } from "discord.js";
 import { ScoreViewService } from "@/modules/osu/scores/ScoreView.service";
-import { Pagination } from "@domain/discord/utils/Pagination";
+import { AbstractPaginationButton } from "@/components/AbstractPaginationButton";
+import { AbstractPaginationModal } from "@/components/AbstractPaginationModal";
 
 @Button(/^osu_scores_(?<action>first|prev|next|last|modal):(?<sessionID>[a-zA-Z0-9_-]+)$/)
-export class ScoresPaginationComponent extends AbstractComponent {
-    @Import() declare private readonly sessionService: SessionService;
+export class ScoresPaginationComponent extends AbstractPaginationButton<"osu_scores_view", ScoresViewDto> {
     @Import() declare private readonly scoreViewService: ScoreViewService;
-    @Import() declare private readonly osuService: OsuService;
 
-    public async execute(ctx: ComponentContext): Promise<void> {
-        const { action, sessionID } = ctx.params;
-        if (!sessionID || !action) throw new Exception(EApplicationError.SESSION_EXPIRED);
+    protected readonly paginationID = "osu_scores";
+    protected readonly sessionKey = "osu_scores_view";
+    protected readonly dto = ScoresViewDto;
 
-        const plain = await this.sessionService.get("osu_scores_view", sessionID);
-        if (!plain) throw new Exception(EApplicationError.SESSION_EXPIRED);
+    protected get viewService(): ScoreViewService {
+        return this.scoreViewService;
+    }
 
-        const data = plainToInstance(ScoresViewDto, plain);
-        if (data.authorID !== ctx.author.id) throw new Exception(EApplicationError.ACCESS_ERROR);
+    protected getCurrentPage(data: ScoresViewDto): number {
+        return data.page;
+    }
 
-        const pageSize = this.scoreViewService.getPageSize(data.pageSize, data.activeAttributes, data.layout);
-        const totalPages = Math.ceil(data.scores.length / pageSize);
+    protected getTotalPages(data: ScoresViewDto): number {
+        const pageSize = this.viewService.getPageSize(data.pageSize, data.activeAttributes, data.layout);
+        return Math.ceil(data.scores.length / pageSize) || 1;
+    }
 
-        if (action === "modal") {
-            const modal = new ModalBuilder().setCustomId(`osu_scores_modal:${sessionID}`).setTitle("Jump to Page");
+    protected setCurrentPage(data: ScoresViewDto, page: number): void {
+        data.page = page;
+    }
 
-            const pageInput = new TextInputBuilder()
-                .setCustomId("page_number")
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true)
-                .setMinLength(1)
-                .setMaxLength(totalPages.toString().length);
+    protected async preparePage(data: ScoresViewDto): Promise<void> {
+        const pageSize = this.viewService.getPageSize(data.pageSize, data.activeAttributes, data.layout);
+        await this.viewService.populatePage(data.scores, data.page, pageSize, data.profile.mode, data.profile.provider);
+    }
+}
 
-            const pageLabel = new LabelBuilder().setLabel("Page number").setTextInputComponent(pageInput);
+@Modal(/^osu_scores_modal:(?<sessionID>[a-zA-Z0-9_-]+)$/)
+export class ScoresPaginationModal extends AbstractPaginationModal<"osu_scores_view", ScoresViewDto> {
+    @Import() declare private readonly scoreViewService: ScoreViewService;
 
-            modal.addLabelComponents(pageLabel);
-            return await ctx.showModal(modal);
-        }
+    protected readonly sessionKey = "osu_scores_view";
+    protected readonly dto = ScoresViewDto;
 
-        const newPage = Pagination.calculateNewPage(action, data.page, totalPages);
-        if (newPage === data.page) return;
-        data.page = newPage;
+    protected get viewService(): ScoreViewService {
+        return this.scoreViewService;
+    }
 
-        await ctx.deferUpdate();
+    protected getCurrentPage(data: ScoresViewDto): number {
+        return data.page;
+    }
 
-        await this.scoreViewService.populatePage(
-            data.scores,
-            data.page,
-            pageSize,
-            data.profile.mode,
-            data.profile.provider,
-        );
-        await this.sessionService.update("osu_scores_view", sessionID, data, this.scoreViewService.getTtl());
-        await ctx.update(this.scoreViewService.build(sessionID, data));
+    protected getTotalPages(data: ScoresViewDto): number {
+        const pageSize = this.viewService.getPageSize(data.pageSize, data.activeAttributes, data.layout);
+        return Math.ceil(data.scores.length / pageSize) || 1;
+    }
+
+    protected setCurrentPage(data: ScoresViewDto, page: number): void {
+        data.page = page;
+    }
+
+    protected async preparePage(data: ScoresViewDto): Promise<void> {
+        const pageSize = this.viewService.getPageSize(data.pageSize, data.activeAttributes, data.layout);
+        await this.viewService.populatePage(data.scores, data.page, pageSize, data.profile.mode, data.profile.provider);
     }
 }

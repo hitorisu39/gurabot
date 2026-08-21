@@ -1,181 +1,114 @@
 import { Button, Import, Modal } from "@/core/decorators";
-import { AbstractComponent } from "@/core/discord/AbstractComponent";
-import { ComponentContext } from "@/core/discord/context/ComponentContext";
-import { EApplicationError, Exception } from "@domain/core/Exception";
-import { SessionService } from "@/modules/cache/Session.service";
+import { AbstractPaginationButton } from "@/components/AbstractPaginationButton";
+import { AbstractPaginationModal } from "@/components/AbstractPaginationModal";
 import { OsuStatsPlayersViewDto } from "@domain/osustats/views/OsuStatsPlayers.view";
-import { plainToInstance } from "class-transformer";
-import { LabelBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } from "discord.js";
-import { OsuStatsPlayersViewService } from "@/modules/osustats/OsuStatsPlayersView.service";
 import { osuStatsPlayersMaxPages, osuStatsPlayersPageSize } from "@domain/osustats/configs/OsuStats.config";
+import { OsuStatsPlayersViewService } from "@/modules/osustats/OsuStatsPlayersView.service";
 
 @Button(/^osustats_players_(?<action>first|prev|next|last|modal):(?<sessionID>[a-zA-Z0-9_-]+)$/)
-export class OsuStatsPlayersPaginationComponent extends AbstractComponent {
-    @Import() declare private readonly sessionService: SessionService;
+export class OsuStatsPlayersPaginationComponent extends AbstractPaginationButton<
+    "osustats_players_view",
+    OsuStatsPlayersViewDto
+> {
     @Import() declare private readonly osuStatsPlayersViewService: OsuStatsPlayersViewService;
 
-    public async execute(ctx: ComponentContext): Promise<void> {
-        const { action, sessionID } = ctx.params;
-        if (!sessionID || !action) {
-            throw new Exception(EApplicationError.SESSION_EXPIRED);
-        }
+    protected readonly paginationID = "osustats_players";
+    protected readonly sessionKey = "osustats_players_view";
+    protected readonly dto = OsuStatsPlayersViewDto;
 
-        const plain = await this.sessionService.get("osustats_players_view", sessionID);
-        if (!plain) {
-            throw new Exception(EApplicationError.SESSION_EXPIRED);
-        }
-
-        const data = plainToInstance(OsuStatsPlayersViewDto, plain);
-        if (data.authorID !== ctx.author.id) {
-            throw new Exception(EApplicationError.ACCESS_ERROR);
-        }
-
-        if (action === "modal") {
-            return await this.showPageModal(ctx, sessionID, data);
-        }
-
-        let newPage = data.page;
-
-        switch (action) {
-            case "first":
-                newPage = 1;
-                break;
-            case "prev":
-                newPage = Math.max(1, data.page - 1);
-                break;
-            case "next":
-                if (data.lastPage === undefined || data.page < data.lastPage) {
-                    newPage = Math.min(data.page + 1, osuStatsPlayersMaxPages);
-                }
-                break;
-            case "last":
-                if (data.lastPage !== undefined) {
-                    newPage = data.lastPage;
-                }
-                break;
-        }
-
-        if (newPage === data.page) {
-            return;
-        }
-
-        await ctx.deferUpdate();
-        await this.loadPage(data, newPage);
-
-        await this.sessionService.update(
-            "osustats_players_view",
-            sessionID,
-            data,
-            this.osuStatsPlayersViewService.getTtl(),
-        );
-
-        await ctx.update(this.osuStatsPlayersViewService.build(sessionID, data));
+    protected get viewService(): OsuStatsPlayersViewService {
+        return this.osuStatsPlayersViewService;
     }
 
-    private async loadPage(data: OsuStatsPlayersViewDto, page: number): Promise<void> {
-        const result = await this.osuStatsPlayersViewService.fetchPage(data, page);
-        if (!result.length) {
-            if (page > data.page) {
-                data.lastPage = data.page;
+    protected getCurrentPage(data: OsuStatsPlayersViewDto): number {
+        return data.page;
+    }
+
+    protected getTotalPages(data: OsuStatsPlayersViewDto): number {
+        return data.lastPage ?? osuStatsPlayersMaxPages;
+    }
+
+    protected calculateNewPage(action: string, data: OsuStatsPlayersViewDto, totalPages: number): number {
+        /*
+         * Until osu!stats tells us where the leaderboard actually
+         * ends, the "last" button has nowhere reliable to jump to.
+         */
+        if (action === "last" && data.lastPage === undefined) {
+            return data.page;
+        }
+
+        return super.calculateNewPage(action, data, totalPages);
+    }
+
+    protected async setCurrentPage(data: OsuStatsPlayersViewDto, page: number): Promise<void> {
+        const currentPage = data.page;
+
+        const players = await this.osuStatsPlayersViewService.fetchPage(data, page);
+        if (!players.length) {
+            /*
+             * If the immediately following page is empty,
+             * we now know the current page is the last one.
+             */
+            if (page === currentPage + 1) {
+                data.lastPage = currentPage;
             }
 
             return;
         }
 
         data.page = page;
-        data.players = result;
+        data.players = players;
 
-        if (result.length < osuStatsPlayersPageSize) {
+        if (players.length < osuStatsPlayersPageSize || page >= osuStatsPlayersMaxPages) {
             data.lastPage = page;
-        }
-
-        if (page >= osuStatsPlayersMaxPages) {
-            data.lastPage = osuStatsPlayersMaxPages;
         }
     }
 
-    private async showPageModal(ctx: ComponentContext, sessionID: string, data: OsuStatsPlayersViewDto): Promise<void> {
-        const maxPage = data.lastPage ?? osuStatsPlayersMaxPages;
-
-        const modal = new ModalBuilder().setCustomId(`osustats_players_modal:${sessionID}`).setTitle("Jump to Page");
-
-        const pageInput = new TextInputBuilder()
-            .setCustomId("page_number")
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true)
-            .setMinLength(1)
-            .setMaxLength(maxPage.toString().length);
-
-        modal.addLabelComponents(
-            new LabelBuilder()
-                .setLabel(
-                    data.lastPage !== undefined
-                        ? `Page number (1-${data.lastPage})`
-                        : `Page number (1-${osuStatsPlayersMaxPages})`,
-                )
-                .setTextInputComponent(pageInput),
-        );
-
-        await ctx.showModal(modal);
+    protected getModalLabel(_data: OsuStatsPlayersViewDto, totalPages: number): string {
+        return `Page number (1-${totalPages})`;
     }
 }
 
 @Modal(/^osustats_players_modal:(?<sessionID>[a-zA-Z0-9_-]+)$/)
-export class OsuStatsPlayersPaginationModal extends AbstractComponent {
-    @Import() declare private readonly sessionService: SessionService;
-    @Import() declare private readonly osuStatsPlayersViewService: OsuStatsPlayersViewService;
+export class OsuStatsPlayersPaginationModal extends AbstractPaginationModal<
+    "osustats_players_view",
+    OsuStatsPlayersViewDto
+> {
+    @Import()
+    declare private readonly osuStatsPlayersViewService: OsuStatsPlayersViewService;
 
-    public async execute(ctx: ComponentContext): Promise<void> {
-        const { sessionID } = ctx.params;
+    protected readonly sessionKey = "osustats_players_view";
+    protected readonly dto = OsuStatsPlayersViewDto;
 
-        if (!sessionID) {
-            throw new Exception(EApplicationError.SESSION_EXPIRED);
-        }
+    protected get viewService(): OsuStatsPlayersViewService {
+        return this.osuStatsPlayersViewService;
+    }
 
-        const plain = await this.sessionService.get("osustats_players_view", sessionID);
-        if (!plain) {
-            throw new Exception(EApplicationError.SESSION_EXPIRED);
-        }
+    protected getCurrentPage(data: OsuStatsPlayersViewDto): number {
+        return data.page;
+    }
 
-        const data = plainToInstance(OsuStatsPlayersViewDto, plain);
-        if (data.authorID !== ctx.author.id) {
-            throw new Exception(EApplicationError.ACCESS_ERROR);
-        }
+    protected getTotalPages(data: OsuStatsPlayersViewDto): number {
+        return data.lastPage ?? osuStatsPlayersMaxPages;
+    }
 
-        const input = ctx.getTextInput("page_number");
-        if (!input) {
-            throw new Exception(EApplicationError.INPUT_ERROR);
-        }
+    protected async setCurrentPage(data: OsuStatsPlayersViewDto, page: number): Promise<void> {
+        const currentPage = data.page;
+        const players = await this.osuStatsPlayersViewService.fetchPage(data, page);
 
-        const newPage = parseInt(input, 10);
-        const maxPage = data.lastPage ?? osuStatsPlayersMaxPages;
+        if (!players.length) {
+            if (page === currentPage + 1) {
+                data.lastPage = currentPage;
+            }
 
-        if (Number.isNaN(newPage) || newPage < 1 || newPage > maxPage || newPage === data.page) {
             return;
         }
 
-        await ctx.deferUpdate();
+        data.page = page;
+        data.players = players;
 
-        const result = await this.osuStatsPlayersViewService.fetchPage(data, newPage);
-
-        if (!result.length) {
-            return;
+        if (players.length < osuStatsPlayersPageSize || page >= osuStatsPlayersMaxPages) {
+            data.lastPage = page;
         }
-
-        data.page = newPage;
-        data.players = result;
-
-        if (result.length < osuStatsPlayersPageSize || newPage >= osuStatsPlayersMaxPages) {
-            data.lastPage = newPage;
-        }
-
-        await this.sessionService.update(
-            "osustats_players_view",
-            sessionID,
-            data,
-            this.osuStatsPlayersViewService.getTtl(),
-        );
-
-        await ctx.update(this.osuStatsPlayersViewService.build(sessionID, data));
     }
 }

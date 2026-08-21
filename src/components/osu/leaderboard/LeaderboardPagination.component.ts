@@ -1,70 +1,68 @@
-import { Button, Import } from "@/core/decorators";
-import { AbstractComponent } from "@/core/discord/AbstractComponent";
-import { ComponentContext } from "@/core/discord/context/ComponentContext";
-import { SessionService } from "@/modules/cache/Session.service";
-import { LeaderboardViewService } from "@/modules/osu/leaderboard/LeaderboardView.service";
-import { EApplicationError, Exception } from "@domain/core/Exception";
-import { Pagination } from "@domain/discord/utils/Pagination";
+import { Button, Import, Modal } from "@/core/decorators";
 import { LeaderboardViewDto } from "@domain/osu/views/Leaderboard.view";
-import { plainToInstance } from "class-transformer";
-import { LabelBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } from "discord.js";
+import { LeaderboardViewService } from "@/modules/osu/leaderboard/LeaderboardView.service";
+import { AbstractPaginationButton } from "@/components/AbstractPaginationButton";
+import { AbstractPaginationModal } from "@/components/AbstractPaginationModal";
 
 @Button(/^osu_leaderboard_(?<action>first|prev|next|last|modal):(?<sessionID>[a-zA-Z0-9_-]+)$/)
-export class LeaderboardPaginationComponent extends AbstractComponent {
-    @Import() declare private readonly sessionService: SessionService;
+export class LeaderboardPaginationComponent extends AbstractPaginationButton<
+    "osu_leaderboard_view",
+    LeaderboardViewDto
+> {
     @Import() declare private readonly leaderboardViewService: LeaderboardViewService;
 
-    public async execute(ctx: ComponentContext): Promise<void> {
-        const { action, sessionID } = ctx.params;
+    protected readonly paginationID = "osu_leaderboard";
+    protected readonly sessionKey = "osu_leaderboard_view";
+    protected readonly dto = LeaderboardViewDto;
 
-        if (!sessionID || !action) {
-            throw new Exception(EApplicationError.SESSION_EXPIRED);
-        }
+    protected get viewService(): LeaderboardViewService {
+        return this.leaderboardViewService;
+    }
 
-        const plain = await this.sessionService.get("osu_leaderboard_view", sessionID);
+    protected getCurrentPage(data: LeaderboardViewDto): number {
+        return data.page;
+    }
 
-        if (!plain) {
-            throw new Exception(EApplicationError.SESSION_EXPIRED);
-        }
+    protected getTotalPages(data: LeaderboardViewDto): number {
+        return this.leaderboardViewService.getTotalPages(data);
+    }
 
-        const data = plainToInstance(LeaderboardViewDto, plain);
+    protected setCurrentPage(data: LeaderboardViewDto, page: number): void {
+        data.page = page;
+    }
 
-        if (data.authorID !== ctx.author.id) {
-            throw new Exception(EApplicationError.ACCESS_ERROR);
-        }
-
-        const totalPages = this.leaderboardViewService.getTotalPages(data);
-
-        if (action === "modal") {
-            const modal = new ModalBuilder().setCustomId(`osu_leaderboard_modal:${sessionID}`).setTitle("Jump to Page");
-
-            const pageInput = new TextInputBuilder()
-                .setCustomId("page_number")
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true)
-                .setMinLength(1)
-                .setMaxLength(totalPages.toString().length);
-
-            const pageLabel = new LabelBuilder().setLabel("Page number").setTextInputComponent(pageInput);
-            modal.addLabelComponents(pageLabel);
-
-            await ctx.showModal(modal);
-            return;
-        }
-
-        const newPage = Pagination.calculateNewPage(action, data.page, totalPages);
-
-        await ctx.deferUpdate();
-
-        if (newPage === data.page) {
-            return;
-        }
-
-        data.page = newPage;
-
+    protected async preparePage(data: LeaderboardViewDto): Promise<void> {
         await this.leaderboardViewService.prepare(data);
-        await this.sessionService.update("osu_leaderboard_view", sessionID, data, this.leaderboardViewService.getTtl());
+    }
+}
 
-        await ctx.update(this.leaderboardViewService.build(sessionID, data));
+@Modal(/^osu_leaderboard_modal:(?<sessionID>[a-zA-Z0-9_-]+)$/)
+export class LeaderboardPaginationModalComponent extends AbstractPaginationModal<
+    "osu_leaderboard_view",
+    LeaderboardViewDto
+> {
+    @Import() declare private readonly leaderboardViewService: LeaderboardViewService;
+
+    protected readonly sessionKey = "osu_leaderboard_view";
+    protected readonly dto = LeaderboardViewDto;
+
+    protected get viewService(): LeaderboardViewService {
+        return this.leaderboardViewService;
+    }
+
+    protected getCurrentPage(data: LeaderboardViewDto): number {
+        return data.page;
+    }
+
+    protected getTotalPages(data: LeaderboardViewDto): number {
+        return this.leaderboardViewService.getTotalPages(data);
+    }
+
+    protected setCurrentPage(data: LeaderboardViewDto, page: number): void {
+        data.page = page;
+    }
+
+    protected async preparePage(data: LeaderboardViewDto): Promise<void> {
+        await this.leaderboardViewService.prepare(data);
     }
 }
