@@ -156,10 +156,11 @@ export class ListScoreView extends AbstractScoreView {
             }
         }
 
-        const footer =
-            data.profile.provider === AdapterProvider.Bancho && pageScores.some((score) => score.id)
-                ? "Tip: click the grade to view the score"
-                : ProviderMeta[data.profile.provider].name;
+        const includeTip = AdapterProvider.Bancho && pageScores.some((score) => score.id);
+        const replaceWithMode = !pageScores.length;
+
+        let footer = includeTip ? "Tip: click the grade to view the score" : ProviderMeta[data.profile.provider].name;
+        if (replaceWithMode) footer = ProfileFormatter.mode(data.profile.mode);
 
         return embed
             .setFooter({
