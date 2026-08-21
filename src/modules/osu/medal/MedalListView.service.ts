@@ -8,6 +8,7 @@ import { MedalFormatter } from "@domain/osu/formatters/Medal.formatter";
 import { MedalListEntryDto, MedalListViewDto } from "@domain/osu/views/MedalList.view";
 import { ProfileFormatter } from "@domain/osu/formatters/Profile.formatter";
 import { DateFormatter } from "@domain/discord/formatters/Date.formatter";
+import { TextFormatter } from "@domain/discord/formatters/Text.formatter";
 
 export class MedalListViewService extends AbstractViewService<MedalListViewDto> {
     @Import() declare private readonly profileViewService: ProfileViewService;
@@ -81,10 +82,10 @@ export class MedalListViewService extends AbstractViewService<MedalListViewDto> 
         }
 
         if (!filters.length) {
-            return `\`${data.profile.username}\`'s achieved medals:`;
+            return `${TextFormatter.possessive(data.profile.username, true)} achieved medals:`;
         }
 
-        return `\`${data.profile.username}\`'s achieved medals • ${filters.join(" • ")}:`;
+        return `${TextFormatter.possessive(data.profile.username, true)} achieved medals • ${filters.join(" • ")}:`;
     }
 
     private footer(data: MedalListViewDto): string {

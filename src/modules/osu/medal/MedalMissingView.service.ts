@@ -8,6 +8,7 @@ import { MedalFormatter } from "@domain/osu/formatters/Medal.formatter";
 import { MedalMissingViewDto } from "@domain/osu/views/MedalMissing.view";
 import { OsekaiMedalDto } from "@domain/osekai/OsekaiMedal.dto";
 import { ProfileFormatter } from "@domain/osu/formatters/Profile.formatter";
+import { TextFormatter } from "@domain/discord/formatters/Text.formatter";
 
 export class MedalMissingViewService extends AbstractViewService<MedalMissingViewDto> {
     @Import() declare private readonly profileViewService: ProfileViewService;
@@ -50,10 +51,10 @@ export class MedalMissingViewService extends AbstractViewService<MedalMissingVie
         }
 
         if (!filters.length) {
-            return `Missing \`${data.profile.username}\`'s medals:`;
+            return `Missing ${TextFormatter.possessive(data.profile.username, true)} medals:`;
         }
 
-        return `Missing \`${data.profile.username}\`'s medals • ${filters.join(" • ")}:`;
+        return `Missing ${TextFormatter.possessive(data.profile.username, true)} medals • ${filters.join(" • ")}:`;
     }
 
     public getPageSize(): number {
