@@ -156,8 +156,8 @@ export class ListScoreView extends AbstractScoreView {
             }
         }
 
-        const includeTip = AdapterProvider.Bancho && pageScores.some((score) => score.id);
-        const replaceWithMode = !pageScores.length;
+        const includeTip = data.profile.provider === AdapterProvider.Bancho && pageScores.some((score) => score.id);
+        const replaceWithMode = !pageScores.length || (!includeTip && data.profile.provider === AdapterProvider.Bancho);
 
         let footer = includeTip ? "Tip: click the grade to view the score" : ProviderMeta[data.profile.provider].name;
         if (replaceWithMode) footer = ProfileFormatter.mode(data.profile.mode);

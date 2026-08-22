@@ -63,7 +63,6 @@ export class OsuStatsScoresViewService extends AbstractViewService<OsuStatsScore
 
     public build(sessionID: string, data: OsuStatsScoresViewDto): TMessagePayload {
         const pageSize = this.getPageSize(data);
-
         const totalPages = Math.ceil(data.total / pageSize) || 1;
 
         const components =
@@ -72,13 +71,10 @@ export class OsuStatsScoresViewService extends AbstractViewService<OsuStatsScore
         const renderData: ScoresViewDto = {
             timestamp: data.timestamp,
             authorID: data.authorID,
-
             profile: data.profile,
             scores: data.scores,
-
             displayQuery: null,
             activeAttributes: [],
-
             pageSize: data.pageSize,
             page: 1,
             layout: EScoreViewLayout.List,
@@ -88,7 +84,6 @@ export class OsuStatsScoresViewService extends AbstractViewService<OsuStatsScore
 
         return {
             content: OsuStatsFormatter.scoresFilters(data.request),
-
             embeds: [embed],
             components,
         };
