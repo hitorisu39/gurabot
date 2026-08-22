@@ -18,7 +18,9 @@ export abstract class AbstractReachCommand extends AbstractPpTargetCommand {
     declare private readonly reachTarget: CommandOption<string>;
 
     protected async resolvePpTarget(mode: GameMode, provider: AdapterProvider): Promise<TResolvedPpTarget> {
-        const user = await this.osuService.user(this.reachTarget.unwrap(), mode, provider);
+        const query = await this.resolveExplicitTarget(this.reachTarget.unwrap(), provider);
+        const user = await this.osuService.user(query, mode, provider);
+
         return {
             type: "user",
             user,
