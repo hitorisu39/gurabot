@@ -67,6 +67,11 @@ export class DateFormatter {
         return DateFormatter.parse(date).utc().format("MMM D");
     }
 
+    // 2026-01
+    public static isoMonth(date?: Date | number | string): string {
+        return DateFormatter.parse(date).utc().format("YYYY-MM");
+    }
+
     // Elapsed compact age (e.g., "5y", "5mo", "12d", "2h", "15m", "now")
     public static age(date: Date | number | string): string {
         const ended = DateFormatter.parse(date);

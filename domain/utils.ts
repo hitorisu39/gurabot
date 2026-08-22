@@ -40,7 +40,7 @@ export function smoothstep(edge0: number, edge1: number, value: number): number 
     return normalized * normalized * (3 - 2 * normalized);
 }
 
-export function isValidNumber(value: number | undefined): value is number {
+export function isValidNumber(value: number | undefined | null): value is number {
     return typeof value === "number" && Number.isFinite(value);
 }
 

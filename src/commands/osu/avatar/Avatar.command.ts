@@ -21,6 +21,8 @@ export class AvatarCommand extends AbstractOsuCommand {
         const profile = await this.osuService.user(target.query, target.mode, target.server);
         const embed = this.profileViewService.createBaseEmbed(profile, Date.now(), false);
 
+        console.log(profile.matchmakingStats);
+
         embed.setThumbnail(null).setImage(ProfileFormatter.avatar(target.server, profile.id, Date.now()));
         await ctx.respond(embed);
     }

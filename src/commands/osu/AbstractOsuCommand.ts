@@ -95,20 +95,24 @@ export abstract class AbstractOsuCommand extends AbstractSessionCommand {
         };
     }
 
+    protected async resolveExplicitTarget(value: string, server: AdapterProvider): Promise<string | number> {
+        const trimmed = value.trim();
+        const mentionedUserID = this.parseDiscordMention(trimmed);
+
+        if (mentionedUserID) {
+            return await this.resolveLinkedUser(mentionedUserID, server);
+        }
+
+        return trimmed;
+    }
+
     private async resolveTargetQuery(
         ctx: CommandContext,
         server: AdapterProvider,
         requireAuthorLink: boolean,
     ): Promise<string | number | null> {
         if (this.name.some()) {
-            const value = this.name.unwrap().trim();
-            const mentionedUserID = this.parseDiscordMention(value);
-
-            if (mentionedUserID) {
-                return await this.resolveLinkedUser(mentionedUserID, server);
-            }
-
-            return value;
+            return await this.resolveExplicitTarget(this.name.unwrap(), server);
         }
 
         if (this.discordUser.some()) {

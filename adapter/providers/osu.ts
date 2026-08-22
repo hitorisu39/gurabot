@@ -130,6 +130,32 @@ const UserMapping: Mapping = {
         },
     },
 
+    matchmakingStats: {
+        path: "matchmaking_stats",
+        nested: {
+            firstPlacements: "first_placements",
+            isRatingProvisional: "is_rating_provisional",
+            plays: "plays",
+            poolID: "pool_id",
+            rank: "rank",
+            rankPercent: "rank_percent",
+            rating: "rating",
+            totalPoints: "total_points",
+            userID: "user_id",
+            pool: {
+                path: "pool",
+                nested: {
+                    active: "active",
+                    id: "id",
+                    name: "name",
+                    rulesetID: "ruleset_id",
+                    type: "type",
+                    variantID: "variant_id",
+                },
+            },
+        },
+    },
+
     monthlyPlaycounts: {
         path: "monthly_playcounts",
         nested: {

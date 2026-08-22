@@ -66,9 +66,10 @@ export class MapFormatter {
         return `https://osu.pages.dev/preview#${mapID}`;
     }
 
-    public static stars(stars: number = 0): string {
+    public static stars(stars: number = 0, unicode: boolean = true): string {
         const floored = Math.floor(stars * 100) / 100;
-        return `${floored.toFixed(2)}★`;
+        const emoji = unicode ? "★" : "*";
+        return `${floored.toFixed(2)}${emoji}`;
     }
 
     public static bpm(bpm: number): string {
