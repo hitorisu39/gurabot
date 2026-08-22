@@ -3,7 +3,6 @@ import { ActionRow } from "@/core/discord/ui/ActionRow";
 import { Embed } from "@/core/discord/ui/Embed";
 import { SelectMenu } from "@/core/discord/ui/SelectMenu";
 import { AbstractViewService } from "@/modules/AbstractViewService";
-import { AsciiTable } from "@domain/discord/utils/AsciiTable";
 import { DateFormatter } from "@domain/discord/formatters/Date.formatter";
 import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";
 import { TextFormatter } from "@domain/discord/formatters/Text.formatter";
@@ -192,7 +191,7 @@ export class CompareProfileViewService extends AbstractViewService<CompareProfil
             ),
         ];
 
-        return new Embed().setDescription(this.renderTable(data, rows));
+        return this.renderComparison(data, rows);
     }
 
     public performance(data: CompareProfileViewDto): Embed {
@@ -361,7 +360,7 @@ export class CompareProfileViewService extends AbstractViewService<CompareProfil
             ),
         ];
 
-        return new Embed().setDescription(this.renderTable(data, rows));
+        return this.renderComparison(data, rows);
     }
 
     public top100(data: CompareProfileViewDto): Embed {
@@ -475,7 +474,7 @@ export class CompareProfileViewService extends AbstractViewService<CompareProfil
             ),
         ];
 
-        return new Embed().setDescription(this.renderTable(data, rows));
+        return this.renderComparison(data, rows);
     }
 
     public scores(data: CompareProfileViewDto): Embed {
@@ -627,7 +626,7 @@ export class CompareProfileViewService extends AbstractViewService<CompareProfil
             ),
         ];
 
-        return new Embed().setDescription(this.renderTable(data, rows));
+        return this.renderComparison(data, rows);
     }
 
     public activity(data: CompareProfileViewDto): Embed {
@@ -726,7 +725,7 @@ export class CompareProfileViewService extends AbstractViewService<CompareProfil
             ),
         ];
 
-        return new Embed().setDescription(this.renderTable(data, rows));
+        return this.renderComparison(data, rows);
     }
 
     public mapping(data: CompareProfileViewDto): Embed {
@@ -805,7 +804,7 @@ export class CompareProfileViewService extends AbstractViewService<CompareProfil
             this.compareRow("Fav. Genre", l.favoriteGenre, r.favoriteGenre),
         ];
 
-        return new Embed().setDescription(this.renderTable(data, rows));
+        return this.renderComparison(data, rows);
     }
 
     public mods(data: CompareProfileViewDto): Embed {
@@ -833,7 +832,7 @@ export class CompareProfileViewService extends AbstractViewService<CompareProfil
             ...this.modPpRows(left.ppByCombo, right.ppByCombo),
         ];
 
-        return new Embed().setDescription(this.renderTable(data, rows));
+        return this.renderComparison(data, rows);
     }
 
     public matchmaking(data: CompareProfileViewDto): Embed {
@@ -904,7 +903,7 @@ export class CompareProfileViewService extends AbstractViewService<CompareProfil
             ),
         ];
 
-        return new Embed().setDescription(this.renderTable(data, rows));
+        return this.renderComparison(data, rows);
     }
 
     public daily(data: CompareProfileViewDto): Embed {
@@ -1002,7 +1001,7 @@ export class CompareProfileViewService extends AbstractViewService<CompareProfil
             ),
         ];
 
-        return new Embed().setDescription(this.renderTable(data, rows));
+        return this.renderComparison(data, rows);
     }
 
     //#endregion
@@ -1067,76 +1066,47 @@ export class CompareProfileViewService extends AbstractViewService<CompareProfil
 
     //#region Table
 
-    private renderTable(data: CompareProfileViewDto, rows: ReadonlyArray<ICompareRow>): string {
-        const tableRows = rows.map((row) => ({
-            ...row,
-            left: TextFormatter.truncate(row.left, 20, "…"),
-            right: TextFormatter.truncate(row.right, 20, "…"),
-        }));
-
-        const table = new AsciiTable<ICompareRow>({
-            padding: 1,
-
-            borders: {
-                left: false,
-                right: false,
-                top: false,
-                bottom: false,
-                vertical: "|",
-                horizontal: "-",
-                intersection: "+",
-                headerSeparator: true,
+    private renderComparison(data: CompareProfileViewDto, rows: ReadonlyArray<ICompareRow>): Embed {
+        return new Embed().addFields(
+            {
+                name: data.left.profile.username,
+                value: this.renderPlayerGrid(rows, "left"),
+                inline: true,
             },
-
-            columns: [
-                {
-                    header: TextFormatter.truncate(data.left.profile.username, 20, "…"),
-                    accessor: "left",
-                    align: "right",
-                    headerAlign: "center",
-                },
-                {
-                    header: ProfileFormatter.mode(data.left.profile.mode),
-                    accessor: (row) => this.decorateMetric(row),
-                    align: "center",
-                    headerAlign: "center",
-                },
-                {
-                    header: TextFormatter.truncate(data.right.profile.username, 20, "…"),
-                    accessor: "right",
-                    align: "left",
-                    headerAlign: "center",
-                },
-            ],
-        });
-
-        const plain = table.generate(tableRows);
-        return ["```ansi", this.applyAnsi(plain), "```"].join("\n");
+            {
+                name: data.right.profile.username,
+                value: this.renderPlayerGrid(rows, "right"),
+                inline: true,
+            },
+        );
     }
 
-    private decorateMetric(row: ICompareRow): string {
+    private renderPlayerGrid(rows: ReadonlyArray<ICompareRow>, side: "left" | "right"): string {
+        return DiscordFormatter.formatInlineGrid(
+            rows.map((row) => ({
+                label: `${this.isWinner(row, side) ? "◆ " : "  "}${row.metric}`,
+                value: row[side],
+            })),
+            1,
+            40,
+            " ",
+            19,
+            15,
+        );
+    }
+
+    private isWinner(row: ICompareRow, side: "left" | "right"): boolean {
         if (
             !row.direction ||
-            row.leftValue === null ||
-            row.leftValue === undefined ||
-            row.rightValue === null ||
-            row.rightValue === undefined ||
-            !Number.isFinite(row.leftValue) ||
-            !Number.isFinite(row.rightValue) ||
+            !isValidNumber(row.leftValue) ||
+            !isValidNumber(row.rightValue) ||
             row.leftValue === row.rightValue
         ) {
-            return row.metric;
+            return false;
         }
 
         const leftWins = row.direction === "higher" ? row.leftValue > row.rightValue : row.leftValue < row.rightValue;
-        return leftWins ? `◀ ${row.metric}` : `${row.metric} ▶`;
-    }
-
-    private applyAnsi(value: string): string {
-        const green = "\u001b[0;32m";
-        const reset = "\u001b[0m";
-
-        return value.replaceAll("◀", `${green}◀${reset}`).replaceAll("▶", `${green}▶${reset}`);
+        return side === "left" ? leftWins : !leftWins;
     }
 
     private compareRow(
