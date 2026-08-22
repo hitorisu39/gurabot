@@ -25,12 +25,28 @@ export class RecentScoreSubcommand extends AbstractRecentCommand {
     protected forcedPassed = false;
 }
 
+@Command({
+    name: "rs",
+    description: "Shows most recent play of an osu! player.",
+    slashOnly: true,
+})
+export class RecentScoreAliasCommand extends AbstractRecentCommand {}
+
 @Subcommand({
     root: "recent",
     name: "pass",
     description: "Shows most recent passed play of an osu! player.",
 })
 export class RecentPassSubcommand extends AbstractRecentCommand {
+    protected forcedPassed = true;
+}
+
+@Command({
+    name: "rp",
+    description: "Shows most recent passed play of an osu! player.",
+    slashOnly: true,
+})
+export class RecentPassAliasCommand extends AbstractRecentCommand {
     protected forcedPassed = true;
 }
 
