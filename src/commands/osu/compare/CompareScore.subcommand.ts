@@ -10,7 +10,6 @@ import { GameMode } from "@generated/adapter/types";
 })
 export class CompareScoreSubcommand extends AbstractCompareCommand {}
 
-@Category(ECommandCategory.Osu)
 @Command({
     name: "cs",
     description: "Compares your scores on a specific beatmap.",
@@ -20,7 +19,7 @@ export class CompareScoreSlashAliasCommand extends AbstractCompareCommand {}
 
 @Category(ECommandCategory.Osu)
 @Command({
-    name: "scorecompare",
+    name: "comparescore",
     description: "Compares your scores on a specific beatmap.",
     aliases: ["compare", "c", "gap", "comp"],
     prefixOnly: true,
