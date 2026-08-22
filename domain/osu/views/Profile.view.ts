@@ -9,6 +9,7 @@ export enum EProfileView {
     Statistics = "Statistics",
     Average = "Average",
     Mods = "Mods",
+    Matchmaking = "Matchmaking",
     Daily = "Daily",
     Mapper = "Mapper",
 }

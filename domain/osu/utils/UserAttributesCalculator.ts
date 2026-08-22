@@ -1,4 +1,4 @@
-import { GameMode, User } from "@generated/adapter/types";
+import { GameMode, MatchmakingStats, User } from "@generated/adapter/types";
 import { PopulatedUser } from "../Profile.dto";
 
 const TO_NEXT_LEVEL: ReadonlyArray<number> = [
@@ -79,5 +79,89 @@ export class UserAttributesCalculator {
 
         const scoreNeeded = targetTotalScore - currentTotalScore;
         return Math.max(0, scoreNeeded);
+    }
+
+    public static accountAgeMonths(user: User, now: Date = new Date()): number {
+        const joined = new Date(user.joinDate);
+
+        const difference = Math.max(0, now.getTime() - joined.getTime());
+        const monthMilliseconds = 30.4375 * 24 * 60 * 60 * 1000;
+
+        return Math.max(1, difference / monthMilliseconds);
+    }
+
+    public static ppPerAccountMonth(user: User, now: Date = new Date()): number {
+        return user.statistics.pp / this.accountAgeMonths(user, now);
+    }
+
+    public static averageMonthlyPlaycount(user: User, months?: number): number | null {
+        const entries = this.monthlyEntries(user.monthlyPlaycounts, months);
+
+        if (!entries.length) {
+            return null;
+        }
+
+        return entries.reduce((sum, entry) => sum + entry.count, 0) / entries.length;
+    }
+
+    public static peakMonthlyPlaycount(user: User): { startDate: string; count: number } | null {
+        if (!user.monthlyPlaycounts?.length) {
+            return null;
+        }
+
+        return user.monthlyPlaycounts.reduce((best, entry) => {
+            return entry.count > best.count ? entry : best;
+        });
+    }
+
+    public static activePlaycountMonths(user: User): number {
+        return user.monthlyPlaycounts?.filter((entry) => entry.count > 0).length ?? 0;
+    }
+
+    public static averageMonthlyReplaysWatched(user: User, months?: number): number | null {
+        const entries = this.monthlyEntries(user.replaysWatchedCounts, months);
+
+        if (!entries.length) {
+            return null;
+        }
+
+        return entries.reduce((sum, entry) => sum + entry.count, 0) / entries.length;
+    }
+
+    public static peakMonthlyReplaysWatched(user: User): { startDate: string; count: number } | null {
+        if (!user.replaysWatchedCounts?.length) {
+            return null;
+        }
+
+        return user.replaysWatchedCounts.reduce((best, entry) => {
+            return entry.count > best.count ? entry : best;
+        });
+    }
+
+    private static monthlyEntries<T extends { startDate: string; count: number }>(
+        entries: ReadonlyArray<T> | undefined,
+        months?: number,
+    ): Array<T> {
+        if (!entries?.length) {
+            return [];
+        }
+
+        const sorted = [...entries].sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+
+        if (months === undefined) {
+            return sorted;
+        }
+
+        return sorted.slice(-months);
+    }
+
+    public static currentMatchmaking(user: User): MatchmakingStats | null {
+        const stats = user.matchmakingStats;
+
+        if (!stats?.length) {
+            return null;
+        }
+
+        return stats.find((entry) => entry.pool?.active) ?? [...stats].sort((a, b) => b.poolID - a.poolID)[0] ?? null;
     }
 }

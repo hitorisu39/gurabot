@@ -362,6 +362,65 @@ export class ProfileViewService extends AbstractViewService<ProfileViewDto, EPro
         return embed;
     }
 
+    public matchmaking(data: ProfileViewDto): Embed {
+        const stats = UserAttributesCalculator.currentMatchmaking(data.profile);
+
+        if (!stats) {
+            throw new Exception(
+                EApplicationError.INTERNAL_ERROR,
+                "Matchmaking statistics are unavailable for this player.",
+            );
+        }
+
+        const embed = this.createBaseEmbed(data.profile, data.timestamp);
+        const firstPlacementRate = stats.plays > 0 ? (stats.firstPlacements / stats.plays) * 100 : 0;
+
+        embed.addFields(
+            {
+                name: "Season",
+                value: stats.pool?.name ?? "Unknown",
+                inline: true,
+            },
+            {
+                name: "Rating",
+                value: DiscordFormatter.number(stats.rating),
+                inline: true,
+            },
+            {
+                name: "Rank",
+                value: ProfileFormatter.rank(stats.rank),
+                inline: true,
+            },
+            {
+                name: "Rank Percent",
+                value: `Top ${DiscordFormatter.fixed(stats.rankPercent * 100, 4)}%`,
+                inline: true,
+            },
+            {
+                name: "Plays",
+                value: DiscordFormatter.number(stats.plays),
+                inline: true,
+            },
+            {
+                name: "Wins",
+                value: DiscordFormatter.number(stats.firstPlacements),
+                inline: true,
+            },
+            {
+                name: "Win Rate",
+                value: `${DiscordFormatter.fixed(firstPlacementRate)}%`,
+                inline: true,
+            },
+            {
+                name: "Rating Status",
+                value: stats.isRatingProvisional ? "Provisional" : "Established",
+                inline: true,
+            },
+        );
+
+        return embed;
+    }
+
     public daily(data: ProfileViewDto): Embed {
         const { profile } = data;
         if (!profile.dailyChallenge)
@@ -413,6 +472,8 @@ export class ProfileViewService extends AbstractViewService<ProfileViewDto, EPro
             .addChoice("Mods", EProfileView.Mods, "Favorite top 100 mods")
             .addChoice("Average", EProfileView.Average, "Average top 100 statistics");
 
+        if (UserAttributesCalculator.currentMatchmaking(data.profile))
+            menu.addChoice("Matchmaking", EProfileView.Matchmaking, "Ranked Play matchmaking statistics");
         if (data.profile.dailyChallenge) menu.addChoice("Daily", EProfileView.Daily, "Daily challenge statistics");
 
         menu.addChoice("Mapper", EProfileView.Mapper, "Mapper statistics");
@@ -437,6 +498,8 @@ export class ProfileViewService extends AbstractViewService<ProfileViewDto, EPro
                 return this.mods(data);
             case EProfileView.Mapper:
                 return this.mapper(data);
+            case EProfileView.Matchmaking:
+                return this.matchmaking(data);
             case EProfileView.Daily:
                 return this.daily(data);
             default:

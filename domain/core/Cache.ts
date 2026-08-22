@@ -14,6 +14,7 @@ import { MedalMissingViewDto } from "@domain/osu/views/MedalMissing.view";
 import { MedalRecentViewDto } from "@domain/osu/views/MedalRecent.view";
 import { NoChokeViewDto } from "@domain/osu/views/NoChoke.view";
 import { ProfileViewDto } from "@domain/osu/views/Profile.view";
+import { CompareProfileViewDto } from "@domain/osu/views/CompareProfile.view";
 import { ScoresViewDto } from "@domain/osu/views/Scores.view";
 import { SimulateViewDto } from "@domain/osu/views/Simulate.view";
 import { TopIfViewDto } from "@domain/osu/views/TopIf.view";
@@ -33,6 +34,7 @@ export interface ICacheSchema {
 
     // Sessions
     osu_profile_view: ProfileViewDto;
+    osu_profile_compare_view: CompareProfileViewDto;
     osu_scores_view: ScoresViewDto;
     osu_map_view: MapViewDto;
     osu_simulate_view: SimulateViewDto;

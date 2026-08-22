@@ -1,5 +1,27 @@
 import { SchemaModel, Field } from "../builder";
 
+export const MatchmakingStatsPool = SchemaModel.define("MatchmakingStatsPool", {
+    active: Field.Boolean(),
+    id: Field.Int(),
+    name: Field.String(),
+    rulesetID: Field.Int(),
+    type: Field.String(),
+    variantID: Field.Int(),
+});
+
+export const MatchmakingStats = SchemaModel.define("MatchmakingStats", {
+    firstPlacements: Field.Int(),
+    isRatingProvisional: Field.Boolean(),
+    plays: Field.Int(),
+    poolID: Field.Int(),
+    rank: Field.Int(),
+    rankPercent: Field.Float(),
+    rating: Field.Int(),
+    totalPoints: Field.Int(),
+    userID: Field.Int(),
+    pool: Field.Model(MatchmakingStatsPool).Optional(),
+});
+
 export const MonthlyPlaycounts = SchemaModel.define("MonthlyPlaycounts", {
     startDate: Field.String(),
     count: Field.Int(),
@@ -105,6 +127,7 @@ export const User = SchemaModel.define("User", {
     highestRank: Field.Model(HighestRank).Optional(),
     team: Field.Model(Team).Optional(),
     dailyChallenge: Field.Model(DailyChallengeStatistics).Optional(),
+    matchmakingStats: Field.Model(MatchmakingStats).Array().Optional(),
 
     statistics: Field.Model(UserStatistics),
 
