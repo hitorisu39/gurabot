@@ -89,7 +89,6 @@ export class ScoreViewService extends AbstractViewService<ScoresViewDto, Record<
 
     public render(data: ScoresViewDto, scores: Array<Score>, meta?: Record<string, unknown>): Embed {
         const layout = data.layout ?? EScoreViewLayout.List;
-
         const view = this.getView(layout);
 
         if (scores.length === 1 && scores[0]) {
@@ -119,7 +118,6 @@ export class ScoreViewService extends AbstractViewService<ScoresViewDto, Record<
 
         for (const populatedScore of populated) {
             const index = scores.findIndex((score) => ScoreUtils.compare(score, populatedScore));
-
             if (index !== -1) {
                 scores.splice(index, 1, populatedScore);
             }
