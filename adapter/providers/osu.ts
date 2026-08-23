@@ -554,6 +554,15 @@ export const OsuProvider = SchemaProvider.define("osu", {
             returns: User,
             mapping: UserMapping,
         },
+        score: {
+            args: {
+                id: Field.String(),
+            },
+            path: (args) => `/scores/${args.id}`,
+            method: "GET",
+            returns: Score,
+            mapping: ScoreMapping,
+        },
         best: {
             args: {
                 id: Field.Int(),

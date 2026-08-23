@@ -6,6 +6,13 @@ import { UserScoreType } from "@domain/osu/Adapter.dto";
 
 export class OsuScoreService extends AbstractService {
     @Trace()
+    public async score(id: string | number, provider: AdapterProvider = AdapterProvider.Bancho): Promise<Score> {
+        return this.adapter[provider].score({
+            id: String(id),
+        });
+    }
+
+    @Trace()
     public async best(
         id: number,
         mode: GameMode,
