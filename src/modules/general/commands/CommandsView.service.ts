@@ -68,7 +68,6 @@ export class CommandsViewService extends AbstractViewService<CommandsViewDto> {
                 ? commands
                       .map(({ name, command }) => {
                           const options = router.getCommandOptions(command);
-
                           return `\`${name}\`: ${this.normalizeDescription(options?.description)}`;
                       })
                       .join("\n")
@@ -107,8 +106,8 @@ export class CommandsViewService extends AbstractViewService<CommandsViewDto> {
             return "No description provided.";
         }
 
-        if (normalized.length > 500) {
-            return `${normalized.slice(0, 497)}...`;
+        if (normalized.length > 100) {
+            return `${normalized.slice(0, 97)}...`;
         }
 
         return normalized;

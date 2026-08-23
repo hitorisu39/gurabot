@@ -1,4 +1,4 @@
-import { Command, Subcommand } from "@/core/decorators";
+import { Subcommand } from "@/core/decorators";
 import { AbstractGraphReplaysCommand } from "./AbstractGraphReplaysCommand";
 
 @Subcommand({
@@ -8,10 +8,10 @@ import { AbstractGraphReplaysCommand } from "./AbstractGraphReplaysCommand";
 })
 export class GraphReplaysSubcommand extends AbstractGraphReplaysCommand {}
 
-@Command({
-    name: "graphreplays",
-    description: "Shows a player's replays watched history.",
-    aliases: ["greplays", "greplay", "replaygraph", "replaysgraph"],
-    prefixOnly: true,
-})
-export class GraphReplaysCommand extends AbstractGraphReplaysCommand {}
+// @Command({
+//     name: "graphreplays",
+//     description: "Shows a player's replays watched history.",
+//     aliases: ["greplays", "greplay", "replaygraph", "replaysgraph"],
+//     prefixOnly: true,
+// })
+// export class GraphReplaysCommand extends AbstractGraphReplaysCommand {}

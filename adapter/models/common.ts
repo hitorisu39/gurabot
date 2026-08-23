@@ -129,6 +129,6 @@ export const BeatmapSearchSortField = SchemaEnum.define("BeatmapSearchSortField"
 });
 
 export const BeatmapSearchSortOrder = SchemaEnum.define("BeatmapSearchSortOrder", {
-    Ascending: "Ascending",
-    Descending: "Descending",
+    Ascending: "Asc",
+    Descending: "Desc",
 });

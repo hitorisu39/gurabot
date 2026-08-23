@@ -76,6 +76,26 @@ export class SessionService extends AbstractService {
         if (typeof ttl === "number") this.setupTimeout(sessionID, ttl);
     }
 
+    public async transition<TFrom extends keyof ICacheSchema, TTo extends keyof ICacheSchema>(
+        fromKey: TFrom,
+        toKey: TTo,
+        sessionID: string,
+        data: ICacheSchema[TTo],
+        ttl?: number,
+    ): Promise<void> {
+        const current = await this.get(fromKey, sessionID);
+        if (!current) {
+            throw new Exception(EApplicationError.SESSION_EXPIRED);
+        }
+
+        const effectiveTtl = ttl ?? this.sessionTtl.get(sessionID);
+
+        await this.cache.set(toKey, data, effectiveTtl, sessionID);
+        await this.cache.delete(fromKey, sessionID);
+
+        if (effectiveTtl) this.setupTimeout(sessionID, effectiveTtl);
+    }
+
     public async destroy<K extends keyof ICacheSchema>(baseKey: K, sessionID: string): Promise<void> {
         await this.cache.delete(baseKey, sessionID);
     }
