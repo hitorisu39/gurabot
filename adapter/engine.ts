@@ -54,8 +54,7 @@ const httpsAgent = new https.Agent({
 });
 
 export class AdapterEngine {
-    private readonly hooks: AdapterHook[] = [];
-
+    private readonly hooks: Array<AdapterHook> = [];
     private static readonly nonRetryableStatusCodes = new Set([400, 401, 403, 404, 422]);
 
     constructor(

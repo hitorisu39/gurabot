@@ -1,5 +1,5 @@
 import { Field, Mapping, SchemaProvider } from "../builder";
-import { Beatmap, Beatmapset } from "../models/beatmap";
+import { Beatmap, BeatmapPlaycount, Beatmapset } from "../models/beatmap";
 import { GameMode, Genre, Grade, Language, RankingType, Status } from "../models/common";
 import { Score } from "../models/score";
 import { RankingStatistics, User } from "../models/user";
@@ -403,6 +403,19 @@ BeatmapsetMapping.beatmaps = {
     nested: BeatmapMapping,
 };
 
+const BeatmapPlaycountMapping: Mapping = {
+    beatmapID: "beatmap_id",
+    count: "count",
+    beatmap: {
+        path: "beatmap",
+        nested: BeatmapMapping,
+    },
+    beatmapset: {
+        path: "beatmapset",
+        nested: BeatmapsetMapping,
+    },
+};
+
 const ScoreMapping: Mapping = {
     id: "id",
     index: "$index",
@@ -677,11 +690,7 @@ export const OsuProvider = SchemaProvider.define("osu", {
                 return `/beatmaps/${args.beatmapID}/scores?${params.toString()}`;
             },
             method: "GET",
-            returns: {
-                model: Score,
-                isArray: true,
-                dataPath: "scores",
-            },
+            returns: { model: Score, isArray: true, dataPath: "scores" },
             mapping: ScoreMapping,
         },
         rankings: {
@@ -716,12 +725,33 @@ export const OsuProvider = SchemaProvider.define("osu", {
                 return `/rankings/${args.mode}/${args.type}${query ? `?${query}` : ""}`;
             },
             method: "GET",
-            returns: {
-                model: RankingStatistics,
-                isArray: true,
-                dataPath: "ranking",
-            },
+            returns: { model: RankingStatistics, isArray: true, dataPath: "ranking" },
             mapping: RankingStatisticsMapping,
+        },
+        most_played: {
+            args: {
+                id: Field.Int(),
+                limit: Field.Int().Optional(),
+                offset: Field.Int().Optional(),
+            },
+            path: (args) => {
+                const params = new URLSearchParams();
+
+                if (args.limit !== undefined) {
+                    params.set("limit", String(args.limit));
+                }
+
+                if (args.offset !== undefined) {
+                    params.set("offset", String(args.offset));
+                }
+
+                const query = params.toString();
+
+                return `/users/${args.id}/beatmapsets/most_played${query ? `?${query}` : ""}`;
+            },
+            method: "GET",
+            returns: { model: BeatmapPlaycount, isArray: true },
+            mapping: BeatmapPlaycountMapping,
         },
     },
 });

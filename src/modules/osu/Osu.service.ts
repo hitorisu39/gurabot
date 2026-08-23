@@ -2,6 +2,7 @@ import { AbstractService } from "@/core/framework/AbstractService";
 import {
     AdapterProvider,
     Beatmap,
+    BeatmapPlaycount,
     Beatmapset,
     GameMode,
     RankingStatistics,
@@ -98,7 +99,7 @@ export class OsuService extends AbstractService {
         const normalizedNameOrID = this.normalizeUserLookup(nameOrID);
 
         if (isApiCacheable) {
-            const inputCacheKey = `${normalizedNameOrID}:${mode}`;
+            const inputCacheKey = this.getUserProfileCacheKey(normalizedNameOrID, mode, provider);
             const cachedUser = await this.cache.get("osu_user_profile", inputCacheKey);
 
             if (cachedUser) {
@@ -125,16 +126,20 @@ export class OsuService extends AbstractService {
             setImmediate(() => {
                 this.updateUserCache(user.id, user.username, user.previousUsernames, provider);
 
-                const idCacheKey = `${user.id}:${mode}`;
-                const usernameCacheKey = `${user.username.toLowerCase()}:${mode}`;
+                const idCacheKey = this.getUserProfileCacheKey(normalizedNameOrID, mode, provider);
+                const usernameCacheKey = this.getUserProfileCacheKey(normalizedNameOrID, mode, provider);
 
                 this.cache
                     .set("osu_user_profile", populatedUser, this.profileCacheTtl, idCacheKey)
-                    .catch(console.error);
+                    .catch((error) =>
+                        this.logger.error(error, `Failed to cache osu! profile ${user.id} (${provider}) by ID`),
+                    );
 
                 this.cache
                     .set("osu_user_profile", populatedUser, this.profileCacheTtl, usernameCacheKey)
-                    .catch(console.error);
+                    .catch((error) =>
+                        this.logger.error(error, `Failed to cache osu! profile ${user.id} (${provider}) by username`),
+                    );
             });
         }
 
@@ -480,13 +485,15 @@ export class OsuService extends AbstractService {
         beatmap: Beatmap,
         provider: AdapterProvider = AdapterProvider.Bancho,
     ): Promise<IUserBeatmapScoreContext> {
+        const beatmapScoresPromise = this.userBeatmapScores(id, mode, beatmap.id, provider);
+        const personalScoresPromise = this.best(id, mode, scoreBestQueryLimit, provider);
         const globalScoresPromise = BeatmapUtils.hasLeaderboard(beatmap)
             ? this.beatmapScores(beatmap.id, mode, null, null, provider)
             : Promise.resolve<Array<Score>>([]);
 
         const [scores, personalScores, globalScores] = await Promise.all([
-            this.userBeatmapScores(id, mode, beatmap.id, provider),
-            this.best(id, mode, scoreBestQueryLimit, provider),
+            beatmapScoresPromise,
+            personalScoresPromise,
             globalScoresPromise,
         ]);
 
@@ -564,6 +571,20 @@ export class OsuService extends AbstractService {
             mode,
             mods: mods ? [...mods] : undefined,
             legacyOnly: legacyOnly ?? false,
+        });
+    }
+
+    @Trace()
+    public async mostPlayed(
+        id: number,
+        limit?: number,
+        offset?: number,
+        provider: AdapterProvider = AdapterProvider.Bancho,
+    ): Promise<Array<BeatmapPlaycount>> {
+        return await this.adapter[provider].most_played({
+            id,
+            limit,
+            offset,
         });
     }
 
@@ -965,6 +986,10 @@ export class OsuService extends AbstractService {
             default:
                 return await this.best(id, mode, limit, provider);
         }
+    }
+
+    private getUserProfileCacheKey(nameOrID: string | number, mode: GameMode, provider: AdapterProvider): string {
+        return `${provider}:${nameOrID}:${mode}`;
     }
 
     private updateUserCache(
