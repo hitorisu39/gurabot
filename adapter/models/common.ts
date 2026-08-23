@@ -70,3 +70,65 @@ export const RankingType = SchemaEnum.define("RankingType", {
     Country: "Country",
     Charts: "Charts",
 });
+
+export const BeatmapSearchStatus = SchemaEnum.define("BeatmapSearchStatus", {
+    Any: "Any",
+    Leaderboard: "Leaderboard",
+    Ranked: "Ranked",
+    Qualified: "Qualified",
+    Loved: "Loved",
+    Favourites: "Favourites",
+    Pending: "Pending",
+    WIP: "WIP",
+    Graveyard: "Graveyard",
+    Mine: "Mine",
+});
+
+export const BeatmapSearchExtra = SchemaEnum.define("BeatmapSearchExtra", {
+    Video: "Video",
+    Storyboard: "Storyboard",
+});
+
+export const BeatmapSearchGeneral = SchemaEnum.define("BeatmapSearchGeneral", {
+    Recommended: "Recommended",
+    Converts: "Converts",
+    Follows: "Follows",
+    Spotlights: "Spotlights",
+    FeaturedArtists: "FeaturedArtists",
+});
+
+export const BeatmapSearchPlayed = SchemaEnum.define("BeatmapSearchPlayed", {
+    Any: "Any",
+    Played: "Played",
+    Unplayed: "Unplayed",
+});
+
+export const BeatmapSearchRank = SchemaEnum.define("BeatmapSearchRank", {
+    SSH: "SSH",
+    SS: "SS",
+    SH: "SH",
+    S: "S",
+    A: "A",
+    B: "B",
+    C: "C",
+    D: "D",
+});
+
+export const BeatmapSearchSortField = SchemaEnum.define("BeatmapSearchSortField", {
+    Artist: "Artist",
+    Creator: "Creator",
+    Difficulty: "Difficulty",
+    Favourites: "Favourites",
+    Nominations: "Nominations",
+    Plays: "Plays",
+    Ranked: "Ranked",
+    Rating: "Rating",
+    Relevance: "Relevance",
+    Title: "Title",
+    Updated: "Updated",
+});
+
+export const BeatmapSearchSortOrder = SchemaEnum.define("BeatmapSearchSortOrder", {
+    Ascending: "Ascending",
+    Descending: "Descending",
+});
