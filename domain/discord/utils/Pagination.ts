@@ -32,6 +32,25 @@ export class Pagination {
             });
     }
 
+    public static buildCursor(prefix: string, sessionID: string, page: number, totalPages: number): ActionRow {
+        const isFirst = page <= 1;
+        const isLast = page >= totalPages;
+
+        return new ActionRow()
+            .addEmojiButton("⏪", `${prefix}_first:${sessionID}`, ButtonStyle.Secondary, {
+                disabled: isFirst,
+            })
+            .addEmojiButton("◀️", `${prefix}_prev:${sessionID}`, ButtonStyle.Secondary, {
+                disabled: isFirst,
+            })
+            .addButton(`${page} / ${totalPages}`, `${prefix}_page:${sessionID}`, ButtonStyle.Secondary, {
+                disabled: true,
+            })
+            .addEmojiButton("▶️", `${prefix}_next:${sessionID}`, ButtonStyle.Secondary, {
+                disabled: isLast,
+            });
+    }
+
     public static calculateNewPage(action: string, current: number, total: number): number {
         switch (action) {
             case "first":

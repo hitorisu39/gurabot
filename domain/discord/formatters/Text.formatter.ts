@@ -39,6 +39,16 @@ export class TextFormatter {
         );
     }
 
+    public static escapeMarkdown(value: string): string {
+        return value.replace(/([\\`*_~|[\]()>])/g, "\\$1");
+    }
+
+    public static inlineCode(value: string): string {
+        const escaped = value.replace(/\\/g, "\\\\").replace(/`/g, "ˋ").replace(/\r?\n/g, " ");
+
+        return `\`${escaped}\``;
+    }
+
     public static truncate(value: string, maxLength: number, suffix: string = "..."): string {
         if (value.length <= maxLength) {
             return value;

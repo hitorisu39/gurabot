@@ -91,6 +91,43 @@ export class MapFormatter {
         return `${osuBaseUrl}/b/${mapID}`;
     }
 
+    public static mapsetLink(mapsetID: number): string {
+        return `${osuBaseUrl}/beatmapsets/${mapsetID}`;
+    }
+
+    public static mapsetHeader(artist: string, title: string, limit: number = 70): string {
+        const full = `${artist} - ${title}`;
+
+        if (full.length <= limit) {
+            return full;
+        }
+
+        if (title.length <= limit) {
+            return title;
+        }
+
+        const delimiter = " - ";
+        const ellipsis = "..";
+
+        const available = limit - delimiter.length - ellipsis.length * 2;
+
+        if (available <= 0) {
+            return title.slice(0, Math.max(0, limit - ellipsis.length)) + ellipsis;
+        }
+
+        const artistLimit = Math.floor(available * 0.35);
+        const shortArtist = artist.length > artistLimit ? `${artist.slice(0, artistLimit).trim()}${ellipsis}` : artist;
+
+        const remainingForTitle = limit - shortArtist.length - delimiter.length;
+
+        const shortTitle =
+            title.length > remainingForTitle
+                ? `${title.slice(0, Math.max(0, remainingForTitle - ellipsis.length)).trim()}${ellipsis}`
+                : title;
+
+        return `${shortArtist}${delimiter}${shortTitle}`;
+    }
+
     public static attributes(mode: GameMode, attributes: BeatmapAttributes): string {
         const { cs, ar, od, hp } = attributes;
 
