@@ -6,3 +6,4 @@ export const LinkableAdapterProvider = {
 } as const;
 
 export type LinkableAdapterProvider = (typeof LinkableAdapterProvider)[keyof typeof LinkableAdapterProvider];
+export type UserScoreType = "best" | "recent" | "firsts" | "pinned";
