@@ -27,6 +27,7 @@ import { OsuStatsPlayersViewDto } from "@domain/osustats/views/OsuStatsPlayers.v
 import { OsuStatsScoresViewDto } from "@domain/osustats/views/OsuStatsScores.view";
 import { OsuTrackLadderSimulationConfigDto, OsuTrackStatsHistoryDto } from "@domain/osutrack/OsuTrack.dto";
 import { CompareTopViewDto } from "@domain/osu/views/CompareTop.view";
+import { MostPlayedViewDto } from "@domain/osu/views/MostPlayed.view";
 
 export interface ICacheSchema {
     // Discord
@@ -46,6 +47,7 @@ export interface ICacheSchema {
     osu_medal_missing_view: MedalMissingViewDto;
     osu_medal_list_view: MedalListViewDto;
     osu_compare_top_view: CompareTopViewDto;
+    osu_most_played_view: MostPlayedViewDto;
 
     osekai_ranking_view: OsekaiRankingViewDto;
 
