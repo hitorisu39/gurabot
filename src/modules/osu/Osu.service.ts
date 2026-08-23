@@ -15,14 +15,14 @@ import { PopulatedUser } from "@domain/osu/Profile.dto";
 import { plainToInstance } from "class-transformer";
 import { PopulatedScore, ScoreWithMaps, ScoreWithPlacement } from "@domain/osu/Score.dto";
 import { ProviderMeta } from "@generated/adapter";
-import { CalculatorMapService } from "./calculator/CalculatorMap.service";
-import type { TRepository } from "@/core";
 import { ScorePlacementEvaluator } from "@domain/osu/utils/ScorePlacementEvaluator";
 import { BeatmapUtils } from "@domain/osu/utils/BeatmapUtils";
 import { ParsedMod } from "@generated/adapter/mods";
 import { scoreBestQueryLimit } from "@domain/osu/configs/Score.config";
-
-export type UserScoreType = "best" | "recent" | "firsts" | "pinned";
+import { OsuUserService } from "./OsuUser.service";
+import { OsuScoreService } from "./OsuScore.service";
+import { OsuBeatmapService } from "./OsuBeatmap.service";
+import { UserScoreType } from "@domain/osu/Adapter.dto";
 
 interface IUserWithScoresInput {
     nameOrID: string | number;
@@ -51,99 +51,112 @@ interface IUserBeatmapScoreContext {
 
 export class OsuService extends AbstractService {
     @Import() declare private readonly calculatorService: CalculatorService;
-    @Import() declare private readonly calculatorMapService: CalculatorMapService;
-
-    /**
-     * For how long we want to cache the osu! profile in seconds.
-     */
-    private readonly profileCacheTtl: number = 300;
-
-    /**
-     * Maximum number of beatmaps requested from osu! in a single API request.
-     */
-    private readonly beatmapFetchChunkSize = 50;
-
-    /**
-     * Maximum number of beatmap API requests executed concurrently.
-     */
-    private readonly beatmapFetchConcurrency = 2;
-
-    /**
-     * Maximum number of beatmaps persisted in one background cache transaction.
-     */
-    private readonly beatmapCacheWriteBatchSize = 100;
-
-    /**
-     * Beatmaps waiting to be persisted to PostgreSQL.
-     */
-    private readonly pendingBeatmapCacheWrites = new Map<number, Beatmap>();
-
-    /**
-     * Short-lived process-local cache.
-     */
-    private readonly transientBeatmapCache = new Map<number, Beatmap>();
-
-    private beatmapCacheFlushScheduled = false;
-    private beatmapCacheFlushRunning = false;
+    @Import() declare private readonly userService: OsuUserService;
+    @Import() declare private readonly scoreService: OsuScoreService;
+    @Import() declare private readonly beatmapService: OsuBeatmapService;
 
     //#region API
 
-    @Trace()
     public async user(
         nameOrID: string | number,
         mode: GameMode,
         provider: AdapterProvider = AdapterProvider.Bancho,
     ): Promise<PopulatedUser> {
-        const client = this.adapter[provider];
-        const isApiCacheable = ProviderMeta[provider].cache;
-        const normalizedNameOrID = this.normalizeUserLookup(nameOrID);
+        return this.userService.user(nameOrID, mode, provider);
+    }
 
-        if (isApiCacheable) {
-            const inputCacheKey = this.getUserProfileCacheKey(normalizedNameOrID, mode, provider);
-            const cachedUser = await this.cache.get("osu_user_profile", inputCacheKey);
+    public async best(
+        id: number,
+        mode: GameMode,
+        limit: number,
+        provider: AdapterProvider = AdapterProvider.Bancho,
+    ): Promise<Array<Score>> {
+        return this.scoreService.best(id, mode, limit, provider);
+    }
 
-            if (cachedUser) {
-                this.logger.debug(`Redis cache hit for user: ${normalizedNameOrID}`);
-                return plainToInstance(PopulatedUser, cachedUser);
-            }
-        }
+    public async pinned(
+        id: number,
+        mode: GameMode,
+        limit: number,
+        provider: AdapterProvider = AdapterProvider.Bancho,
+    ): Promise<Array<Score>> {
+        return this.scoreService.pinned(id, mode, limit, provider);
+    }
 
-        const userID =
-            typeof normalizedNameOrID === "string" ? { username: normalizedNameOrID } : { id: normalizedNameOrID };
+    public async firsts(
+        id: number,
+        mode: GameMode,
+        limit: number,
+        provider: AdapterProvider = AdapterProvider.Bancho,
+    ): Promise<Array<Score>> {
+        return this.scoreService.firsts(id, mode, limit, provider);
+    }
 
-        const user = await client.user({
-            ...userID,
-            mode,
-        });
+    public async recent(
+        id: number,
+        mode: GameMode,
+        limit: number,
+        includeFails: boolean = false,
+        provider: AdapterProvider = AdapterProvider.Bancho,
+    ): Promise<Array<Score>> {
+        return this.scoreService.recent(id, mode, limit, includeFails, provider);
+    }
 
-        const populatedUser = {
-            ...user,
-            mode,
-            provider,
-        } as PopulatedUser;
+    public async beatmap(
+        id: number,
+        provider: AdapterProvider = AdapterProvider.Bancho,
+        bypassCache: boolean = false,
+    ): Promise<Beatmap | null> {
+        return this.beatmapService.beatmap(id, provider, bypassCache);
+    }
 
-        if (isApiCacheable) {
-            setImmediate(() => {
-                this.updateUserCache(user.id, user.username, user.previousUsernames, provider);
+    public async beatmaps(
+        ids: Array<number>,
+        provider: AdapterProvider = AdapterProvider.Bancho,
+    ): Promise<Array<Beatmap>> {
+        return this.beatmapService.beatmaps(ids, provider);
+    }
 
-                const idCacheKey = this.getUserProfileCacheKey(normalizedNameOrID, mode, provider);
-                const usernameCacheKey = this.getUserProfileCacheKey(normalizedNameOrID, mode, provider);
+    public async beatmapset(
+        id: number,
+        provider: AdapterProvider = AdapterProvider.Bancho,
+        bypassCache: boolean = false,
+    ): Promise<Beatmapset | null> {
+        return this.beatmapService.beatmapset(id, provider, bypassCache);
+    }
 
-                this.cache
-                    .set("osu_user_profile", populatedUser, this.profileCacheTtl, idCacheKey)
-                    .catch((error) =>
-                        this.logger.error(error, `Failed to cache osu! profile ${user.id} (${provider}) by ID`),
-                    );
+    public async mostPlayed(
+        id: number,
+        options?: {
+            limit?: number;
+            offset?: number;
+        },
+        provider: AdapterProvider = AdapterProvider.Bancho,
+    ): Promise<Array<BeatmapPlaycount>> {
+        return this.beatmapService.mostPlayed(id, options, provider);
+    }
 
-                this.cache
-                    .set("osu_user_profile", populatedUser, this.profileCacheTtl, usernameCacheKey)
-                    .catch((error) =>
-                        this.logger.error(error, `Failed to cache osu! profile ${user.id} (${provider}) by username`),
-                    );
-            });
-        }
+    public async userBeatmapScores(
+        id: number,
+        mode: GameMode,
+        beatmapID: number,
+        provider: AdapterProvider = AdapterProvider.Bancho,
+    ): Promise<Array<Score>> {
+        return this.scoreService.userBeatmapScores(id, mode, beatmapID, provider);
+    }
 
-        return populatedUser;
+    public async beatmapScores(
+        beatmapID: number,
+        mode: GameMode,
+        mods?: ReadonlyArray<ParsedMod> | null,
+        legacyOnly?: boolean | null,
+        provider: AdapterProvider = AdapterProvider.Bancho,
+    ): Promise<Array<Score>> {
+        return this.scoreService.beatmapScores(beatmapID, mode, mods, legacyOnly, provider);
+    }
+
+    public async resolveCachedID(nameOrID: string | number, provider: AdapterProvider): Promise<number | null> {
+        return this.userService.resolveCachedID(nameOrID, provider);
     }
 
     @Trace()
@@ -158,8 +171,8 @@ export class OsuService extends AbstractService {
 
         if (typeof nameOrID === "number") {
             const [user, scores] = await Promise.all([
-                this.user(nameOrID, mode, provider),
-                this.fetchScoresByType(nameOrID, mode, type, limit, includeFails, provider),
+                this.userService.user(nameOrID, mode, provider),
+                this.scoreService.byType(nameOrID, mode, type, limit, includeFails, provider),
             ]);
 
             return {
@@ -168,23 +181,25 @@ export class OsuService extends AbstractService {
             };
         }
 
-        const username = this.normalizeUserLookup(nameOrID);
+        const username = nameOrID.toLowerCase();
         let cachedID: number | null = null;
 
         if (isCacheable) {
-            cachedID = await this.resolveCachedID(username, provider);
+            cachedID = await this.userService.resolveCachedID(username, provider);
         }
 
         if (cachedID) {
             const [user, initialScores] = await Promise.all([
-                this.user(username, mode, provider),
-                this.fetchScoresByType(cachedID, mode, type, limit, includeFails, provider).catch(() => null),
+                this.userService.user(username, mode, provider),
+                this.scoreService.byType(cachedID, mode, type, limit, includeFails, provider).catch(() => null),
             ]);
 
             if (user.id !== cachedID || !initialScores) {
-                this.logger.warn(`Namechange detected or cache stale for ${username}. Re-fetching scores...`);
+                this.logger.warn(
+                    `Namechange detected or cache stale for ${username} (${provider}). Re-fetching scores...`,
+                );
 
-                const correctedScores = await this.fetchScoresByType(
+                const correctedScores = await this.scoreService.byType(
                     user.id,
                     mode,
                     type,
@@ -205,71 +220,13 @@ export class OsuService extends AbstractService {
             };
         }
 
-        const user = await this.user(username, mode, provider);
-        const scores = await this.fetchScoresByType(user.id, mode, type, limit, includeFails, provider);
+        const user = await this.userService.user(username, mode, provider);
+        const scores = await this.scoreService.byType(user.id, mode, type, limit, includeFails, provider);
 
         return {
             user,
             scores,
         };
-    }
-
-    @Trace()
-    public async best(
-        id: number,
-        mode: GameMode,
-        limit: number,
-        provider: AdapterProvider = AdapterProvider.Bancho,
-    ): Promise<Array<Score>> {
-        return await this.adapter[provider].best({
-            id,
-            mode,
-            limit,
-        });
-    }
-
-    @Trace()
-    public async pinned(
-        id: number,
-        mode: GameMode,
-        limit: number,
-        provider: AdapterProvider = AdapterProvider.Bancho,
-    ): Promise<Array<Score>> {
-        return await this.adapter[provider].pinned({
-            id,
-            mode,
-            limit,
-        });
-    }
-
-    @Trace()
-    public async firsts(
-        id: number,
-        mode: GameMode,
-        limit: number,
-        provider: AdapterProvider = AdapterProvider.Bancho,
-    ): Promise<Array<Score>> {
-        return await this.adapter[provider].firsts({
-            id,
-            mode,
-            limit,
-        });
-    }
-
-    @Trace()
-    public async recent(
-        id: number,
-        mode: GameMode,
-        limit: number,
-        includeFails: boolean = false,
-        provider: AdapterProvider = AdapterProvider.Bancho,
-    ): Promise<Array<Score>> {
-        return await this.adapter[provider].recent({
-            id,
-            mode,
-            limit,
-            includeFails,
-        });
     }
 
     @Trace()
@@ -284,7 +241,7 @@ export class OsuService extends AbstractService {
         },
         provider: AdapterProvider = AdapterProvider.Bancho,
     ): Promise<Array<RankingStatistics>> {
-        return await this.adapter[provider].rankings({
+        return this.adapter[provider].rankings({
             mode,
             type,
             country: options?.country,
@@ -295,200 +252,16 @@ export class OsuService extends AbstractService {
     }
 
     @Trace()
-    public async beatmap(
-        id: number,
-        provider: AdapterProvider = AdapterProvider.Bancho,
-        bypassCache: boolean = false,
-    ): Promise<Beatmap | null> {
-        // Force osu! for beatmaps retrieval.
-        provider = AdapterProvider.Bancho;
-
-        if (!bypassCache) {
-            const cached = await this.repository.beatmap.findUnique({
-                where: {
-                    id,
-                },
-                include: {
-                    beatmapset: {
-                        include: {
-                            covers: true,
-                        },
-                    },
-                    owners: true,
-                },
-            });
-
-            if (cached) {
-                return plainToInstance(Beatmap, cached);
-            }
-        }
-
-        const apiData = await this.adapter[provider].beatmap({ id });
-        if (!apiData) {
-            return null;
-        }
-
-        await this.upsertBeatmap(apiData);
-        return apiData;
-    }
-
-    @Trace()
-    public async beatmaps(
-        ids: Array<number>,
-        provider: AdapterProvider = AdapterProvider.Bancho,
-    ): Promise<Array<Beatmap>> {
-        // Force osu! for beatmaps retrieval.
-        provider = AdapterProvider.Bancho;
-
-        if (ids.length === 0) {
-            return [];
-        }
-
-        const uniqueIDs = [...new Set(ids)];
-
-        const cached = await this.repository.beatmap.findMany({
-            where: {
-                id: {
-                    in: uniqueIDs,
-                },
-            },
-            include: {
-                beatmapset: {
-                    include: {
-                        covers: true,
-                    },
-                },
-                owners: true,
-            },
-        });
-
-        const cachedMaps = plainToInstance(Beatmap, cached);
-        const mapsByID = new Map<number, Beatmap>();
-
-        for (const map of cachedMaps) {
-            mapsByID.set(map.id, map);
-        }
-
-        for (const id of uniqueIDs) {
-            if (mapsByID.has(id)) {
-                continue;
-            }
-
-            const transient = this.transientBeatmapCache.get(id);
-
-            if (transient) {
-                mapsByID.set(id, transient);
-            }
-        }
-
-        const missingIDs = uniqueIDs.filter((id) => !mapsByID.has(id));
-        if (missingIDs.length > 0) {
-            const fetchedMaps = await this.fetchMissingBeatmaps(missingIDs, provider);
-
-            for (const map of fetchedMaps) {
-                mapsByID.set(map.id, map);
-
-                this.transientBeatmapCache.set(map.id, map);
-            }
-
-            this.queueBeatmapCacheWrite(fetchedMaps);
-        }
-
-        return ids.map((id) => mapsByID.get(id)).filter((map): map is Beatmap => map !== undefined);
-    }
-
-    @Trace()
-    public async beatmapset(
-        id: number,
-        provider: AdapterProvider = AdapterProvider.Bancho,
-        bypassCache: boolean = false,
-    ): Promise<Beatmapset | null> {
-        // Force osu! for beatmaps retrieval.
-        provider = AdapterProvider.Bancho;
-
-        if (!bypassCache) {
-            const cached = await this.repository.beatmapset.findUnique({
-                where: {
-                    id,
-                },
-                include: {
-                    covers: true,
-                    beatmaps: {
-                        include: {
-                            owners: true,
-                        },
-                    },
-                },
-            });
-
-            if (cached) {
-                return plainToInstance(Beatmapset, cached);
-            }
-        }
-
-        const apiData = await this.adapter[provider].beatmapset({ id });
-        if (!apiData) {
-            return null;
-        }
-
-        if (bypassCache && apiData.beatmaps) {
-            const cachedMaps = await this.repository.beatmap.findMany({
-                where: {
-                    beatmapsetID: id,
-                },
-            });
-
-            const cachedChecksums = new Map(cachedMaps.map((map) => [map.id, map.checksum]));
-
-            for (const apiMap of apiData.beatmaps) {
-                const cachedSum = cachedChecksums.get(apiMap.id);
-
-                if (cachedSum && cachedSum !== apiMap.checksum) {
-                    this.calculatorMapService.delete(apiMap.id);
-                }
-            }
-        }
-
-        await this.upsertBeatmapset(apiData);
-
-        if (apiData.beatmaps && apiData.beatmaps.length > 0) {
-            const beatmapsToUpsert = apiData.beatmaps.map((beatmap) => {
-                beatmap.beatmapsetID = id;
-
-                return beatmap;
-            });
-
-            await this.upsertBeatmaps(beatmapsToUpsert);
-        }
-
-        return apiData;
-    }
-
-    @Trace()
-    public async userBeatmapScores(
-        id: number,
-        mode: GameMode,
-        beatmapID: number,
-        provider: AdapterProvider = AdapterProvider.Bancho,
-    ): Promise<Array<Score>> {
-        return await this.adapter[provider].user_beatmap_scores({
-            id,
-            mode,
-            beatmapID,
-        });
-    }
-
-    @Trace()
     public async userBeatmapScoreContext(
         id: number,
         mode: GameMode,
         beatmap: Beatmap,
         provider: AdapterProvider = AdapterProvider.Bancho,
     ): Promise<IUserBeatmapScoreContext> {
-        const beatmapScoresPromise = this.userBeatmapScores(id, mode, beatmap.id, provider);
-        const personalScoresPromise = this.best(id, mode, scoreBestQueryLimit, provider);
+        const beatmapScoresPromise = this.scoreService.userBeatmapScores(id, mode, beatmap.id, provider);
+        const personalScoresPromise = this.scoreService.best(id, mode, scoreBestQueryLimit, provider);
         const globalScoresPromise = BeatmapUtils.hasLeaderboard(beatmap)
-            ? this.beatmapScores(beatmap.id, mode, null, null, provider)
+            ? this.scoreService.beatmapScores(beatmap.id, mode, null, null, provider)
             : Promise.resolve<Array<Score>>([]);
 
         const [scores, personalScores, globalScores] = await Promise.all([
@@ -516,7 +289,7 @@ export class OsuService extends AbstractService {
     }> {
         if (typeof nameOrID === "number") {
             const [user, context] = await Promise.all([
-                this.user(nameOrID, mode, provider),
+                this.userService.user(nameOrID, mode, provider),
                 this.userBeatmapScoreContext(nameOrID, mode, beatmap, provider),
             ]);
 
@@ -526,17 +299,25 @@ export class OsuService extends AbstractService {
             };
         }
 
-        const username = this.normalizeUserLookup(nameOrID);
-        const cachedID = ProviderMeta[provider].cache ? await this.resolveCachedID(username, provider) : null;
+        const username = nameOrID.toLowerCase();
+
+        const cachedID = ProviderMeta[provider].cache
+            ? await this.userService.resolveCachedID(username, provider)
+            : null;
 
         if (cachedID) {
             const [user, initialContext] = await Promise.all([
-                this.user(username, mode, provider),
+                this.userService.user(username, mode, provider),
                 this.userBeatmapScoreContext(cachedID, mode, beatmap, provider).catch(() => null),
             ]);
 
             if (user.id !== cachedID || !initialContext) {
+                this.logger.warn(
+                    `Namechange detected or cache stale for ${username} (${provider}). Re-fetching beatmap score context...`,
+                );
+
                 const context = await this.userBeatmapScoreContext(user.id, mode, beatmap, provider);
+
                 return {
                     user,
                     context,
@@ -549,7 +330,7 @@ export class OsuService extends AbstractService {
             };
         }
 
-        const user = await this.user(username, mode, provider);
+        const user = await this.userService.user(username, mode, provider);
         const context = await this.userBeatmapScoreContext(user.id, mode, beatmap, provider);
 
         return {
@@ -559,50 +340,19 @@ export class OsuService extends AbstractService {
     }
 
     @Trace()
-    public async beatmapScores(
-        beatmapID: number,
-        mode: GameMode,
-        mods?: ReadonlyArray<ParsedMod> | null,
-        legacyOnly?: boolean | null,
-        provider: AdapterProvider = AdapterProvider.Bancho,
-    ): Promise<Array<Score>> {
-        return await this.adapter[provider].beatmap_scores({
-            beatmapID,
-            mode,
-            mods: mods ? [...mods] : undefined,
-            legacyOnly: legacyOnly ?? false,
-        });
-    }
-
-    @Trace()
-    public async mostPlayed(
-        id: number,
-        limit?: number,
-        offset?: number,
-        provider: AdapterProvider = AdapterProvider.Bancho,
-    ): Promise<Array<BeatmapPlaycount>> {
-        return await this.adapter[provider].most_played({
-            id,
-            limit,
-            offset,
-        });
-    }
-
-    @Trace()
     public async populateMaps(
         scores: Array<Score>,
         provider: AdapterProvider = AdapterProvider.Bancho,
     ): Promise<Array<ScoreWithMaps>> {
-        const mapIds = [...new Set(scores.map((score) => score.beatmapID))];
-        const fetchedMaps = mapIds.length > 0 ? await this.beatmaps(mapIds, provider) : [];
+        const mapIDs = [...new Set(scores.map((score) => score.beatmapID))];
+        const fetchedMaps = mapIDs.length > 0 ? await this.beatmapService.beatmaps(mapIDs, provider) : [];
         const mapDict = new Map(fetchedMaps.map((map) => [map.id, map]));
-
         const populated: Array<ScoreWithMaps> = [];
 
         for (const score of scores) {
             const fetched = mapDict.get(score.beatmapID);
 
-            if (fetched && fetched.beatmapset) {
+            if (fetched?.beatmapset) {
                 populated.push({
                     ...score,
                     beatmap: fetched,
@@ -620,7 +370,7 @@ export class OsuService extends AbstractService {
         mode: M,
         includeFC: boolean = false,
     ): Promise<Array<PopulatedScore<M>>> {
-        return await this.calculatorService.scores(scores, mode, includeFC);
+        return this.calculatorService.scores(scores, mode, includeFC);
     }
 
     @Trace()
@@ -631,8 +381,8 @@ export class OsuService extends AbstractService {
         provider: AdapterProvider = AdapterProvider.Bancho,
     ): Promise<Array<PopulatedScore<M>>> {
         const withMaps = await this.populateMaps(scores, provider);
-        const populated = await this.populateCalculations(withMaps, mode, includeFC);
-        return populated;
+
+        return this.populateCalculations(withMaps, mode, includeFC);
     }
 
     @Trace()
@@ -648,382 +398,18 @@ export class OsuService extends AbstractService {
         const personalScoresPromise =
             data.personalScores !== undefined
                 ? Promise.resolve(data.personalScores)
-                : this.best(data.userID, data.mode, 100, provider);
+                : this.scoreService.best(data.userID, data.mode, 100, provider);
 
         const globalScoresPromise =
             data.globalScores !== undefined
                 ? Promise.resolve(data.globalScores)
                 : BeatmapUtils.hasLeaderboard(data.beatmap)
-                  ? this.beatmapScores(data.beatmap.id, data.mode, null, null, provider)
+                  ? this.scoreService.beatmapScores(data.beatmap.id, data.mode, null, null, provider)
                   : Promise.resolve<Array<Score>>([]);
 
         const [personalScores, globalScores] = await Promise.all([personalScoresPromise, globalScoresPromise]);
 
         return new ScorePlacementEvaluator(data.beatmap, personalScores, globalScores).evaluate(data.scores);
-    }
-
-    @Trace()
-    public async resolveCachedID(nameOrID: string | number, provider: AdapterProvider): Promise<number | null> {
-        if (typeof nameOrID === "number") {
-            return nameOrID;
-        }
-
-        const username = nameOrID.toLowerCase();
-        const cachedUser = await this.repository.userCache.findUnique({
-            where: {
-                username_server: {
-                    username,
-                    server: provider,
-                },
-            },
-        });
-
-        return cachedUser?.id ?? null;
-    }
-
-    //#endregion
-
-    //#region Internal
-
-    private async fetchMissingBeatmaps(ids: Array<number>, provider: AdapterProvider): Promise<Array<Beatmap>> {
-        if (ids.length === 0) {
-            return [];
-        }
-
-        const chunks: Array<Array<number>> = [];
-
-        for (let i = 0; i < ids.length; i += this.beatmapFetchChunkSize) {
-            chunks.push(ids.slice(i, i + this.beatmapFetchChunkSize));
-        }
-
-        const results: Array<Array<Beatmap>> = new Array(chunks.length);
-        let nextChunkIndex = 0;
-
-        const worker = async (): Promise<void> => {
-            while (true) {
-                const index = nextChunkIndex++;
-
-                if (index >= chunks.length) {
-                    return;
-                }
-
-                const apiData = await this.adapter[provider].beatmaps({
-                    ids: chunks[index]!,
-                });
-
-                results[index] = Array.isArray(apiData) ? apiData : [];
-            }
-        };
-
-        const workerCount = Math.min(this.beatmapFetchConcurrency, chunks.length);
-
-        await Promise.all(
-            Array.from(
-                {
-                    length: workerCount,
-                },
-                () => worker(),
-            ),
-        );
-
-        return results.flat();
-    }
-
-    private queueBeatmapCacheWrite(maps: ReadonlyArray<Beatmap>): void {
-        if (maps.length === 0) {
-            return;
-        }
-
-        for (const map of maps) {
-            this.pendingBeatmapCacheWrites.set(map.id, map);
-            this.transientBeatmapCache.set(map.id, map);
-        }
-
-        this.scheduleBeatmapCacheFlush();
-    }
-
-    private scheduleBeatmapCacheFlush(): void {
-        if (this.pendingBeatmapCacheWrites.size === 0) {
-            return;
-        }
-
-        if (this.beatmapCacheFlushRunning || this.beatmapCacheFlushScheduled) {
-            return;
-        }
-
-        this.beatmapCacheFlushScheduled = true;
-
-        setImmediate(() => {
-            this.beatmapCacheFlushScheduled = false;
-            void this.flushBeatmapCacheWrites();
-        });
-    }
-
-    private async flushBeatmapCacheWrites(): Promise<void> {
-        if (this.beatmapCacheFlushRunning) {
-            return;
-        }
-
-        this.beatmapCacheFlushRunning = true;
-
-        try {
-            while (this.pendingBeatmapCacheWrites.size > 0) {
-                const batch = Array.from(this.pendingBeatmapCacheWrites.values()).slice(
-                    0,
-                    this.beatmapCacheWriteBatchSize,
-                );
-
-                for (const map of batch) {
-                    this.pendingBeatmapCacheWrites.delete(map.id);
-                }
-
-                try {
-                    await this.upsertBeatmaps(batch);
-
-                    for (const map of batch) {
-                        if (this.transientBeatmapCache.get(map.id) === map) {
-                            this.transientBeatmapCache.delete(map.id);
-                        }
-                    }
-                } catch (error) {
-                    this.logger.error(error, `Failed to cache ${batch.length} beatmaps`);
-
-                    for (const map of batch) {
-                        if (this.transientBeatmapCache.get(map.id) === map) {
-                            this.transientBeatmapCache.delete(map.id);
-                        }
-                    }
-                }
-            }
-        } finally {
-            this.beatmapCacheFlushRunning = false;
-
-            if (this.pendingBeatmapCacheWrites.size > 0) {
-                this.scheduleBeatmapCacheFlush();
-            }
-        }
-    }
-
-    @Trace()
-    private async upsertBeatmapset(data: Beatmapset, repository?: TRepository): Promise<void> {
-        const { covers, ...rest } = data;
-
-        const cb = async (repo: TRepository) => {
-            await repo.beatmapset.upsert({
-                where: {
-                    id: rest.id,
-                },
-                create: {
-                    ...rest,
-                    beatmaps: undefined,
-                    covers: covers
-                        ? {
-                              create: covers,
-                          }
-                        : undefined,
-                },
-                update: {
-                    ...rest,
-                    beatmaps: undefined,
-                    covers: covers
-                        ? {
-                              upsert: {
-                                  create: covers,
-                                  update: covers,
-                              },
-                          }
-                        : undefined,
-                },
-            });
-        };
-
-        return repository ? cb(repository) : this.repository.$transaction(cb);
-    }
-
-    @Trace()
-    private async upsertBeatmaps(maps: Array<Beatmap>): Promise<void> {
-        if (maps.length === 0) {
-            return;
-        }
-
-        const uniqueSets = new Map<number, Beatmapset>();
-
-        const uniqueOwners = new Map<
-            number,
-            {
-                id: number;
-                username: string;
-            }
-        >();
-
-        for (const map of maps) {
-            if (map.beatmapset) {
-                uniqueSets.set(map.beatmapset.id, map.beatmapset);
-            }
-
-            if (map.owners) {
-                for (const owner of map.owners) {
-                    uniqueOwners.set(owner.id, {
-                        id: owner.id,
-                        username: owner.username,
-                    });
-                }
-            }
-        }
-
-        await this.repository.$transaction(async (tx) => {
-            for (const owner of uniqueOwners.values()) {
-                await tx.beatmapOwner.upsert({
-                    where: {
-                        id: owner.id,
-                    },
-                    create: owner,
-                    update: {
-                        username: owner.username,
-                    },
-                });
-            }
-
-            for (const set of uniqueSets.values()) {
-                await this.upsertBeatmapset(set, tx);
-            }
-
-            for (const map of maps) {
-                const { owners, ...rest } = map;
-
-                const ownerConnect =
-                    owners?.map((owner) => ({
-                        id: owner.id,
-                    })) ?? [];
-
-                await tx.beatmap.upsert({
-                    where: {
-                        id: rest.id,
-                    },
-                    create: {
-                        ...rest,
-                        beatmapset: undefined,
-                        owners:
-                            ownerConnect.length > 0
-                                ? {
-                                      connect: ownerConnect,
-                                  }
-                                : undefined,
-                    },
-                    update: {
-                        ...rest,
-                        beatmapset: undefined,
-                        owners:
-                            ownerConnect.length > 0
-                                ? {
-                                      set: ownerConnect,
-                                  }
-                                : undefined,
-                    },
-                });
-            }
-        });
-    }
-
-    @Trace()
-    private async upsertBeatmap(data: Beatmap, repository?: TRepository): Promise<void> {
-        const { beatmapset, owners, ...rest } = data;
-
-        const cb = async (repo: TRepository) => {
-            if (beatmapset) {
-                await this.upsertBeatmapset(beatmapset, repo);
-            }
-
-            const ownerRelations =
-                owners && owners.length > 0
-                    ? {
-                          connectOrCreate: owners.map((owner) => ({
-                              where: {
-                                  id: owner.id,
-                              },
-                              create: {
-                                  id: owner.id,
-                                  username: owner.username,
-                              },
-                          })),
-                      }
-                    : undefined;
-
-            await repo.beatmap.upsert({
-                where: {
-                    id: rest.id,
-                },
-                create: {
-                    ...rest,
-                    owners: ownerRelations,
-                },
-                update: {
-                    ...rest,
-                    owners: ownerRelations,
-                },
-            });
-        };
-
-        return repository ? cb(repository) : this.repository.$transaction(cb);
-    }
-
-    @Trace()
-    private async fetchScoresByType(
-        id: number,
-        mode: GameMode,
-        type: UserScoreType,
-        limit: number,
-        includeFails: boolean = false,
-        provider: AdapterProvider,
-    ): Promise<Array<Score>> {
-        switch (type) {
-            case "recent":
-                return await this.recent(id, mode, limit, includeFails, provider);
-            case "pinned":
-                return await this.pinned(id, mode, limit, provider);
-            case "firsts":
-                return await this.firsts(id, mode, limit, provider);
-            default:
-                return await this.best(id, mode, limit, provider);
-        }
-    }
-
-    private getUserProfileCacheKey(nameOrID: string | number, mode: GameMode, provider: AdapterProvider): string {
-        return `${provider}:${nameOrID}:${mode}`;
-    }
-
-    private updateUserCache(
-        id: number,
-        username: string,
-        previous: Array<string> = [],
-        provider: AdapterProvider,
-    ): void {
-        const namesToCache = [username, ...previous].map((name) => name.toLowerCase());
-
-        Promise.all(
-            namesToCache.map((name) =>
-                this.repository.userCache.upsert({
-                    where: {
-                        username_server: {
-                            username: name,
-                            server: provider,
-                        },
-                    },
-                    create: {
-                        id,
-                        username: name,
-                        server: provider,
-                    },
-                    update: {
-                        id,
-                    },
-                }),
-            ),
-        ).catch((error) => this.logger.error(error, `Failed to update UserCache for ${username}`));
-    }
-
-    private normalizeUserLookup(nameOrID: string | number): string | number {
-        return typeof nameOrID === "string" ? nameOrID.toLowerCase() : nameOrID;
     }
 
     //#endregion
