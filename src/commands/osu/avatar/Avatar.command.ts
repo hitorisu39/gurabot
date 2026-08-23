@@ -10,7 +10,7 @@ import { ECommandCategory } from "@domain/core/Command";
 @Command({
     name: "avatar",
     description: "Sends player's osu! profile picture.",
-    aliases: ["av"],
+    aliases: ["av", "pfp"],
 })
 export class AvatarCommand extends AbstractOsuCommand {
     @Import() declare private readonly profileViewService: ProfileViewService;
@@ -19,7 +19,7 @@ export class AvatarCommand extends AbstractOsuCommand {
     public async execute(ctx: CommandContext): Promise<void> {
         const target = await this.resolveTarget(ctx);
         const profile = await this.osuService.user(target.query, target.mode, target.server);
-        const embed = this.profileViewService.createBaseEmbed(profile, Date.now(), false);
+        const embed = this.profileViewService.createBaseEmbed(profile, Date.now(), false, false);
 
         console.log(profile.matchmakingStats);
 
