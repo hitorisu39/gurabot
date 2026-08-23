@@ -77,12 +77,22 @@ export type MappingConfig =
 export type ArgType = FieldType | `${FieldType}?`;
 export type Mapping = Record<string, MappingConfig>;
 
+export interface RawEndpointReturn {
+    raw: true;
+}
+
+export type EndpointReturn =
+    | SchemaModel
+    | { model: SchemaModel; isArray?: boolean; dataPath?: string }
+    | RawEndpointReturn;
+
 export interface EndpointConfig {
     path: (args: any) => string;
     method: "GET" | "POST";
-    returns: SchemaModel | { model: SchemaModel; isArray?: boolean; dataPath?: string };
+    returns: EndpointReturn;
     args?: Record<string, SchemaField>;
     mapping: Mapping;
+    responseType?: "json" | "arraybuffer";
     transformResponse?: EndpointResponseTransform;
 }
 

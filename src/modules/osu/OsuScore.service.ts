@@ -13,6 +13,18 @@ export class OsuScoreService extends AbstractService {
     }
 
     @Trace()
+    public async replay(
+        id: string | number,
+        mode?: GameMode,
+        provider: AdapterProvider = AdapterProvider.Bancho,
+    ): Promise<Uint8Array> {
+        return this.adapter[provider].replay({
+            id: String(id),
+            mode,
+        });
+    }
+
+    @Trace()
     public async best(
         id: number,
         mode: GameMode,

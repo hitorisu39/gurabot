@@ -119,6 +119,7 @@ export class AdapterEngine {
             url: endpoint.path(mappedArgs),
             baseURL: this.config.base,
             method: endpoint.method,
+            responseType: endpoint.responseType,
             headers: {
                 "Content-Type": "application/json",
             },
@@ -206,9 +207,26 @@ export class AdapterEngine {
             data = await endpoint.transformResponse(data, mappedArgs);
         }
 
-        const returnsModel = "model" in endpoint.returns ? endpoint.returns.model : endpoint.returns;
-        const isArray = "isArray" in endpoint.returns ? endpoint.returns.isArray : false;
-        const dataPath = "dataPath" in endpoint.returns ? endpoint.returns.dataPath : undefined;
+        const endpointReturns = endpoint.returns;
+
+        if ("raw" in endpointReturns) {
+            if (data instanceof Uint8Array) {
+                return data;
+            }
+
+            if (data instanceof ArrayBuffer) {
+                return new Uint8Array(data);
+            }
+
+            throw new AdapterConfigurationError(`Adapter endpoint "${endpointName}" expected a binary response.`, {
+                providerName: this.config.name,
+                endpointName,
+            });
+        }
+
+        const returnsModel = "model" in endpointReturns ? endpointReturns.model : endpointReturns;
+        const isArray = "isArray" in endpointReturns ? endpointReturns.isArray : false;
+        const dataPath = "dataPath" in endpointReturns ? endpointReturns.dataPath : undefined;
         const targetData = dataPath ? this.getByPath(data, dataPath) : data;
 
         if (isArray) {
