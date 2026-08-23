@@ -81,3 +81,12 @@ export const BeatmapPlaycount = SchemaModel.define("BeatmapPlaycount", {
     beatmap: Field.Model(Beatmap).Optional(),
     beatmapset: Field.Model(Beatmapset).Optional(),
 });
+
+export const BeatmapSearchResult = SchemaModel.define("BeatmapSearchResult", {
+    beatmapsets: Field.Model(Beatmapset).Array(),
+    total: Field.Int(),
+    cursorString: Field.String().Optional(),
+    sort: Field.String().Optional(),
+    recommendedDifficulty: Field.Float().Optional(),
+    error: Field.String().Optional(),
+});

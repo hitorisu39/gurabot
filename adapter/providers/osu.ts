@@ -1,6 +1,20 @@
 import { Field, Mapping, SchemaProvider } from "../builder";
-import { Beatmap, BeatmapPlaycount, Beatmapset } from "../models/beatmap";
-import { GameMode, Genre, Grade, Language, RankingType, Status } from "../models/common";
+import { Beatmap, BeatmapPlaycount, BeatmapSearchResult, Beatmapset } from "../models/beatmap";
+import {
+    BeatmapSearchExtra,
+    BeatmapSearchGeneral,
+    BeatmapSearchPlayed,
+    BeatmapSearchRank,
+    BeatmapSearchSortField,
+    BeatmapSearchSortOrder,
+    BeatmapSearchStatus,
+    GameMode,
+    Genre,
+    Grade,
+    Language,
+    RankingType,
+    Status,
+} from "../models/common";
 import { Score } from "../models/score";
 import { RankingStatistics, User } from "../models/user";
 
@@ -37,6 +51,8 @@ const genreToInstance = [
     Genre.Jazz,
 ];
 
+const genreToPlain: Record<string, number> = Object.fromEntries(genreToInstance.map((genre, id) => [genre, id]));
+
 // Language
 const languageToInstance = [
     Language.Any,
@@ -55,6 +71,10 @@ const languageToInstance = [
     Language.Polish,
     Language.Unspecified,
 ];
+
+const languageToPlain: Record<string, number> = Object.fromEntries(
+    languageToInstance.map((language, id) => [language, id]),
+);
 
 // Status
 const statusToInstance: Record<string, string> = {
@@ -88,6 +108,76 @@ const rankingTypeToPlain: Record<string, string> = {
     [RankingType.Score]: "score",
     [RankingType.Country]: "country",
     [RankingType.Charts]: "charts",
+};
+
+// Beatmapset search
+const modeToSearchPlain: Record<string, number> = {
+    [GameMode.Standard]: 0,
+    [GameMode.Taiko]: 1,
+    [GameMode.Catch]: 2,
+    [GameMode.Mania]: 3,
+};
+
+const beatmapSearchStatusToPlain: Record<string, string> = {
+    [BeatmapSearchStatus.Any]: "any",
+    [BeatmapSearchStatus.Leaderboard]: "leaderboard",
+    [BeatmapSearchStatus.Ranked]: "ranked",
+    [BeatmapSearchStatus.Qualified]: "qualified",
+    [BeatmapSearchStatus.Loved]: "loved",
+    [BeatmapSearchStatus.Favourites]: "favourites",
+    [BeatmapSearchStatus.Pending]: "pending",
+    [BeatmapSearchStatus.WIP]: "wip",
+    [BeatmapSearchStatus.Graveyard]: "graveyard",
+    [BeatmapSearchStatus.Mine]: "mine",
+};
+
+const beatmapSearchExtraToPlain: Record<string, string> = {
+    [BeatmapSearchExtra.Video]: "video",
+    [BeatmapSearchExtra.Storyboard]: "storyboard",
+};
+
+const beatmapSearchGeneralToPlain: Record<string, string> = {
+    [BeatmapSearchGeneral.Recommended]: "recommended",
+    [BeatmapSearchGeneral.Converts]: "converts",
+    [BeatmapSearchGeneral.Follows]: "follows",
+    [BeatmapSearchGeneral.Spotlights]: "spotlights",
+    [BeatmapSearchGeneral.FeaturedArtists]: "featured_artists",
+};
+
+const beatmapSearchPlayedToPlain: Record<string, string> = {
+    [BeatmapSearchPlayed.Any]: "any",
+    [BeatmapSearchPlayed.Played]: "played",
+    [BeatmapSearchPlayed.Unplayed]: "unplayed",
+};
+
+const beatmapSearchRankToPlain: Record<string, string> = {
+    [BeatmapSearchRank.SSH]: "XH",
+    [BeatmapSearchRank.SS]: "X",
+    [BeatmapSearchRank.SH]: "SH",
+    [BeatmapSearchRank.S]: "S",
+    [BeatmapSearchRank.A]: "A",
+    [BeatmapSearchRank.B]: "B",
+    [BeatmapSearchRank.C]: "C",
+    [BeatmapSearchRank.D]: "D",
+};
+
+const beatmapSearchSortFieldToPlain: Record<string, string> = {
+    [BeatmapSearchSortField.Artist]: "artist",
+    [BeatmapSearchSortField.Creator]: "creator",
+    [BeatmapSearchSortField.Difficulty]: "difficulty",
+    [BeatmapSearchSortField.Favourites]: "favourites",
+    [BeatmapSearchSortField.Nominations]: "nominations",
+    [BeatmapSearchSortField.Plays]: "plays",
+    [BeatmapSearchSortField.Ranked]: "ranked",
+    [BeatmapSearchSortField.Rating]: "rating",
+    [BeatmapSearchSortField.Relevance]: "relevance",
+    [BeatmapSearchSortField.Title]: "title",
+    [BeatmapSearchSortField.Updated]: "updated",
+};
+
+const beatmapSearchSortOrderToPlain: Record<string, string> = {
+    [BeatmapSearchSortOrder.Ascending]: "asc",
+    [BeatmapSearchSortOrder.Descending]: "desc",
 };
 
 //#endregion
@@ -512,6 +602,45 @@ const RankingStatisticsMapping: Mapping = {
     },
 };
 
+const BeatmapSearchMapping: Mapping = {
+    beatmapsets: {
+        path: "beatmapsets",
+        nested: BeatmapsetMapping,
+    },
+    total: "total",
+    cursorString: {
+        path: "cursor_string",
+        transform: (v) => v ?? undefined,
+    },
+    sort: {
+        path: "search.sort",
+        transform: (v) => v ?? undefined,
+    },
+    recommendedDifficulty: {
+        path: "recommended_difficulty",
+        transform: (v) => v ?? undefined,
+    },
+    error: {
+        path: "error",
+        transform: (v) => v ?? undefined,
+    },
+    mode: {
+        transform: {
+            toPlain: (v) => modeToSearchPlain[v],
+        },
+    },
+    genre: {
+        transform: {
+            toPlain: (v) => genreToPlain[v],
+        },
+    },
+    language: {
+        transform: {
+            toPlain: (v) => languageToPlain[v],
+        },
+    },
+};
+
 //#endregion
 
 export const OsuProvider = SchemaProvider.define("osu", {
@@ -527,6 +656,27 @@ export const OsuProvider = SchemaProvider.define("osu", {
         },
         [RankingType.$name]: {
             toPlain: (v) => rankingTypeToPlain[v],
+        },
+        [BeatmapSearchStatus.$name]: {
+            toPlain: (v) => beatmapSearchStatusToPlain[v],
+        },
+        [BeatmapSearchExtra.$name]: {
+            toPlain: (v) => beatmapSearchExtraToPlain[v],
+        },
+        [BeatmapSearchGeneral.$name]: {
+            toPlain: (v) => beatmapSearchGeneralToPlain[v],
+        },
+        [BeatmapSearchPlayed.$name]: {
+            toPlain: (v) => beatmapSearchPlayedToPlain[v],
+        },
+        [BeatmapSearchRank.$name]: {
+            toPlain: (v) => beatmapSearchRankToPlain[v],
+        },
+        [BeatmapSearchSortField.$name]: {
+            toPlain: (v) => beatmapSearchSortFieldToPlain[v],
+        },
+        [BeatmapSearchSortOrder.$name]: {
+            toPlain: (v) => beatmapSearchSortOrderToPlain[v],
         },
     },
     formatters: {
@@ -678,6 +828,95 @@ export const OsuProvider = SchemaProvider.define("osu", {
             method: "GET",
             returns: Beatmapset,
             mapping: BeatmapsetMapping,
+        },
+        beatmapset_search: {
+            args: {
+                query: Field.String().Optional(),
+
+                mode: Field.Enum(GameMode).Optional(),
+                status: Field.Enum(BeatmapSearchStatus).Optional(),
+
+                genre: Field.Enum(Genre).Optional(),
+                language: Field.Enum(Language).Optional(),
+
+                extras: Field.Enum(BeatmapSearchExtra).Array().Optional(),
+                general: Field.Enum(BeatmapSearchGeneral).Array().Optional(),
+
+                nsfw: Field.Boolean().Optional(),
+
+                played: Field.Enum(BeatmapSearchPlayed).Optional(),
+                ranks: Field.Enum(BeatmapSearchRank).Array().Optional(),
+
+                sortField: Field.Enum(BeatmapSearchSortField).Optional(),
+                sortOrder: Field.Enum(BeatmapSearchSortOrder).Optional(),
+
+                cursorString: Field.String().Optional(),
+                page: Field.Int().Optional(),
+            },
+
+            path: (args) => {
+                const params = new URLSearchParams();
+
+                if (args.query) {
+                    params.set("q", args.query);
+                }
+
+                if (args.mode !== undefined) {
+                    params.set("m", String(args.mode));
+                }
+
+                if (args.status) {
+                    params.set("s", args.status);
+                }
+
+                if (args.genre !== undefined) {
+                    params.set("g", String(args.genre));
+                }
+
+                if (args.language !== undefined) {
+                    params.set("l", String(args.language));
+                }
+
+                if (args.extras?.length) {
+                    params.set("e", args.extras.join("."));
+                }
+
+                if (args.general?.length) {
+                    params.set("c", args.general.join("."));
+                }
+
+                if (args.nsfw !== undefined) {
+                    params.set("nsfw", args.nsfw ? "true" : "false");
+                }
+
+                if (args.played) {
+                    params.set("played", args.played);
+                }
+
+                if (args.ranks?.length) {
+                    params.set("r", args.ranks.join("."));
+                }
+
+                if (args.sortField) {
+                    params.set("sort", `${args.sortField}_${args.sortOrder ?? "desc"}`);
+                }
+
+                if (args.cursorString) {
+                    params.set("cursor_string", args.cursorString);
+                }
+
+                if (args.page !== undefined) {
+                    params.set("page", String(args.page));
+                }
+
+                const query = params.toString();
+
+                return `/beatmapsets/search${query ? `?${query}` : ""}`;
+            },
+
+            method: "GET",
+            returns: BeatmapSearchResult,
+            mapping: BeatmapSearchMapping,
         },
         user_beatmap_scores: {
             args: {

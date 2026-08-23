@@ -1,9 +1,10 @@
 import { AbstractService } from "@/core/framework/AbstractService";
-import { AdapterProvider, Beatmap, BeatmapPlaycount, Beatmapset } from "@generated/adapter/types";
+import { AdapterProvider, Beatmap, BeatmapPlaycount, BeatmapSearchResult, Beatmapset } from "@generated/adapter/types";
 import { Import, Trace } from "@/core/decorators";
 import { CalculatorMapService } from "./calculator/CalculatorMap.service";
 import type { TRepository } from "@/core";
 import { plainToInstance } from "class-transformer";
+import type { IBeatmapsetSearchInput } from "@domain/osu/Adapter.dto";
 
 export class OsuBeatmapService extends AbstractService {
     @Import()
@@ -207,6 +208,29 @@ export class OsuBeatmapService extends AbstractService {
         }
 
         return apiData;
+    }
+
+    @Trace()
+    public async search(
+        input: IBeatmapsetSearchInput = {},
+        provider: AdapterProvider = AdapterProvider.Bancho,
+    ): Promise<BeatmapSearchResult> {
+        return this.adapter[provider].beatmapset_search({
+            query: input.query,
+            mode: input.mode,
+            status: input.status,
+            genre: input.genre,
+            language: input.language,
+            extras: input.extras,
+            general: input.general,
+            nsfw: input.nsfw,
+            played: input.played,
+            ranks: input.ranks,
+            sortField: input.sort?.field,
+            sortOrder: input.sort?.order,
+            cursorString: input.cursorString,
+            page: input.page,
+        });
     }
 
     @Trace()

@@ -110,7 +110,12 @@ export class AdapterEngine {
                 }
 
                 if (toPlainFn) {
-                    mappedArgs[argName] = toPlainFn(mappedArgs[argName]);
+                    const value = mappedArgs[argName];
+
+                    mappedArgs[argName] =
+                        fieldDef.$isArray && Array.isArray(value)
+                            ? value.map((item) => toPlainFn!(item))
+                            : toPlainFn(value);
                 }
             }
         }

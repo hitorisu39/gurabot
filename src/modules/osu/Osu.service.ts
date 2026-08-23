@@ -3,6 +3,7 @@ import {
     AdapterProvider,
     Beatmap,
     BeatmapPlaycount,
+    BeatmapSearchResult,
     Beatmapset,
     GameMode,
     RankingStatistics,
@@ -22,7 +23,7 @@ import { scoreBestQueryLimit } from "@domain/osu/configs/Score.config";
 import { OsuUserService } from "./OsuUser.service";
 import { OsuScoreService } from "./OsuScore.service";
 import { OsuBeatmapService } from "./OsuBeatmap.service";
-import { UserScoreType } from "@domain/osu/Adapter.dto";
+import { IBeatmapsetSearchInput, UserScoreType } from "@domain/osu/Adapter.dto";
 
 interface IUserWithScoresInput {
     nameOrID: string | number;
@@ -135,6 +136,13 @@ export class OsuService extends AbstractService {
         bypassCache: boolean = false,
     ): Promise<Beatmapset | null> {
         return this.beatmapService.beatmapset(id, provider, bypassCache);
+    }
+
+    public async search(
+        input: IBeatmapsetSearchInput = {},
+        provider: AdapterProvider = AdapterProvider.Bancho,
+    ): Promise<BeatmapSearchResult> {
+        return this.beatmapService.search(input, provider);
     }
 
     public async mostPlayed(
