@@ -65,6 +65,10 @@ export class OsuService extends AbstractService {
         return this.userService.user(nameOrID, mode, provider);
     }
 
+    public async score(id: string | number, provider: AdapterProvider = AdapterProvider.Bancho): Promise<Score> {
+        return this.scoreService.score(id, provider);
+    }
+
     public async best(
         id: number,
         mode: GameMode,
