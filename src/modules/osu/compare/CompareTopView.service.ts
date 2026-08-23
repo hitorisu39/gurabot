@@ -20,7 +20,10 @@ export class CompareTopViewService extends AbstractViewService<CompareTopViewDto
 
     public build(sessionID: string, data: CompareTopViewDto): TMessagePayload {
         const count = data.comparisons.length;
-        if (!count) return Embed.error(`\`${data.left.username}\` and \`${data.right.username}\` have no common maps in their top.`)
+        if (!count)
+            return Embed.error(
+                `\`${data.left.username}\` and \`${data.right.username}\` have no common maps in their top.`,
+            );
 
         const content = this.content(data);
 

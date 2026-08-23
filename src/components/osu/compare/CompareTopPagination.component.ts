@@ -5,7 +5,10 @@ import { CompareTopViewDto } from "@domain/osu/views/CompareTop.view";
 import { CompareTopViewService } from "@/modules/osu/compare/CompareTopView.service";
 
 @Button(/^osu_common_scores_(?<action>first|prev|next|last|modal):(?<sessionID>[a-zA-Z0-9_-]+)$/)
-export class CommonScoresPaginationComponent extends AbstractPaginationButton<"osu_compare_top_view", CompareTopViewDto> {
+export class CommonScoresPaginationComponent extends AbstractPaginationButton<
+    "osu_compare_top_view",
+    CompareTopViewDto
+> {
     @Import() declare private readonly compareTopViewService: CompareTopViewService;
 
     protected readonly paginationID = "osu_compare_top";
