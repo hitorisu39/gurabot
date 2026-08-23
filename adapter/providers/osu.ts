@@ -563,6 +563,25 @@ export const OsuProvider = SchemaProvider.define("osu", {
             returns: Score,
             mapping: ScoreMapping,
         },
+        replay: {
+            args: {
+                id: Field.String(),
+                mode: Field.Enum(GameMode).Optional(),
+            },
+            path: (args) => {
+                if (args.mode) {
+                    return `/scores/${args.mode}/${args.id}/download`;
+                }
+
+                return `/scores/${args.id}/download`;
+            },
+            method: "GET",
+            responseType: "arraybuffer",
+            returns: {
+                raw: true,
+            },
+            mapping: {},
+        },
         best: {
             args: {
                 id: Field.Int(),

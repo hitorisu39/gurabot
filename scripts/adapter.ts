@@ -80,8 +80,14 @@ interface GlobalEndpoint {
 }
 
 function endpointReturnType(endpoint: SchemaProvider["config"]["endpoints"][string]): string {
-    const model = "model" in endpoint.returns ? endpoint.returns.model.name : endpoint.returns.name;
-    const isArray = "isArray" in endpoint.returns ? Boolean(endpoint.returns.isArray) : false;
+    const returns = endpoint.returns;
+
+    if ("raw" in returns) {
+        return "Uint8Array";
+    }
+
+    const model = "model" in returns ? returns.model.name : returns.name;
+    const isArray = "isArray" in returns ? Boolean(returns.isArray) : false;
 
     return isArray ? `${model}[]` : model;
 }
@@ -200,9 +206,12 @@ async function generateProviders(): Promise<void> {
 
     for (const provider of providers) {
         for (const endpoint of Object.values(provider.config.endpoints)) {
-            const model = "model" in endpoint.returns ? endpoint.returns.model : endpoint.returns;
+            const returns = endpoint.returns;
 
-            collectModelsDeep(model);
+            if (!("raw" in returns)) {
+                const model = "model" in returns ? returns.model : returns;
+                collectModelsDeep(model);
+            }
 
             if (!endpoint.args) {
                 continue;
