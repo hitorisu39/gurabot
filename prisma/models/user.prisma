@@ -24,6 +24,6 @@ model UserToOsu {
     createdAt   DateTime    @map("created_at") @default(now())
     updatedAt   DateTime    @map("updated_at") @updatedAt @default(now())
 
-    @@unique([userID, server])
+    @@id([userID, server])
     @@map("user_to_osu")
 }
