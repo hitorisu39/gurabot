@@ -23,7 +23,7 @@ export class MapViewService extends AbstractViewService<MapViewDto, boolean> {
     @Import() declare private readonly graphStrainService: GraphStrainService;
     @Import() declare private readonly calculatorService: CalculatorService;
 
-    protected readonly ttl: number = 300;
+    protected readonly ttl: number = 180;
 
     public async build(sessionID: string, data: MapViewDto, withGraph: boolean = false): Promise<TMessagePayload> {
         const beatmaps = [...(data.beatmapset.beatmaps || [])].sort((a, b) => a.difficulty - b.difficulty);
