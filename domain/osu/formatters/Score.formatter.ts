@@ -137,7 +137,6 @@ export class ScoreFormatter {
             case "HT":
             case "DC":
                 if (!mod.settings?.speed_change) return mod.acronym;
-
                 return `${mod.acronym}(${DiscordFormatter.fixed(mod.settings.speed_change)}x)`;
             default:
                 return mod.acronym;

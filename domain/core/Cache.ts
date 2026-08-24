@@ -29,6 +29,14 @@ import { OsuTrackLadderSimulationConfigDto, OsuTrackStatsHistoryDto } from "@dom
 import { CompareTopViewDto } from "@domain/osu/views/CompareTop.view";
 import { MostPlayedViewDto } from "@domain/osu/views/MostPlayed.view";
 import { SearchViewDto } from "@domain/osu/views/Search.view";
+import { SnipeRankingDto } from "@domain/snipe/SnipeRanking.dto";
+import { SnipePlayerDto } from "@domain/snipe/SnipePlayer.dto";
+import { SnipeCountriesDto, SnipeCountryStatisticsDto } from "@domain/snipe/SnipeCountry.dto";
+import { SnipeRankingViewDto } from "@domain/snipe/views/SnipeRanking.view";
+import { SnipePlayerHistoryDto } from "@domain/snipe/SnipePlayerHistory.dto";
+import { SnipeScoresDto } from "@domain/snipe/SnipeScore.dto";
+import { SnipePlayerListViewDto } from "@domain/snipe/views/SnipePlayerList.view";
+import { SnipePlayerChangesViewDto } from "@domain/snipe/views/SnipePlayerChanges.view";
 
 export interface ICacheSchema {
     // Discord
@@ -57,6 +65,10 @@ export interface ICacheSchema {
     osustats_scores_view: OsuStatsScoresViewDto;
     osustats_best_view: OsuStatsBestViewDto;
 
+    snipe_ranking_view: SnipeRankingViewDto;
+    snipe_player_list_view: SnipePlayerListViewDto;
+    snipe_player_changes_view: SnipePlayerChangesViewDto;
+
     ordr_config_view: OrdrConfigViewDto;
     ordr_render_view: OrdrRenderViewDto;
 
@@ -68,6 +80,14 @@ export interface ICacheSchema {
     // osu!track
     osutrack_stats_history: Array<OsuTrackStatsHistoryDto>;
     osutrack_ladder_simulation_config: OsuTrackLadderSimulationConfigDto;
+
+    // osu!snipe
+    snipe_rankings: SnipeRankingDto;
+    snipe_player: SnipePlayerDto;
+    snipe_player_history: SnipePlayerHistoryDto;
+    snipe_country_statistics: SnipeCountryStatisticsDto;
+    snipe_countries: SnipeCountriesDto;
+    snipe_player_scores: SnipeScoresDto;
 
     // osu!stats
     osu_stats_counts: OsuStatsCountsDto;
