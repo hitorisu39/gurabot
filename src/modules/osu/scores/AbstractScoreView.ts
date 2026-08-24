@@ -92,13 +92,20 @@ export abstract class AbstractScoreView extends AbstractService {
 
         description.add(statsSecondRow).add(statsThirdRow);
 
+        /**
+         * A workaround to put score id somewhere in the embed
+         * since markdown is not allowed in field names.
+         */
+        const thumbnail = new URL(score.beatmapset.covers.listDouble);
+        thumbnail.searchParams.set("score_id", score.id.toString());
+
         return embed
             .setFooter({
                 text: `${score.beatmap.status} by ${score.beatmapset.creator}`,
                 iconURL: ProfileFormatter.modeIcon(data.profile.mode),
             })
             .addFields({ name: statsFirstRow, value: description.build() })
-            .setThumbnail(score.beatmapset.covers.listDouble)
+            .setThumbnail(thumbnail.toString())
             .setTitle(`${score.beatmapset.artist} - ${score.beatmapset.title} [${score.beatmap.version}] [${stars}]`)
             .setURL(MapFormatter.link(score.beatmap.id));
     }
