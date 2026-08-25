@@ -1,11 +1,11 @@
 import { TLogger } from "@/core";
-import { AdapterErrorContext, AdapterHook } from "@generated/adapter/types";
+import { AdapterErrorContext, AdapterHook, AdapterRequestError } from "@generated/adapter/types";
 
 export class AdapterLoggerMiddleware implements AdapterHook {
     constructor(private readonly logger: TLogger) {}
 
     public onError(context: AdapterErrorContext): void {
-        if (context.error.status === 404) {
+        if (context.error instanceof AdapterRequestError && context.error.status === 404) {
             return;
         }
 

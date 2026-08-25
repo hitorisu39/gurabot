@@ -30,7 +30,7 @@ export interface AdapterErrorContext {
     endpointName: string;
     args: unknown;
     request: AxiosRequestConfig;
-    error: AdapterError;
+    error: AdapterRequestError | AdapterResponseError;
     attempt: number;
     maxAttempts: number;
     durationMs: number;
@@ -294,19 +294,17 @@ export class AdapterEngine {
         return this.mapData(targetData, returnsModel, endpoint.mapping);
     }
 
-    private normalizeError(endpointName: string, error: unknown, attempt: number, maxAttempts: number): AdapterError {
-        /*
-         * Already classified by the adapter.
-         */
-        if (error instanceof AdapterError) {
+    private normalizeError(
+        endpointName: string,
+        error: unknown,
+        attempt: number,
+        maxAttempts: number,
+    ): AdapterRequestError | AdapterResponseError {
+        if (error instanceof AdapterRequestError || error instanceof AdapterResponseError) {
             return error;
         }
 
-        /*
-         * Axios/network error, or an unexpected exception.
-         */
         const retryable = this.isRetryableRequestFailure(error);
-
         return this.createRequestError(endpointName, error, attempt, maxAttempts, retryable);
     }
 
