@@ -110,7 +110,6 @@ export class OrdrService extends AbstractService {
         const data = response.data;
 
         if (data.found !== true || data.removed === true) return null;
-
         return data;
     }
 
@@ -388,7 +387,6 @@ export class OrdrService extends AbstractService {
         });
 
         const bytes = Buffer.isBuffer(data) ? data : Buffer.from(data);
-
         if (!bytes.byteLength) {
             throw new Exception(EApplicationError.INPUT_ERROR, "The uploaded replay file could not be downloaded.");
         }

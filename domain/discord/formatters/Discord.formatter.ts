@@ -87,6 +87,12 @@ export class DiscordFormatter {
         return `${prefix}${DiscordFormatter.number(value)}`;
     }
 
+    public static bytes(bytes: number): string {
+        if (bytes < 1_024) return `${bytes} B`;
+        if (bytes < 1_024 * 1_024) return `${(bytes / 1_024).toFixed(1)} KB`;
+        return `${(bytes / (1_024 * 1_024)).toFixed(1)} MB`;
+    }
+
     public static formatInlineGrid(
         items: Array<{
             label: string;

@@ -43,13 +43,11 @@ export class RenderCommand extends AbstractSessionCommand {
         ]);
 
         const config = this.cloneConfig(storedConfig);
-
         if (!preset && config.source === EOrdrConfigSource.Preset) {
             config.source = EOrdrConfigSource.Bot;
         }
 
         const skins = await this.buildSkinChoices(config, recentSkins);
-
         const data: OrdrRenderViewDto = {
             authorID: ctx.author.id,
             replay,
@@ -140,7 +138,7 @@ export class RenderCommand extends AbstractSessionCommand {
         }
 
         return plainToInstance(OrdrSkinChoiceDto, {
-            skin: String(id),
+            skin: id.toString(),
             customSkin: true,
             label: info.skinName,
             description: `Custom #${id} by ${info.skinAuthor}`,
