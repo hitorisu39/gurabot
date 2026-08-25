@@ -1,8 +1,17 @@
 import http from "http";
 import https from "https";
+
 import axios, { AxiosRequestConfig, AxiosResponse, isAxiosError } from "axios";
-import { ProviderConfig, SchemaModel } from "./builder";
-import { AdapterConfigurationError, AdapterRequestError, AdapterRequestErrorKind } from "./error";
+import { ProviderConfig, SchemaModel, EndpointConfig } from "./builder";
+
+import {
+    AdapterConfigurationError,
+    AdapterError,
+    AdapterRequestError,
+    AdapterRequestErrorKind,
+    AdapterResponseError,
+} from "./error";
+
 import { wait } from "./utils";
 
 export interface AdapterResponseContext {
@@ -10,7 +19,7 @@ export interface AdapterResponseContext {
     endpointName: string;
     args: unknown;
     request: AxiosRequestConfig;
-    response: AxiosResponse | undefined;
+    response: AxiosResponse;
     attempt: number;
     maxAttempts: number;
     durationMs: number;
@@ -21,7 +30,7 @@ export interface AdapterErrorContext {
     endpointName: string;
     args: unknown;
     request: AxiosRequestConfig;
-    error: AdapterRequestError;
+    error: AdapterError;
     attempt: number;
     maxAttempts: number;
     durationMs: number;
@@ -79,46 +88,7 @@ export class AdapterEngine {
             );
         }
 
-        const mappedArgs = {
-            ...args,
-        };
-
-        if (endpoint.args) {
-            for (const [argName, fieldDef] of Object.entries(endpoint.args)) {
-                if (mappedArgs[argName] === undefined) {
-                    continue;
-                }
-
-                if (fieldDef.$type === "Mods") {
-                    mappedArgs[argName] = this.codecs.Mods.toPlain(mappedArgs[argName]);
-                    continue;
-                }
-
-                let toPlainFn: ((value: any) => any) | undefined;
-
-                const mapConfig = endpoint.mapping[argName];
-
-                if (
-                    mapConfig &&
-                    typeof mapConfig === "object" &&
-                    mapConfig.transform &&
-                    typeof mapConfig.transform === "object"
-                ) {
-                    toPlainFn = mapConfig.transform.toPlain;
-                } else if (fieldDef.$type === "Enum" && fieldDef.$enumDef && this.config.transforms) {
-                    toPlainFn = this.config.transforms[fieldDef.$enumDef.$name]?.toPlain;
-                }
-
-                if (toPlainFn) {
-                    const value = mappedArgs[argName];
-
-                    mappedArgs[argName] =
-                        fieldDef.$isArray && Array.isArray(value)
-                            ? value.map((item) => toPlainFn!(item))
-                            : toPlainFn(value);
-                }
-            }
-        }
+        const mappedArgs = this.mapArguments(endpoint, args);
 
         let requestConfig: AxiosRequestConfig = {
             url: endpoint.path(mappedArgs),
@@ -126,6 +96,7 @@ export class AdapterEngine {
             method: endpoint.method,
             responseType: endpoint.responseType,
             headers: {
+                Accept: "application/json",
                 "Content-Type": "application/json",
             },
             httpAgent,
@@ -142,13 +113,11 @@ export class AdapterEngine {
         const maxAttempts = maxRetries + 1;
         const retryDelayMs = 250;
 
-        let response: AxiosResponse | undefined;
-
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
             const start = performance.now();
 
             try {
-                response = await axios.request(requestConfig);
+                const response = await axios.request(requestConfig);
 
                 await this.notifyResponseHooks({
                     providerName: this.config.name,
@@ -161,19 +130,18 @@ export class AdapterEngine {
                     durationMs: performance.now() - start,
                 });
 
-                break;
+                return await this.processResponse(endpointName, endpoint, mappedArgs, response, attempt, maxAttempts);
             } catch (error: unknown) {
-                const retryable = this.isRetryable(error);
+                const normalizedError = this.normalizeError(endpointName, error, attempt, maxAttempts);
+                const retryable = this.isRetryable(normalizedError);
                 const willRetry = retryable && attempt < maxAttempts;
-
-                const adapterError = this.createRequestError(endpointName, error, attempt, maxAttempts, retryable);
 
                 const context: AdapterErrorContext = {
                     providerName: this.config.name,
                     endpointName,
                     args: mappedArgs,
                     request: requestConfig,
-                    error: adapterError,
+                    error: normalizedError,
                     attempt,
                     maxAttempts,
                     durationMs: performance.now() - start,
@@ -183,23 +151,76 @@ export class AdapterEngine {
                 await this.notifyErrorHooks(context);
 
                 if (!willRetry) {
-                    throw await this.mapError(adapterError, context);
+                    throw await this.mapError(normalizedError, context);
                 }
 
-                await wait(retryDelayMs);
+                const delay = retryDelayMs * Math.pow(2, attempt - 1);
+                await wait(delay);
             }
         }
 
-        if (!response) {
-            throw new AdapterConfigurationError(
-                `Adapter endpoint "${endpointName}" exited without a response or error.`,
-                {
-                    providerName: this.config.name,
-                    endpointName,
-                },
-            );
+        throw new AdapterConfigurationError(`Adapter endpoint "${endpointName}" exited without a response or error.`, {
+            providerName: this.config.name,
+            endpointName,
+        });
+    }
+
+    private mapArguments(endpoint: EndpointConfig, args: any): Record<string, any> {
+        const mappedArgs = {
+            ...args,
+        };
+
+        if (!endpoint.args) {
+            return mappedArgs;
         }
 
+        for (const [argName, fieldDef] of Object.entries(endpoint.args)) {
+            if (mappedArgs[argName] === undefined) {
+                continue;
+            }
+
+            if (fieldDef.$type === "Mods") {
+                mappedArgs[argName] = this.codecs.Mods.toPlain(mappedArgs[argName]);
+
+                continue;
+            }
+
+            let toPlainFn: ((value: any) => any) | undefined;
+
+            const mapConfig = endpoint.mapping[argName];
+
+            if (
+                mapConfig &&
+                typeof mapConfig === "object" &&
+                mapConfig.transform &&
+                typeof mapConfig.transform === "object"
+            ) {
+                toPlainFn = mapConfig.transform.toPlain;
+            } else if (fieldDef.$type === "Enum" && fieldDef.$enumDef && this.config.transforms) {
+                toPlainFn = this.config.transforms[fieldDef.$enumDef.$name]?.toPlain;
+            }
+
+            if (!toPlainFn) {
+                continue;
+            }
+
+            const value = mappedArgs[argName];
+
+            mappedArgs[argName] =
+                fieldDef.$isArray && Array.isArray(value) ? value.map((item) => toPlainFn!(item)) : toPlainFn(value);
+        }
+
+        return mappedArgs;
+    }
+
+    private async processResponse(
+        endpointName: string,
+        endpoint: EndpointConfig,
+        mappedArgs: Record<string, any>,
+        response: AxiosResponse,
+        attempt: number,
+        maxAttempts: number,
+    ): Promise<any> {
         let data: unknown = response.data;
 
         for (const hook of this.hooks) {
@@ -223,20 +244,44 @@ export class AdapterEngine {
                 return new Uint8Array(data);
             }
 
-            throw new AdapterConfigurationError(`Adapter endpoint "${endpointName}" expected a binary response.`, {
-                providerName: this.config.name,
-                endpointName,
-            });
+            throw new AdapterResponseError(
+                `Adapter endpoint "${endpointName}" expected a binary response but received ${this.describeValue(data)}.`,
+                {
+                    providerName: this.config.name,
+                    endpointName,
+                    kind: "invalid_shape",
+                    retryable: true,
+                    attempt,
+                    maxAttempts,
+                    status: response.status,
+                    receivedType: this.describeValue(data),
+                },
+            );
         }
 
         const returnsModel = "model" in endpointReturns ? endpointReturns.model : endpointReturns;
-        const isArray = "isArray" in endpointReturns ? endpointReturns.isArray : false;
+        const isArray = "isArray" in endpointReturns ? (endpointReturns.isArray ?? false) : false;
         const dataPath = "dataPath" in endpointReturns ? endpointReturns.dataPath : undefined;
+
         const targetData = dataPath ? this.getByPath(data, dataPath) : data;
 
         if (isArray) {
             if (!Array.isArray(targetData)) {
-                return [];
+                throw new AdapterResponseError(
+                    `Adapter endpoint "${endpointName}" expected an array response` +
+                        (dataPath ? ` at "${dataPath}"` : "") +
+                        ` but received ${this.describeValue(targetData)}.`,
+                    {
+                        providerName: this.config.name,
+                        endpointName,
+                        kind: "invalid_shape",
+                        retryable: true,
+                        attempt,
+                        maxAttempts,
+                        status: response.status,
+                        receivedType: this.describeValue(targetData),
+                    },
+                );
             }
 
             return targetData.map((item, index) => this.mapData(item, returnsModel, endpoint.mapping, index));
@@ -249,15 +294,54 @@ export class AdapterEngine {
         return this.mapData(targetData, returnsModel, endpoint.mapping);
     }
 
-    private isRetryable(error: unknown): boolean {
+    private normalizeError(endpointName: string, error: unknown, attempt: number, maxAttempts: number): AdapterError {
+        /*
+         * Already classified by the adapter.
+         */
+        if (error instanceof AdapterError) {
+            return error;
+        }
+
+        /*
+         * Axios/network error, or an unexpected exception.
+         */
+        const retryable = this.isRetryableRequestFailure(error);
+
+        return this.createRequestError(endpointName, error, attempt, maxAttempts, retryable);
+    }
+
+    private isRetryable(error: AdapterError): boolean {
+        if (error instanceof AdapterRequestError) {
+            return error.retryable;
+        }
+
+        if (error instanceof AdapterResponseError) {
+            return error.retryable;
+        }
+
+        /*
+         * Configuration errors and unknown AdapterError
+         * subclasses are not retryable by default.
+         */
+        return false;
+    }
+
+    private isRetryableRequestFailure(error: unknown): boolean {
         if (!isAxiosError(error)) {
             return false;
         }
 
+        /*
+         * Explicit cancellation shouldn't be retried.
+         */
         if (error.code === "ERR_CANCELED") {
             return false;
         }
 
+        /*
+         * Axios error without an HTTP response:
+         * ECONNRESET, DNS, socket failure, etc.
+         */
         if (!error.response) {
             return true;
         }
@@ -273,6 +357,7 @@ export class AdapterEngine {
         retryable: boolean,
     ): AdapterRequestError {
         let kind: AdapterRequestErrorKind = "internal";
+
         let status: number | undefined;
         let code: string | undefined;
 
@@ -313,18 +398,14 @@ export class AdapterEngine {
         switch (kind) {
             case "http":
                 return `Adapter endpoint "${endpointName}" returned ` + `HTTP status ${status}.`;
-
             case "timeout":
                 return `Adapter endpoint "${endpointName}" timed out.`;
-
             case "cancelled":
                 return `Adapter endpoint "${endpointName}" was cancelled.`;
-
             case "network":
                 return code
                     ? `Adapter endpoint "${endpointName}" could not be reached. ` + `Error code: ${code}.`
                     : `Adapter endpoint "${endpointName}" could not be reached.`;
-
             case "internal":
                 return `Adapter endpoint "${endpointName}" failed with an ` + `unexpected internal error.`;
         }
@@ -363,6 +444,7 @@ export class AdapterEngine {
 
         for (const [fieldName, fieldDef] of Object.entries(model.fields)) {
             const mapConfig = mapping[fieldName];
+
             let value: any;
 
             if (mapConfig === "$index") {
@@ -440,8 +522,32 @@ export class AdapterEngine {
 
     private getByPath(obj: any, path: string): any {
         return path
-            .split(/[\.\[\]]/)
+            .split(/[.\[\]]/)
             .filter(Boolean)
             .reduce((current, part) => (current === undefined || current === null ? undefined : current[part]), obj);
+    }
+
+    private describeValue(value: unknown): string {
+        if (value === null) {
+            return "null";
+        }
+
+        if (value === undefined) {
+            return "undefined";
+        }
+
+        if (Array.isArray(value)) {
+            return "array";
+        }
+
+        if (value instanceof Uint8Array) {
+            return "Uint8Array";
+        }
+
+        if (value instanceof ArrayBuffer) {
+            return "ArrayBuffer";
+        }
+
+        return typeof value;
     }
 }
