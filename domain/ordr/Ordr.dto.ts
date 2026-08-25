@@ -154,6 +154,22 @@ export class OrdrRenderFailedDto {
     declare errorMessage: string;
 }
 
+@Exclude()
+export class OrdrCachedScoreDto {
+    @Expose()
+    declare scoreID: string;
+
+    @Expose()
+    declare renderID: number;
+
+    @Expose()
+    declare videoURL: string;
+
+    @Expose()
+    @Type(() => Date)
+    declare createdAt: Date;
+}
+
 export type TOrdrRenderEvent =
     | { type: "added"; data: OrdrRenderAddedDto }
     | { type: "progress"; data: OrdrRenderProgressDto }
