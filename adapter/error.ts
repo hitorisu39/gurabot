@@ -80,3 +80,40 @@ export class AdapterRequestError extends AdapterError {
         this.originalError = options.originalError;
     }
 }
+
+export type AdapterResponseErrorKind = "invalid_shape" | "invalid_payload";
+
+export interface AdapterResponseErrorOptions {
+    providerName: string;
+    endpointName: string;
+    kind: AdapterResponseErrorKind;
+    retryable: boolean;
+    attempt: number;
+    maxAttempts: number;
+    status?: number;
+    receivedType?: string;
+}
+
+export class AdapterResponseError extends AdapterError {
+    public readonly providerName: string;
+    public readonly endpointName: string;
+    public readonly kind: AdapterResponseErrorKind;
+    public readonly retryable: boolean;
+    public readonly attempt: number;
+    public readonly maxAttempts: number;
+    public readonly status?: number;
+    public readonly receivedType?: string;
+
+    constructor(message: string, options: AdapterResponseErrorOptions) {
+        super(message);
+
+        this.providerName = options.providerName;
+        this.endpointName = options.endpointName;
+        this.kind = options.kind;
+        this.retryable = options.retryable;
+        this.attempt = options.attempt;
+        this.maxAttempts = options.maxAttempts;
+        this.status = options.status;
+        this.receivedType = options.receivedType;
+    }
+}

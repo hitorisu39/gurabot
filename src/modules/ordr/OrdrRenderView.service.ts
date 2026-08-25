@@ -59,7 +59,11 @@ export class OrdrRenderViewService extends AbstractViewService<OrdrRenderViewDto
 
             for (let index = 0; index < data.skins.length; index++) {
                 const choice = data.skins[index]!;
-                menu.addChoice(TextFormatter.truncate(choice.label, 100), String(index), TextFormatter.truncate(choice.description, 100));
+                menu.addChoice(
+                    TextFormatter.truncate(choice.label, 100),
+                    String(index),
+                    TextFormatter.truncate(choice.description, 100),
+                );
             }
 
             const selectedIndex = data.skins.findIndex(
