@@ -1,5 +1,10 @@
 import { Metrics } from "@/metrics";
-import { AdapterErrorContext, AdapterHook, AdapterResponseContext } from "@generated/adapter/types";
+import {
+    AdapterErrorContext,
+    AdapterHook,
+    AdapterRequestError,
+    AdapterResponseContext,
+} from "@generated/adapter/types";
 
 export class AdapterMetricsMiddleware implements AdapterHook {
     constructor(private readonly metrics: Metrics) {}
@@ -10,7 +15,10 @@ export class AdapterMetricsMiddleware implements AdapterHook {
     }
 
     public onError(context: AdapterErrorContext): void {
-        const status = context.error.status?.toString() ?? context.error.code ?? context.error.kind;
+        const error = context.error;
+        const status =
+            error instanceof AdapterRequestError ? (error.status?.toString() ?? error.code ?? error.kind) : error.kind;
+
         this.observe(context.endpointName, status, context.durationMs);
     }
 
