@@ -3,13 +3,15 @@ import { ActionRow } from "@/core/discord/ui/ActionRow";
 import { Embed } from "@/core/discord/ui/Embed";
 import { SelectMenu } from "@/core/discord/ui/SelectMenu";
 import { AbstractViewService } from "@/modules/AbstractViewService";
+import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";
+import { TextFormatter } from "@domain/discord/formatters/Text.formatter";
 import { ordrDataDelimiter } from "@domain/ordr/configs/Ordr.config";
 import { EOrdrConfigSource } from "@domain/ordr/OrdrConfig.dto";
 import { EOrdrRenderStage, OrdrRenderViewDto, OrdrSkinChoiceDto } from "@domain/ordr/views/OrdrRender.view";
 import { ButtonStyle } from "discord.js";
 
 export class OrdrRenderViewService extends AbstractViewService<OrdrRenderViewDto> {
-    protected readonly ttl: number = 300;
+    protected readonly ttl: number = 180;
 
     public build(sessionID: string, data: OrdrRenderViewDto): TMessagePayload {
         switch (data.stage) {
@@ -42,7 +44,7 @@ export class OrdrRenderViewService extends AbstractViewService<OrdrRenderViewDto
                 : (selectedSkin?.label ?? this.fallbackSkin(data));
 
         const description = [
-            `**Replay:** \`${this.limit(data.replay.name, 60)}\`${ordrDataDelimiter}${this.formatBytes(data.replay.size)}`,
+            `**Replay:** \`${TextFormatter.truncate(data.replay.name, 60)}\`${ordrDataDelimiter}${DiscordFormatter.bytes(data.replay.size)}`,
             `**Render:** ${configuration}${ordrDataDelimiter}${skin}${ordrDataDelimiter}\`${data.config.settings.resolution}\``,
         ];
 
@@ -57,8 +59,7 @@ export class OrdrRenderViewService extends AbstractViewService<OrdrRenderViewDto
 
             for (let index = 0; index < data.skins.length; index++) {
                 const choice = data.skins[index]!;
-
-                menu.addChoice(this.limit(choice.label, 100), String(index), this.limit(choice.description, 100));
+                menu.addChoice(TextFormatter.truncate(choice.label, 100), String(index), TextFormatter.truncate(choice.description, 100));
             }
 
             const selectedIndex = data.skins.findIndex(
@@ -105,11 +106,11 @@ export class OrdrRenderViewService extends AbstractViewService<OrdrRenderViewDto
     private progress(data: OrdrRenderViewDto): TMessagePayload {
         const lines = [
             this.progressBar(data.progress),
-            // data.progress ? `Status: \`${this.limit(data.progress, 200)}\`` : "Waiting for a renderer...",
+            // data.progress ? `Status: \`${TextFormatter.truncate(data.progress, 200)}\`` : "Waiting for a renderer...",
         ];
 
-        if (data.renderer) lines.push(`Renderer: \`${this.limit(data.renderer, 100)}\``);
-        if (data.description) lines.push(this.limit(data.description, 1_500));
+        if (data.renderer) lines.push(`Renderer: \`${TextFormatter.truncate(data.renderer, 100)}\``);
+        if (data.description) lines.push(TextFormatter.truncate(data.description, 1_500));
 
         return {
             embeds: [
@@ -183,17 +184,5 @@ export class OrdrRenderViewService extends AbstractViewService<OrdrRenderViewDto
         const empty = barLength - filled;
 
         return `\`${"█".repeat(filled)}${"░".repeat(empty)}\` ${percentage.toFixed(0)}%`;
-    }
-
-    private formatBytes(bytes: number): string {
-        if (bytes < 1_024) return `${bytes} B`;
-        if (bytes < 1_024 * 1_024) return `${(bytes / 1_024).toFixed(1)} KB`;
-
-        return `${(bytes / (1_024 * 1_024)).toFixed(1)} MB`;
-    }
-
-    // should prolly be moved to utils
-    private limit(value: string, maximum: number): string {
-        return value.length <= maximum ? value : `${value.slice(0, maximum - 3)}...`;
     }
 }
