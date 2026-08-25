@@ -264,7 +264,7 @@ export class OrdrRenderViewService extends AbstractViewService<OrdrRenderViewDto
 
         const stats = [
             ScoreFormatter.accuracy(score.accuracy),
-            score.pp === undefined ? null : ScoreFormatter.pp(score.pp),
+            !score.pp ? null : ScoreFormatter.pp(score.pp),
             `${DiscordFormatter.number(score.maxCombo)}x`,
             DateFormatter.discord(score.endedAt, "R"),
         ]
