@@ -97,7 +97,7 @@ export abstract class AbstractScoreView extends AbstractService {
          * since markdown is not allowed in field names.
          */
         const thumbnail = new URL(score.beatmapset.covers.listDouble);
-        thumbnail.searchParams.set("score_id", score.id.toString());
+        if (score.id) thumbnail.searchParams.set("score_id", score.id.toString());
 
         return embed
             .setFooter({
