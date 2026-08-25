@@ -24,6 +24,7 @@ import { OsuUserService } from "./OsuUser.service";
 import { OsuScoreService } from "./OsuScore.service";
 import { OsuBeatmapService } from "./OsuBeatmap.service";
 import { IBeatmapsetSearchInput, UserScoreType } from "@domain/osu/Adapter.dto";
+import { OsuReplayService } from "./OsuReplay.service";
 
 interface IUserWithScoresInput {
     nameOrID: string | number;
@@ -55,6 +56,7 @@ export class OsuService extends AbstractService {
     @Import() declare private readonly userService: OsuUserService;
     @Import() declare private readonly scoreService: OsuScoreService;
     @Import() declare private readonly beatmapService: OsuBeatmapService;
+    @Import() declare private readonly replayService: OsuReplayService;
 
     //#region API
 
@@ -75,7 +77,7 @@ export class OsuService extends AbstractService {
         mode?: GameMode,
         provider: AdapterProvider = AdapterProvider.Bancho,
     ): Promise<Uint8Array> {
-        return this.scoreService.replay(id, mode, provider);
+        return this.replayService.replay(id, mode, provider);
     }
 
     public async best(

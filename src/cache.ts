@@ -4,6 +4,7 @@ import { TConstructor, TLogger, TMetrics } from "./core";
 import { ICacheSchema } from "@domain/core/Cache";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { plainToInstance } from "class-transformer";
+import { uuidv7 } from "uuidv7";
 
 export class Cache {
     private redis: Redis | null;
@@ -191,5 +192,78 @@ export class Cache {
 
         await this.redis.hset(baseKey as string, payload);
         if (this.metrics) this.metrics.cacheOperations.inc({ operation: "hSetMulti", status: "success" });
+    }
+
+    /**
+     * Acquires a distributed lock.
+     *
+     * Returns an ownership token when successful, otherwise null.
+     */
+    public async acquireLock(key: string, ttlMs: number): Promise<string | null> {
+        if (!this.redis) {
+            throw new Exception(EApplicationError.INTERNAL_ERROR, "Redis is not connected.");
+        }
+
+        const token = uuidv7();
+        const result = await this.redis.set(key, token, "PX", ttlMs, "NX");
+
+        return result === "OK" ? token : null;
+    }
+
+    /**
+     * Releases a distributed lock only if this caller still owns it.
+     *
+     * A dedicated Redis connection is used because WATCH state belongs
+     * to the connection and Cache's primary connection is shared.
+     */
+    public async releaseLock(key: string, token: string): Promise<void> {
+        if (!this.redis) {
+            throw new Exception(EApplicationError.INTERNAL_ERROR, "Redis is not connected.");
+        }
+
+        const redis = this.redis.duplicate({
+            lazyConnect: true,
+        });
+
+        try {
+            await redis.connect();
+
+            while (true) {
+                await redis.watch(key);
+
+                const current = await redis.get(key);
+
+                if (current !== token) {
+                    await redis.unwatch();
+                    return;
+                }
+
+                const result = await redis.multi().del(key).exec();
+
+                /**
+                 * null means the watched key changed before EXEC.
+                 */
+                if (result !== null) {
+                    return;
+                }
+            }
+        } finally {
+            redis.disconnect();
+        }
+    }
+
+    /**
+     * Reserves a temporary distributed lease.
+     *
+     * Unlike acquireLock(), this lease is intentionally not released:
+     * callers use its expiry itself as the throttle.
+     */
+    public async reserveLease(key: string, ttlMs: number): Promise<boolean> {
+        if (!this.redis) {
+            throw new Exception(EApplicationError.INTERNAL_ERROR, "Redis is not connected.");
+        }
+
+        const result = await this.redis.set(key, uuidv7(), "PX", ttlMs, "NX");
+        return result === "OK";
     }
 }

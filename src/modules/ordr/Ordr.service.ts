@@ -120,8 +120,33 @@ export class OrdrService extends AbstractService {
         config: OrdrConfigDto,
     ): Promise<OrdrRenderCreateDto> {
         const [, replayFile] = await Promise.all([this.socket.connect(), this.downloadReplay(replay)]);
+        return this.submitRender(discordUserID, replay.name, replayFile, config);
+    }
 
-        const form = this.buildRenderForm(discordUserID, replay, replayFile, config);
+    @Trace()
+    public async renderBytes(
+        discordUserID: string,
+        filename: string,
+        bytes: Uint8Array,
+        config: OrdrConfigDto,
+    ): Promise<OrdrRenderCreateDto> {
+        await this.socket.connect();
+
+        if (!bytes.byteLength) {
+            throw new Exception(EApplicationError.INPUT_ERROR, "The score replay is empty.");
+        }
+
+        const replayFile = new Blob([Uint8Array.from(bytes)], { type: "application/octet-stream" });
+        return this.submitRender(discordUserID, filename, replayFile, config);
+    }
+
+    private async submitRender(
+        discordUserID: string,
+        filename: string,
+        replayFile: Blob,
+        config: OrdrConfigDto,
+    ): Promise<OrdrRenderCreateDto> {
+        const form = this.buildRenderForm(discordUserID, filename, replayFile, config);
         const response = await this.http.postResponse<OrdrRenderCreateDto>("/ordr/renders", form, {
             validateStatus: (status) => status >= 200 && status < 600,
         });
@@ -130,6 +155,7 @@ export class OrdrService extends AbstractService {
 
         if (response.status >= 400 || (data.errorCode && data.errorCode !== 0)) {
             const errorMessage = data.message ?? `${this.name} rejected the render request.`;
+
             const errorSuffix = !data.errorCode ? "" : ` (o!rdr error ${data.errorCode})`;
 
             this.logger.warn(
@@ -144,8 +170,9 @@ export class OrdrService extends AbstractService {
             throw new Exception(EApplicationError.INPUT_ERROR, `${errorMessage}${errorSuffix}`);
         }
 
-        if (!data.renderID)
+        if (!data.renderID) {
             throw new Exception(EApplicationError.INTERNAL_ERROR, `${this.name} did not return a render ID.`);
+        }
 
         return plainToInstance(OrdrRenderCreateDto, data);
     }
@@ -304,22 +331,20 @@ export class OrdrService extends AbstractService {
 
     private buildRenderForm(
         discordUserID: string,
-        replay: OrdrReplayFileDto,
+        replayName: string,
         replayFile: Blob,
         config: OrdrConfigDto,
     ): FormData {
         const form = new FormData();
-        const filename = basename(replay.name).slice(0, 128) || "replay.osr";
+        const filename = basename(replayName).slice(0, 128) || "replay.osr";
 
         form.append("replayFile", replayFile, filename);
-
         this.append(form, "verificationKey", this.config.ordr.verificationKey);
 
         if (config.source === EOrdrConfigSource.Preset) {
             this.append(form, "skin", config.settings.skin || this.config.ordr.defaultSkin);
             this.append(form, "resolution", config.settings.resolution);
             this.append(form, "discordUserId", discordUserID);
-
             return form;
         }
 

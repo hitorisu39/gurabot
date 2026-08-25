@@ -179,7 +179,6 @@ export class OrdrConfigActionComponent extends AbstractComponent {
                 data.draft.source = EOrdrConfigSource.Bot;
                 data.view = EOrdrConfigView.Overview;
                 break;
-
             case "source_preset":
                 if (!data.preset) {
                     throw new Exception(EApplicationError.INPUT_ERROR, "No bot-enabled issou.best preset was found.");
@@ -188,10 +187,8 @@ export class OrdrConfigActionComponent extends AbstractComponent {
                 data.draft.source = EOrdrConfigSource.Preset;
                 data.view = EOrdrConfigView.Overview;
                 break;
-
             case "refresh":
                 await ctx.deferUpdate();
-
                 data.preset = await this.ordrService.preset(ctx.author.id);
 
                 if (!data.preset && data.draft.source === EOrdrConfigSource.Preset) {
@@ -210,18 +207,15 @@ export class OrdrConfigActionComponent extends AbstractComponent {
 
                 data.view = EOrdrConfigView.Output;
                 break;
-
             case "reset":
                 data.draft.source = EOrdrConfigSource.Bot;
                 data.draft.settings = this.ordrConfigService.defaults();
                 data.view = EOrdrConfigView.Overview;
                 break;
-
             case "discard":
                 data.draft = this.clone(data.original);
                 data.view = EOrdrConfigView.Overview;
                 break;
-
             case "save": {
                 this.validateDraft(data);
 

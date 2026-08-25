@@ -1,3 +1,8 @@
+export const scoreUrlRegex = /^https:\/\/osu\.ppy\.sh\/scores\/([0-9]+)$/i;
+export const scoreUrlSearchRegex = /https:\/\/osu\.ppy\.sh\/scores\/([0-9]+)(?=$|[\s)\]}>.,!?])/i;
+export const scoreThumbnailRegex =
+    /^https:\/\/assets\.ppy\.sh\/beatmaps\/[0-9]+\/covers\/[^?]+\?.*\bscore_id=([0-9]+)(?:&|$)/i;
+
 /**
  * 10 scores per page in compact version of the list.
  */

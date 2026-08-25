@@ -27,3 +27,13 @@ model OrdrRender {
     @@index([userID, createdAt])
     @@map("ordr_renders")
 }
+
+model OrdrScoreRender {
+    scoreID         String      @id @map("score_id")
+    renderID        Int         @map("render_id")
+    videoURL        String      @map("video_url")
+    createdAt       DateTime    @map("created_at") @default(now())
+
+    @@index([createdAt])
+    @@map("ordr_score_renders")
+}
