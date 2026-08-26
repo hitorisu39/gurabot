@@ -2,7 +2,7 @@ import { Import } from "@/core/decorators";
 import { AbstractService } from "@/core/framework/AbstractService";
 import { OsuScoreService } from "@/modules/osu/OsuScore.service";
 import { wait } from "@domain/utils";
-import { AdapterProvider, GameMode } from "@generated/adapter/types";
+import { AdapterProvider } from "@generated/adapter/types";
 
 export class OsuReplayService extends AbstractService {
     @Import() declare private readonly scoreService: OsuScoreService;
@@ -20,12 +20,8 @@ export class OsuReplayService extends AbstractService {
      */
     private readonly activeDownloads = new Map<string, Promise<Uint8Array>>();
 
-    public async replay(
-        id: string | number,
-        mode?: GameMode,
-        provider: AdapterProvider = AdapterProvider.Bancho,
-    ): Promise<Uint8Array> {
-        const key = `${provider}:${mode ?? "auto"}:${id}`;
+    public async replay(id: string | number, provider: AdapterProvider = AdapterProvider.Bancho): Promise<Uint8Array> {
+        const key = `${provider}:${id}`;
 
         const active = this.activeDownloads.get(key);
 
@@ -33,7 +29,7 @@ export class OsuReplayService extends AbstractService {
             return active;
         }
 
-        const task = this.download(id, mode, provider);
+        const task = this.download(id, provider);
         this.activeDownloads.set(key, task);
 
         try {
@@ -43,22 +39,17 @@ export class OsuReplayService extends AbstractService {
         }
     }
 
-    private async download(
-        id: string | number,
-        mode: GameMode | undefined,
-        provider: AdapterProvider,
-    ): Promise<Uint8Array> {
+    private async download(id: string | number, provider: AdapterProvider): Promise<Uint8Array> {
         if (provider === AdapterProvider.Bancho) {
             await this.waitForBanchoSlot();
         }
 
-        return this.adapter[provider].replay({ id: String(id), mode });
+        return this.adapter[provider].replay({ id: String(id) });
     }
 
     private async waitForBanchoSlot(): Promise<void> {
         while (true) {
             const acquired = await this.cache.reserveLease("osu:replay-download", this.interval);
-
             if (acquired) {
                 return;
             }
