@@ -72,12 +72,8 @@ export class OsuService extends AbstractService {
         return this.scoreService.score(id, provider);
     }
 
-    public async replay(
-        id: string | number,
-        mode?: GameMode,
-        provider: AdapterProvider = AdapterProvider.Bancho,
-    ): Promise<Uint8Array> {
-        return this.replayService.replay(id, mode, provider);
+    public async replay(id: string | number, provider: AdapterProvider = AdapterProvider.Bancho): Promise<Uint8Array> {
+        return this.replayService.replay(id, provider);
     }
 
     public async best(
