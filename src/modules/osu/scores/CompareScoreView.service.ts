@@ -7,10 +7,10 @@ import { DescriptionBuilder } from "@/core/discord/ui/DescriptionBuilder";
 import { MapFormatter } from "@domain/osu/formatters/Map.formatter";
 import { ScoreFormatter } from "@domain/osu/formatters/Score.formatter";
 import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";
-import { BeatmapAttributesCalculator } from "@domain/osu/utils/BeatmapAttributesCalculator";
 import { scoreStatsDelimiter } from "@domain/osu/configs/Score.config";
 import { ProfileFormatter } from "@domain/osu/formatters/Profile.formatter";
 import { DateFormatter } from "@domain/discord/formatters/Date.formatter";
+import { BeatmapUtils } from "@domain/osu/utils/BeatmapUtils";
 
 export class CompareScoreView extends AbstractScoreView {
     public getPageSize(): number {
@@ -64,13 +64,13 @@ export class CompareScoreView extends AbstractScoreView {
             const statsSecondRow = [pp, comboRatioString, hitsString].filter(Boolean).join(scoreStatsDelimiter);
 
             const attrs = firstScore.calculated.difficulty.beatmap;
-            const liveBpm = BeatmapAttributesCalculator.bpm(firstScore.beatmap.bpm, attrs.clockRate);
-            const liveLength = BeatmapAttributesCalculator.length(firstScore.beatmap.totalLength, attrs.clockRate);
+            const length = BeatmapUtils.length(firstScore.beatmap.totalLength, attrs.clockRate);
+            const bpm = BeatmapUtils.bpm(firstScore.beatmap.bpm, attrs.clockRate);
 
             const statsThirdRow = [
-                MapFormatter.length(liveLength),
+                MapFormatter.length(length),
                 MapFormatter.attributes(data.profile.mode, attrs),
-                MapFormatter.bpm(liveBpm),
+                MapFormatter.bpm(bpm),
             ]
                 .filter(Boolean)
                 .join(scoreStatsDelimiter);

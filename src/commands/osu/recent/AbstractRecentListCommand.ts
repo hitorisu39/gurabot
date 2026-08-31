@@ -12,7 +12,7 @@ import {
 } from "@/core/decorators";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { OsuService } from "@/modules/osu/Osu.service";
-import { Grade, Score } from "@generated/adapter/types";
+import { Grade } from "@generated/adapter/types";
 import { PopulatedScoresQueryDto } from "@domain/osu/Score.dto";
 import { CommandOption, ECommandCategory, ICommandMods, ICommandQueryData, ICommandRange } from "@domain/core/Command";
 import { EScoreListSize, EScoreQuerySort, ESortOrder } from "@domain/osu/enums/Score.enum";
@@ -110,21 +110,16 @@ export abstract class AbstractRecentListCommand extends AbstractOsuCommand {
             return;
         }
 
-        let workingScores: Array<Score> = scores;
+        const populatedScores = await this.osuService.populateScores(
+            scores,
+            evaluator.population,
+            target.mode,
+            target.server,
+        );
 
-        if (evaluator.withMaps || evaluator.populated) {
-            const scoresWithMaps = await this.osuService.populateMaps(scores);
-            workingScores = scoresWithMaps;
-
-            if (evaluator.populated) {
-                const populatedScores = await this.osuService.populateCalculations(scoresWithMaps, target.mode, true);
-                workingScores = populatedScores;
-            }
-        }
-
-        let finalScores = evaluator.filter(workingScores);
-        finalScores = evaluator.sort(finalScores);
-        finalScores = evaluator.index(finalScores);
+        const filtered = evaluator.filter(populatedScores);
+        const sorted = evaluator.sort(filtered);
+        const finalScores = evaluator.index(sorted);
 
         if (finalScores.length === 0) {
             await ctx.respond(Embed.error("No recent plays found matching the specified filters."));

@@ -7,7 +7,7 @@ import {
     ICommandRange,
 } from "@domain/core/Command";
 import { BaseScoreQueryDto } from "../Score.dto";
-import { EScoreQuerySort, ESortOrder } from "../enums/Score.enum";
+import { EScorePopulation, EScoreQuerySort, ESortOrder } from "../enums/Score.enum";
 import { Grade, Score } from "@generated/adapter/types";
 import { rangeContains } from "@domain/utils/utils";
 import { ModUtils } from "@generated/adapter/mods";
@@ -30,12 +30,8 @@ export class BaseScoreEvaluator<Q extends BaseScoreQueryDto = BaseScoreQueryDto>
         this.cleanedContent = option.some() ? option.unwrap().cleanedContent?.trim() || null : null;
     }
 
-    public get withMaps(): boolean {
-        return false;
-    }
-
-    public get populated(): boolean {
-        return false;
+    public get population(): EScorePopulation {
+        return EScorePopulation.None;
     }
 
     public filter<T extends Score>(scores: Array<T>): Array<T> {

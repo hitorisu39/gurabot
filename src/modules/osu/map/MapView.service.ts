@@ -4,7 +4,6 @@ import { MapViewDto } from "@domain/osu/views/Map.view";
 import { TMessagePayload } from "@/core/discord/context/CommandContext";
 import { AdapterProvider, Beatmap, Beatmapset, GameMode } from "@generated/adapter/types";
 import { Embed } from "@/core/discord/ui/Embed";
-import { BeatmapAttributesCalculator } from "@domain/osu/utils/BeatmapAttributesCalculator";
 import { ProfileFormatter } from "@domain/osu/formatters/Profile.formatter";
 import { MapFormatter } from "@domain/osu/formatters/Map.formatter";
 import { ScoreFormatter } from "@domain/osu/formatters/Score.formatter";
@@ -18,6 +17,7 @@ import { AbstractViewService } from "@/modules/AbstractViewService";
 import { ScoreStateKind } from "@generated/calculator/calculator";
 import { graphStrainTargetCount } from "@domain/osu/configs/Graph.config";
 import { GraphStrainService } from "../graph/GraphStrain.service";
+import { BeatmapUtils } from "@domain/osu/utils/BeatmapUtils";
 
 export class MapViewService extends AbstractViewService<MapViewDto, boolean> {
     @Import() declare private readonly graphStrainService: GraphStrainService;
@@ -93,9 +93,9 @@ export class MapViewService extends AbstractViewService<MapViewDto, boolean> {
             ),
         ]);
 
-        const liveBpm = BeatmapAttributesCalculator.bpm(map.bpm, beatmapAttributes.clockRate);
-        const liveTotalLength = BeatmapAttributesCalculator.length(map.totalLength, beatmapAttributes.clockRate);
-        const liveHitLength = BeatmapAttributesCalculator.length(map.hitLength, beatmapAttributes.clockRate);
+        const bpm = BeatmapUtils.bpm(map.bpm, beatmapAttributes.clockRate);
+        const totalLength = BeatmapUtils.length(map.totalLength, beatmapAttributes.clockRate);
+        const hitLength = BeatmapUtils.length(map.hitLength, beatmapAttributes.clockRate);
 
         const tableGenerator = new AsciiTable({
             compact: true,
@@ -152,9 +152,9 @@ export class MapViewService extends AbstractViewService<MapViewDto, boolean> {
                     inline: true,
                     name: `${MapFormatter.difficultyEmote(map.mode, attributes.starRating)} __${map.version} [${MapFormatter.stars(attributes.starRating)}]__ ${ScoreFormatter.mods(data.mods)}`,
                     value:
-                        `Length: \`${MapFormatter.length(liveTotalLength)}\` (\`${MapFormatter.length(liveHitLength)}\`)${delimiter}Combo: \`${attributes.maxCombo}x\`\n` +
+                        `Length: \`${MapFormatter.length(totalLength)}\` (\`${MapFormatter.length(hitLength)}\`)${delimiter}Combo: \`${attributes.maxCombo}x\`\n` +
                         `Circles: \`${map.countCircles}\`${delimiter}Sliders: \`${map.countSliders}\`${delimiter}Spinners: \`${map.countSpinners}\`\n` +
-                        `CS\`${DiscordFormatter.fixed(beatmapAttributes.cs)}\` AR\`${DiscordFormatter.fixed(beatmapAttributes.ar)}\` OD\`${DiscordFormatter.fixed(beatmapAttributes.od)}\` HP\`${DiscordFormatter.fixed(beatmapAttributes.hp)}\` BPM\`${DiscordFormatter.fixed(liveBpm)}\``,
+                        `CS\`${DiscordFormatter.fixed(beatmapAttributes.cs)}\` AR\`${DiscordFormatter.fixed(beatmapAttributes.ar)}\` OD\`${DiscordFormatter.fixed(beatmapAttributes.od)}\` HP\`${DiscordFormatter.fixed(beatmapAttributes.hp)}\` BPM\`${DiscordFormatter.fixed(bpm)}\``,
                 },
                 {
                     inline: true,

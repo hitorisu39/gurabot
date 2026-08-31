@@ -15,7 +15,7 @@ export class ScorepostViewService extends AbstractService {
 
     @Trace()
     public async build(data: ScorepostViewDto): Promise<TMessagePayload> {
-        let files: Array<TMessageFile> = []
+        let files: Array<TMessageFile> = [];
         const content = "```" + ScorepostFormatter.text(data.user, data.score, data.text) + "```";
 
         if (data.score.mode === GameMode.Standard) {

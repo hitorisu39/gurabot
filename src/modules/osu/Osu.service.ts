@@ -25,6 +25,7 @@ import { OsuScoreService } from "./OsuScore.service";
 import { OsuBeatmapService } from "./OsuBeatmap.service";
 import { IBeatmapsetSearchInput, UserScoreType } from "@domain/osu/Adapter.dto";
 import { OsuReplayService } from "./OsuReplay.service";
+import { EScorePopulation } from "@domain/osu/enums/Score.enum";
 
 interface IUserWithScoresInput {
     nameOrID: string | number;
@@ -355,6 +356,23 @@ export class OsuService extends AbstractService {
             user,
             context,
         };
+    }
+
+    @Trace()
+    public async populateScores(
+        scores: Array<Score>,
+        population: EScorePopulation,
+        mode: GameMode,
+        provider: AdapterProvider = AdapterProvider.Bancho,
+    ): Promise<Array<Score>> {
+        switch (population) {
+            case EScorePopulation.Populated:
+                return this.populateAll(scores, mode, true, provider);
+            case EScorePopulation.Maps:
+                return this.populateMaps(scores, provider);
+            default:
+                return scores;
+        }
     }
 
     @Trace()
