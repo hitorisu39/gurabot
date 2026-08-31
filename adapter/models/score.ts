@@ -1,9 +1,10 @@
 import { Field, SchemaModel } from "../builder";
 import { Beatmap, Beatmapset } from "./beatmap";
-import { Grade } from "./common";
+import { GameMode, Grade } from "./common";
 import { User } from "./user";
 
 export const ScoreStatistics = SchemaModel.define("ScoreStatistics", {
+    sliderTailHit: Field.Int(),
     ignoreMiss: Field.Int(),
     ignoreHit: Field.Int(),
     miss: Field.Int(),
@@ -37,6 +38,7 @@ export const Score = SchemaModel.define("Score", {
     preserve: Field.Boolean().Optional(),
     processed: Field.Boolean().Optional(),
     ranked: Field.Boolean().Optional(),
+    mode: Field.Enum(GameMode).Optional(),
     maximumStatistics: Field.Model(ScoreStatistics).Optional(),
     mods: Field.Mods(),
     statistics: Field.Model(ScoreStatistics),

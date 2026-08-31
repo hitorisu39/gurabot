@@ -1,5 +1,5 @@
 import { EApplicationError, Exception } from "@domain/core/Exception";
-import { ICommandDateRange, ICommandRange } from "./core/Command";
+import { ICommandRange } from "../core/Command";
 
 type WaitForOptions = {
     interval?: number; // ms between checks
@@ -44,14 +44,6 @@ export function isValidNumber(value: number | undefined | null): value is number
     return typeof value === "number" && Number.isFinite(value);
 }
 
-export function isValidDate(value: Date | null): value is Date {
-    return value instanceof Date && Number.isFinite(value.getTime());
-}
-
-export function isTimezoneOffset(value: string): boolean {
-    return /^(?:UTC|Z|(?:UTC)?[+-]\d{1,2}(?::\d{2})?)$/i.test(value);
-}
-
 export function parseNumericString(value: string): number | null {
     const normalized = value.trim();
 
@@ -86,22 +78,6 @@ export function rangeInclusiveMax(range: ICommandRange, step: number): number {
     }
 
     return range.maxInclusive ? range.max : range.max - step;
-}
-
-export function dateRangeContains(range: ICommandDateRange, value: Date): boolean {
-    if (range.exact !== undefined) return value.getTime() === range.exact.getTime();
-
-    let passesMin = true;
-    if (range.min) {
-        passesMin = range.minInclusive ? value.getTime() >= range.min.getTime() : value.getTime() > range.min.getTime();
-    }
-
-    let passesMax = true;
-    if (range.max) {
-        passesMax = range.maxInclusive ? value.getTime() <= range.max.getTime() : value.getTime() < range.max.getTime();
-    }
-
-    return passesMin && passesMax;
 }
 
 export function levenshtein(a: string, b: string): number {

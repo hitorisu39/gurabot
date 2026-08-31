@@ -2,8 +2,8 @@ import { Aliases, Examples, Import, InjectMatch, IsString, Option } from "@/core
 import { Score } from "@generated/adapter/types";
 import { GraphTopHoursService } from "@/modules/osu/graph/GraphTopHours.service";
 import { AbstractGraphTopCommand, IGraphTopResult } from "./AbstractGraphTopCommand";
-import { isTimezoneOffset } from "@domain/utils";
 import { CommandOption } from "@domain/core/Command";
+import { isTimezoneOffset, normalizeTimezone } from "@domain/utils/dateTimeUtils";
 
 @Examples("gth", "gth +3", "gth -05:00", "gth +3 username")
 export abstract class AbstractGraphTopHoursCommand extends AbstractGraphTopCommand {
@@ -16,26 +16,12 @@ export abstract class AbstractGraphTopHoursCommand extends AbstractGraphTopComma
     declare private readonly timezone: CommandOption<string>;
 
     protected async generateGraph(scores: ReadonlyArray<Score>): Promise<IGraphTopResult> {
-        const timezone = this.normalizeTimezone(this.timezone);
+        const timezone = normalizeTimezone(this.timezone.unwrapUnchecked());
 
         return {
             image: await this.graphTopHoursService.generate(scores, timezone),
             filename: "top-hours",
             title: `Top play hours · ${timezone}`,
         };
-    }
-
-    private normalizeTimezone(timezone: CommandOption<string>): string {
-        const value = timezone.unwrapUnchecked();
-
-        if (!value || /^(?:UTC|Z)$/i.test(value)) {
-            return "UTC+0";
-        }
-
-        if (/^UTC/i.test(value)) {
-            return value.toUpperCase();
-        }
-
-        return `UTC${value}`;
     }
 }

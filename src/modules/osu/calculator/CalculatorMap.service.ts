@@ -4,7 +4,7 @@ import fs from "fs";
 import { AbstractService } from "@/core/framework/AbstractService";
 import { HttpClient } from "@/http";
 import { EApplicationError, Exception } from "@domain/core/Exception";
-import { wait } from "@domain/utils";
+import { wait } from "@domain/utils/utils";
 import { osuBaseUrl } from "@domain/osu/configs/Osu.config";
 
 export class CalculatorMapService extends AbstractService {

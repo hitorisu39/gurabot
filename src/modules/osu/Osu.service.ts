@@ -278,7 +278,7 @@ export class OsuService extends AbstractService {
     ): Promise<IUserBeatmapScoreContext> {
         const beatmapScoresPromise = this.scoreService.userBeatmapScores(id, mode, beatmap.id, provider);
         const personalScoresPromise = this.scoreService.best(id, mode, scoreBestQueryLimit, provider);
-        const globalScoresPromise = BeatmapUtils.hasLeaderboard(beatmap)
+        const globalScoresPromise = BeatmapUtils.hasLeaderboard(beatmap.status)
             ? this.scoreService.beatmapScores(beatmap.id, mode, null, null, provider)
             : Promise.resolve<Array<Score>>([]);
 
@@ -399,7 +399,6 @@ export class OsuService extends AbstractService {
         provider: AdapterProvider = AdapterProvider.Bancho,
     ): Promise<Array<PopulatedScore<M>>> {
         const withMaps = await this.populateMaps(scores, provider);
-
         return this.populateCalculations(withMaps, mode, includeFC);
     }
 
@@ -416,17 +415,16 @@ export class OsuService extends AbstractService {
         const personalScoresPromise =
             data.personalScores !== undefined
                 ? Promise.resolve(data.personalScores)
-                : this.scoreService.best(data.userID, data.mode, 100, provider);
+                : this.scoreService.best(data.userID, data.mode, scoreBestQueryLimit, provider);
 
         const globalScoresPromise =
             data.globalScores !== undefined
                 ? Promise.resolve(data.globalScores)
-                : BeatmapUtils.hasLeaderboard(data.beatmap)
+                : BeatmapUtils.hasLeaderboard(data.beatmap.status)
                   ? this.scoreService.beatmapScores(data.beatmap.id, data.mode, null, null, provider)
                   : Promise.resolve<Array<Score>>([]);
 
         const [personalScores, globalScores] = await Promise.all([personalScoresPromise, globalScoresPromise]);
-
         return new ScorePlacementEvaluator(data.beatmap, personalScores, globalScores).evaluate(data.scores);
     }
 

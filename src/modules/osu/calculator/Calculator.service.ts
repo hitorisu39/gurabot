@@ -149,7 +149,6 @@ export class CalculatorService extends AbstractService {
                     attributes: {
                         total: score.pp,
                     } as TPerformanceAttributes<M>,
-
                     difficulty: {
                         attributes: fullDifficulty,
                         beatmap: beatmapAttributes,
@@ -160,7 +159,6 @@ export class CalculatorService extends AbstractService {
                     attributes: {
                         total: 0,
                     } as TPerformanceAttributes<M>,
-
                     difficulty: {
                         attributes: fullDifficulty,
                         beatmap: beatmapAttributes,
@@ -172,18 +170,14 @@ export class CalculatorService extends AbstractService {
                     beatmapPath: this.calculatorMapService.getPath(
                         score.beatmapID,
                     ),
-
                     precalculatedDifficulty: isPartial
                         ? undefined
                         : fullDifficulty,
-
                     passedObjects,
                     referenceId: actualReferenceID,
                     mods: protoMods,
-
                     totalScore: score.totalScore,
                     legacyTotalScore: score.legacyTotalScore,
-
                     score: ScoreCalculationUtils.scoreState(
                         score,
                         mode,

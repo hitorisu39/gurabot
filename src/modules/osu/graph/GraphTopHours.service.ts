@@ -8,6 +8,8 @@ import { graphColors } from "@domain/osu/configs/Graph.config";
 import { GraphRendererService } from "./GraphRenderer.service";
 import { EGraphSize } from "@domain/osu/enums/Graph.enum";
 import { Import } from "@/core/decorators";
+import { TimeFormatter } from "@domain/discord/formatters/Time.formatter";
+import { parseTimezoneOffset } from "@domain/utils/dateTimeUtils";
 
 interface IHourBucket {
     hour: number;
@@ -31,7 +33,7 @@ export class GraphTopHoursService extends AbstractService {
 
     @Trace()
     public async generate(scores: ReadonlyArray<Score>, timezone: string): Promise<Buffer> {
-        const offsetMinutes = this.parseTimezoneOffset(timezone);
+        const offsetMinutes = parseTimezoneOffset(timezone);
         const buckets = this.buildBuckets(scores, offsetMinutes);
         const stats = this.calculateStats(buckets);
 
@@ -48,28 +50,23 @@ export class GraphTopHoursService extends AbstractService {
             plugins: [this.createPlugin(stats)],
 
             data: {
-                labels: buckets.map((bucket) => this.formatHour(bucket.hour)),
-
+                labels: buckets.map((bucket) => TimeFormatter.hourMinute(bucket.hour)),
                 datasets: [
                     {
                         label: "Top plays",
                         data: buckets.map((bucket) => bucket.count),
-
                         backgroundColor: backgroundColors,
                         borderColor: borderColors,
                         borderWidth: 2,
-
                         borderRadius: 4,
                         barPercentage: 0.82,
                         categoryPercentage: 0.88,
                     },
                 ],
             },
-
             options: {
                 responsive: false,
                 animation: false,
-
                 layout: {
                     padding: {
                         top: 58,
@@ -78,13 +75,11 @@ export class GraphTopHoursService extends AbstractService {
                         bottom: 4,
                     },
                 },
-
                 plugins: {
                     legend: {
                         display: false,
                     },
                 },
-
                 scales: {
                     y: {
                         beginAtZero: true,
@@ -93,42 +88,33 @@ export class GraphTopHoursService extends AbstractService {
                             color: graphColors.tickText,
                             precision: 0,
                             padding: 10,
-
                             font: {
                                 size: 13,
                                 weight: "bold",
                             },
-
                             callback: (value) => DiscordFormatter.number(Number(value)),
                         },
-
                         grid: {
                             color: graphColors.grid,
                         },
-
                         border: {
                             display: false,
                         },
                     },
-
                     x: {
                         ticks: {
                             color: graphColors.axisText,
-
                             font: {
                                 size: 11,
                                 weight: "bold",
                             },
-
                             maxRotation: 0,
                             autoSkip: false,
                         },
-
                         grid: {
                             color: graphColors.axisText,
                             drawOnChartArea: false,
                         },
-
                         border: {
                             display: false,
                         },
@@ -264,12 +250,12 @@ export class GraphTopHoursService extends AbstractService {
                 const iconTextGap = 10;
 
                 const peakText =
-                    `Peak: ${this.formatHour(stats.peak.hour)}` +
+                    `Peak: ${TimeFormatter.hourMinute(stats.peak.hour)}` +
                     ` · ${DiscordFormatter.number(stats.peak.count)} plays`;
 
                 const windowText =
-                    `Peak 3h: ${this.formatHour(stats.peakWindow.startHour)}` +
-                    `–${this.formatWindowEnd(stats.peakWindow.endHour)}` +
+                    `Peak 3h: ${TimeFormatter.hourMinute(stats.peakWindow.startHour)}` +
+                    `–${TimeFormatter.hourMinute(stats.peakWindow.endHour, 59)}` +
                     ` · ${DiscordFormatter.number(stats.peakWindow.count)} plays`;
 
                 const activeText = `Active hours: ${stats.activeHours}/24`;
@@ -330,45 +316,6 @@ export class GraphTopHoursService extends AbstractService {
         ctx.fillRect(x, y - 5, width, 10);
 
         ctx.restore();
-    }
-
-    //#endregion
-
-    //#region Timezone
-
-    private parseTimezoneOffset(timezone: string): number {
-        const match = timezone
-            .trim()
-            .toUpperCase()
-            .match(/^UTC([+-])(\d{1,2})(?::(\d{2}))?$/);
-
-        if (!match) {
-            throw new Exception(EApplicationError.INTERNAL_ERROR, `Invalid timezone offset '${timezone}'.`);
-        }
-
-        const sign = match.at(1) === "-" ? -1 : 1;
-        const hours = Number(match.at(2));
-        const minutes = Number(match.at(3) ?? "0");
-
-        if (
-            !Number.isInteger(hours) ||
-            !Number.isInteger(minutes) ||
-            hours > 14 ||
-            minutes > 59 ||
-            (hours === 14 && minutes !== 0)
-        ) {
-            throw new Exception(EApplicationError.INTERNAL_ERROR, `Invalid timezone offset '${timezone}'.`);
-        }
-
-        return sign * (hours * 60 + minutes);
-    }
-
-    private formatHour(hour: number): string {
-        return `${hour.toString().padStart(2, "0")}:00`;
-    }
-
-    private formatWindowEnd(hour: number): string {
-        return `${hour.toString().padStart(2, "0")}:59`;
     }
 
     //#endregion

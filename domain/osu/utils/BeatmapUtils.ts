@@ -1,4 +1,4 @@
-import { Beatmap, Status } from "@generated/adapter/types";
+import { Status } from "@generated/adapter/types";
 import {
     beatmapDefaultRegex,
     beatmapLongRegex,
@@ -21,12 +21,12 @@ export class BeatmapUtils {
         mapsetShortRegex,
     ];
 
-    public static hasLeaderboard(beatmap: Pick<Beatmap, "status">): boolean {
-        return [Status.Approved, Status.Ranked, Status.Qualified, Status.Loved].includes(beatmap.status);
+    public static hasLeaderboard(status: Status): boolean {
+        return [Status.Approved, Status.Ranked, Status.Qualified, Status.Loved].includes(status);
     }
 
-    public static awardsPerformancePoints(beatmap: Pick<Beatmap, "status">): boolean {
-        return [Status.Approved, Status.Ranked].includes(beatmap.status);
+    public static awardsPerformancePoints(status: Status): boolean {
+        return [Status.Approved, Status.Ranked].includes(status);
     }
 
     public static isTarget(input: string): boolean {

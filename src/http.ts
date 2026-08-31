@@ -54,7 +54,7 @@ export class HttpClient {
                 const status = error.response?.status;
                 const url = error.config?.url;
 
-                const data = { message: error.message, status: error.response?.status, data: error.response?.data };
+                const data = { message: error.message, status: error.response?.status };
                 this.logger.error(data, `HTTP Error ${status} on ${url}`);
 
                 throw new Exception(

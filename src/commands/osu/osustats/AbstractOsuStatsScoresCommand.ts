@@ -10,7 +10,7 @@ import { OsuStatsScoresViewDto } from "@domain/osustats/views/OsuStatsScores.vie
 import { EOsuStatsScoreSort } from "@domain/osustats/enums/OsuStatsScores.enum";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
 import { OsuStatsScoresViewService } from "@/modules/osustats/OsuStatsScoresView.service";
-import { rangeInclusiveMax, rangeInclusiveMin } from "@domain/utils";
+import { rangeInclusiveMax, rangeInclusiveMin } from "@domain/utils/utils";
 import { OsuStatsScoresRequestDto } from "@domain/osustats/OsuStatsScores.dto";
 
 @Help(`

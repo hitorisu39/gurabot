@@ -98,6 +98,12 @@ export const Team = SchemaModel.define("Team", {
     shortName: Field.String(),
 });
 
+export const Cover = SchemaModel.define("Cover", {
+    customUrl: Field.String(),
+    url: Field.String(),
+    id: Field.String(),
+});
+
 export const Badge = SchemaModel.define("Badge", {
     awardedAt: Field.Date(),
     description: Field.String(),
@@ -112,6 +118,7 @@ export const User = SchemaModel.define("User", {
     previousUsernames: Field.String().Array(),
     countryCode: Field.String(),
     avatarUrl: Field.String(),
+    cover: Field.Model(Cover).Optional(),
     followers: Field.Int(),
     mappingFollowers: Field.Int(),
 

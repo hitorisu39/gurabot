@@ -39,11 +39,11 @@ import { SnipePlayerListViewDto } from "@domain/snipe/views/SnipePlayerList.view
 import { SnipePlayerChangesViewDto } from "@domain/snipe/views/SnipePlayerChanges.view";
 
 export interface ICacheSchema {
-    // Discord
+    // discord
     guild: GuildDto;
     guild_prefix: string;
 
-    // Sessions
+    // sessions
     osu_profile_view: ProfileViewDto;
     osu_profile_compare_view: CompareProfileViewDto;
     osu_scores_view: ScoresViewDto;
@@ -74,8 +74,9 @@ export interface ICacheSchema {
 
     general_commands_view: CommandsViewDto;
 
-    // Osu
+    // osu!
     osu_user_profile: PopulatedUser;
+    osu_scorepost_background_miss: boolean;
 
     // osu!track
     osutrack_stats_history: Array<OsuTrackStatsHistoryDto>;
@@ -95,10 +96,10 @@ export interface ICacheSchema {
     osu_stats_scores: OsuStatsScoresPageDto;
     osu_stats_best: OsuStatsBestScoresDto;
 
-    // Osekai
+    // osekai
     osekai_medals: Array<OsekaiMedalDto>;
     osekai_ranking: OsekaiRankingPageDto;
 
-    // Auth
+    // auth
     auth_osu_state: AuthOsuStateDto;
 }

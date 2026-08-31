@@ -43,6 +43,15 @@ export class TextFormatter {
         return value.replace(/([\\`*_~|[\]()>])/g, "\\$1");
     }
 
+    public static escapeXml(value: string): string {
+        return value
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&apos;");
+    }
+
     public static inlineCode(value: string): string {
         const escaped = value.replace(/\\/g, "\\\\").replace(/`/g, "ˋ").replace(/\r?\n/g, " ");
 

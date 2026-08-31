@@ -159,7 +159,10 @@ export class MapViewService extends AbstractViewService<MapViewDto, boolean> {
                 {
                     inline: true,
                     name: "Downloads",
-                    value: osuMapsetDownloads.map((d) => `[${d.name}](${d.base}/${mapset.id})`).join("\n"),
+                    value: osuMapsetDownloads
+                        .filter((d) => d.display)
+                        .map((d) => `[${d.name}](${d.base}/${mapset.id})`)
+                        .join("\n"),
                 },
                 {
                     name: fieldHeader,

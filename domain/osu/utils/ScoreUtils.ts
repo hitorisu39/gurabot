@@ -1,5 +1,6 @@
 import { Score } from "@generated/adapter/types";
 import { PopulatedScore, ScoreWithMaps } from "../Score.dto";
+import { BeatmapUtils } from "./BeatmapUtils";
 
 export interface IScorePPProjection {
     /**
@@ -60,6 +61,10 @@ export class ScoreUtils {
     public static isFC(score: Score): boolean {
         if (!ScoreUtils.isPopulated(score)) return score.statistics.miss < 1;
         return score.statistics.miss < 1 && score.maxCombo >= score.fullDifficulty.maxCombo * 0.995;
+    }
+
+    public static isRanked(score: ScoreWithMaps): boolean {
+        return !!score.ranked && BeatmapUtils.awardsPerformancePoints(score.beatmap.status);
     }
 
     public static weightedPP(scores: ReadonlyArray<Score>): number {

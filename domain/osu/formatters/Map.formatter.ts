@@ -54,6 +54,10 @@ export class MapFormatter {
         return discordEmoteDifficulty[key] ?? "";
     }
 
+    public static difficultyBackground(beatmapID: number): string {
+        return `https://catboy.best/preview/background/${beatmapID}`;
+    }
+
     public static background(mapsetID: number): string {
         return `https://catboy.best/preview/background/${mapsetID}/set`;
     }

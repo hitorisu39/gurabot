@@ -5,7 +5,7 @@ import { OsekaiMedalDto } from "@domain/osekai/OsekaiMedal.dto";
 import { MapFormatter } from "./Map.formatter";
 import { ProfileFormatter } from "./Profile.formatter";
 import { GameMode } from "@generated/adapter/types";
-import { isValidDate } from "@domain/utils";
+import { isValidDate } from "@domain/utils/dateTimeUtils";
 
 export class MedalFormatter {
     public static text(value: string | null): string | null {
