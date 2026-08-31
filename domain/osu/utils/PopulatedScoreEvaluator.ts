@@ -9,14 +9,15 @@ export class PopulatedScoreEvaluator<
     Q extends PopulatedScoresQueryDto = PopulatedScoresQueryDto,
 > extends ScoreWithMapsEvaluator<Q> {
     public get populated(): boolean {
-        if (!this.query) return super.populated;
-        return (
-            super.populated ||
-            this.query.stars.some() ||
-            this.query.ppfc.some() ||
-            this.sortType === EScoreQuerySort.Stars ||
-            this.sortType === EScoreQuerySort.PPFC
-        );
+        if (this.sortType === EScoreQuerySort.Stars || this.sortType === EScoreQuerySort.PPFC) {
+            return true;
+        }
+
+        if (!this.query) {
+            return super.populated;
+        }
+
+        return super.populated || this.query.stars.some() || this.query.ppfc.some();
     }
 
     public filter<T extends Score>(scores: Array<T>): Array<T> {
@@ -33,12 +34,7 @@ export class PopulatedScoreEvaluator<
 
             // Calculations Check
             if (ScoreUtils.isPopulated(score)) {
-                if (
-                    q.stars.some() &&
-                    !rangeContains(q.stars.unwrap(), score.calculated.difficulty.attributes.starRating)
-                )
-                    return false;
-
+                if (q.stars.some() && !rangeContains(q.stars.unwrap(), score.fullDifficulty.starRating)) return false;
                 if (q.ppfc.some()) {
                     const fcPp = score.calculatedFC?.attributes.total ?? score.calculated.attributes.total;
                     if (!rangeContains(q.ppfc.unwrap(), fcPp)) return false;
@@ -54,7 +50,7 @@ export class PopulatedScoreEvaluator<
     protected getSortValue(score: Score): number {
         switch (this.sortType) {
             case EScoreQuerySort.Stars:
-                return ScoreUtils.isPopulated(score) ? score.calculated.difficulty.attributes.starRating : 0;
+                return ScoreUtils.isPopulated(score) ? score.fullDifficulty.starRating : 0;
             case EScoreQuerySort.PPFC:
                 return ScoreUtils.isPopulated(score)
                     ? (score.calculatedFC?.attributes.total ?? score.calculated.attributes.total)
