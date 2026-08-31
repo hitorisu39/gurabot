@@ -18,6 +18,7 @@ import { ScorepostBackgroundService } from "./ScorepostBackground.service";
 import { isValidNumber } from "@domain/utils/utils";
 import { GameMode, Grade } from "@generated/adapter/types";
 import { ScorepostFormatter } from "@domain/osu/formatters/Scorepost.formatter";
+import { MapFormatter } from "@domain/osu/formatters/Map.formatter";
 
 interface ICachedAsset {
     buffer: Buffer;
@@ -606,23 +607,13 @@ export class LazerScorepostRendererService extends AbstractService {
         const width = lazerScorepostLayout.starRatingWidth;
         const height = lazerScorepostLayout.starRatingHeight;
         const starSize = lazerScorepostLayout.starIconSize;
-        const value = starRating.toFixed(2);
+        const value = MapFormatter.stars(starRating, false, false);
         const style = this.getStarRatingStyle(starRating);
         const canvas = createCanvas(width, height);
 
         const ctx = canvas.getContext("2d");
 
-        this.roundedRect(
-            ctx,
-
-            0,
-            0,
-
-            width,
-            height,
-
-            height / 2,
-        );
+        this.roundedRect(ctx, 0, 0, width, height, height / 2);
 
         ctx.fillStyle = style.background;
         ctx.fill();
