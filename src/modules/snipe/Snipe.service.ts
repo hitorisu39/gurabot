@@ -15,7 +15,7 @@ import { SnipePlayerHistoryDto } from "@domain/snipe/SnipePlayerHistory.dto";
 import { SnipeRankingDto } from "@domain/snipe/SnipeRanking.dto";
 import { SnipeRecentChangesDto } from "@domain/snipe/SnipeRecent.dto";
 import { SnipeScoresDto } from "@domain/snipe/SnipeScore.dto";
-import { isValidNumber } from "@domain/utils";
+import { isValidNumber } from "@domain/utils/utils";
 import { plainToInstance } from "class-transformer";
 
 export interface ISnipePlayerScoresInput {

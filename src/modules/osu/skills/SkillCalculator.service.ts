@@ -11,7 +11,7 @@ import { PopulatedScore } from "@domain/osu/Score.dto";
 import { BeatmapAttributesCalculator } from "@domain/osu/utils/BeatmapAttributesCalculator";
 import { GameMode } from "@generated/adapter/types";
 import { ESkillType } from "@domain/osu/enums/Skill.enum";
-import { clamp, isValidNumber, smoothstep } from "@domain/utils";
+import { clamp, isValidNumber, smoothstep } from "@domain/utils/utils";
 import { ModUtils } from "@generated/adapter/mods";
 
 interface IScoreSkillValues {

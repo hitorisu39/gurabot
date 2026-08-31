@@ -95,6 +95,13 @@ const modeToInstance: Record<string, string> = {
     mania: GameMode.Mania,
 };
 
+const rulesetToInstance: Record<number, string> = {
+    0: GameMode.Standard,
+    1: GameMode.Taiko,
+    2: GameMode.Catch,
+    3: GameMode.Mania,
+};
+
 const modeToPlain: Record<string, string> = {
     [GameMode.Standard]: "osu",
     [GameMode.Taiko]: "taiko",
@@ -190,6 +197,7 @@ const UserMapping: Mapping = {
     previousUsernames: "previous_usernames",
     countryCode: "country_code",
     avatarUrl: "avatar_url",
+    coverUrl: "cover_url",
     followers: "follower_count",
     mappingFollowers: "mapping_follower_count",
 
@@ -314,6 +322,14 @@ const UserMapping: Mapping = {
             shortName: "short_name",
         },
     },
+    cover: {
+        path: "cover",
+        nested: {
+            customUrl: "custom_url",
+            url: "url",
+            id: "id",
+        },
+    },
 
     scoresBestCount: "scores_best_count",
     scoresFirstCount: "scores_first_count",
@@ -331,6 +347,10 @@ const UserMapping: Mapping = {
 };
 
 const StatisticsMapping: Mapping = {
+    sliderTailHit: {
+        path: "slider_tail_hit",
+        default: 0,
+    },
     ignoreMiss: {
         path: "ignore_miss",
         default: 0,
@@ -522,6 +542,10 @@ const ScoreMapping: Mapping = {
     legacyTotalScore: "legacy_total_score",
     passed: "passed",
     classicTotalScore: "classic_total_score",
+    mode: {
+        path: "ruleset_id",
+        transform: (v) => rulesetToInstance[v],
+    },
     maximumStatistics: {
         path: "maximum_statistics",
         nested: StatisticsMapping,
@@ -546,6 +570,10 @@ const ScoreMapping: Mapping = {
         nested: {
             pinned: "pin",
         },
+    },
+    user: {
+        path: "user",
+        nested: UserMapping,
     },
     beatmap: {
         path: "beatmap",

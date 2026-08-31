@@ -2,7 +2,7 @@ import { Score } from "@generated/adapter/types";
 import { PopulatedScoresQueryDto } from "../Score.dto";
 import { ScoreWithMapsEvaluator } from "./ScoreWithMapsEvaluator";
 import { EScoreQuerySort } from "../enums/Score.enum";
-import { rangeContains } from "@domain/utils";
+import { rangeContains } from "@domain/utils/utils";
 import { ScoreUtils } from "./ScoreUtils";
 
 export class PopulatedScoreEvaluator<

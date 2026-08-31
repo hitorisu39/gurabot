@@ -1,4 +1,4 @@
-import { isValidNumber } from "@domain/utils";
+import { isValidNumber } from "@domain/utils/utils";
 import { TransformationType, TransformFnParams } from "class-transformer";
 
 export function transformAccuracy({ value, type }: TransformFnParams): number {

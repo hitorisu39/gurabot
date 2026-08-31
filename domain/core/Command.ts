@@ -97,6 +97,24 @@ export class CommandMatcher {
         return Number.isInteger(Number(value));
     }
 
+    public static unsignedNumber(value: string): boolean {
+        const normalized = value.trim();
+        if (!normalized || /^[+-]/.test(normalized)) {
+            return false;
+        }
+
+        return Number.isFinite(Number(normalized));
+    }
+
+    public static unsignedInteger(value: string): boolean {
+        const normalized = value.trim();
+        if (!normalized || /^[+-]/.test(normalized)) {
+            return false;
+        }
+
+        return Number.isInteger(Number(normalized));
+    }
+
     public static positiveNumber(value: string): boolean {
         if (!CommandMatcher.number(value)) {
             return false;

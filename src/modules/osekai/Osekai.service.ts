@@ -7,7 +7,7 @@ import { EOsekaiRanking, EOsekaiRankingEntryType } from "@domain/osekai/enums/Os
 import { IOsekaiCompactData, IOsekaiResponse } from "@domain/osekai/Osekai.dto";
 import { OsekaiMedalBeatmapDto, OsekaiMedalCommentDto, OsekaiMedalDto } from "@domain/osekai/OsekaiMedal.dto";
 import { IOsekaiRankingResponse, OsekaiRankingEntryDto, OsekaiRankingPageDto } from "@domain/osekai/OsekaiRanking.dto";
-import { levenshtein } from "@domain/utils";
+import { levenshtein } from "@domain/utils/utils";
 import { plainToInstance } from "class-transformer";
 
 export class OsekaiService extends AbstractService {

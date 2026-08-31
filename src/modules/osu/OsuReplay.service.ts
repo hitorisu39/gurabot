@@ -1,7 +1,7 @@
 import { Import } from "@/core/decorators";
 import { AbstractService } from "@/core/framework/AbstractService";
 import { OsuScoreService } from "@/modules/osu/OsuScore.service";
-import { wait } from "@domain/utils";
+import { wait } from "@domain/utils/utils";
 import { AdapterProvider } from "@generated/adapter/types";
 
 export class OsuReplayService extends AbstractService {

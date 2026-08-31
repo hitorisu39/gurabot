@@ -57,14 +57,13 @@ export class ScorePlacementEvaluator {
         }
 
         const rankingPool = this.personalScores.filter((personalScore) => personalScore.beatmapID !== score.beatmapID);
-
         const assumedIndex = this.insertionIndex(rankingPool, pp);
 
         if (assumedIndex >= 100) {
             return undefined;
         }
 
-        if (!BeatmapUtils.awardsPerformancePoints(this.beatmap) || score.ranked === false) {
+        if (!BeatmapUtils.awardsPerformancePoints(this.beatmap.status) || score.ranked === false) {
             return this.createPersonalBest(EPersonalBestCase.NotRanked, assumedIndex);
         }
 

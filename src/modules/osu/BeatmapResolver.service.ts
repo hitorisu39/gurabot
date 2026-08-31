@@ -18,7 +18,7 @@ import { MessageContext } from "@/core/discord/context/MessageContext";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { AdapterProvider, Beatmap } from "@generated/adapter/types";
 import { OsuService } from "./Osu.service";
-import { levenshtein } from "@domain/utils";
+import { levenshtein } from "@domain/utils/utils";
 import { discordRegexAnyNumber } from "@domain/discord/configs/Discord.config";
 
 export class BeatmapResolverService extends AbstractService {

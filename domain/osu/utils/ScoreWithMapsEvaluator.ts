@@ -2,9 +2,10 @@ import { Score } from "@generated/adapter/types";
 import { EScoreQuerySort } from "../enums/Score.enum";
 import { ScoresWithMapsQueryDto } from "../Score.dto";
 import { BaseScoreEvaluator } from "./BaseScoreEvaluator";
-import { dateRangeContains, rangeContains } from "@domain/utils";
+import { rangeContains } from "@domain/utils/utils";
 import { BeatmapAttributesCalculator } from "./BeatmapAttributesCalculator";
 import { ModUtils } from "@generated/adapter/mods";
+import { dateRangeContains } from "@domain/utils/dateTimeUtils";
 
 export class ScoreWithMapsEvaluator<
     Q extends ScoresWithMapsQueryDto = ScoresWithMapsQueryDto,

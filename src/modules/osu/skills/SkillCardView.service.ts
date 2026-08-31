@@ -19,11 +19,12 @@ import { GameMode } from "@generated/adapter/types";
 import { AttachmentBuilder } from "discord.js";
 import { ProfileViewService } from "../profile/ProfileView.service";
 import { SkillRankService } from "./SkillRank.service";
-import { clamp } from "@domain/utils";
+import { clamp } from "@domain/utils/utils";
 import { ESkillRank } from "@domain/osu/enums/Skill.enum";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { createCanvas } from "canvas";
 import { PopulatedUser } from "@domain/osu/Profile.dto";
+import { TextFormatter } from "@domain/discord/formatters/Text.formatter";
 
 interface ICachedImageAsset {
     buffer: Buffer;
@@ -42,6 +43,7 @@ export class SkillCardViewService extends AbstractService {
     @Import() declare private readonly skillRankService: SkillRankService;
 
     declare private assets: string;
+    declare private assetsMode: string;
     declare private http: HttpClient;
 
     private readonly assetCache = new Map<string, Promise<ICachedImageAsset>>();
@@ -51,6 +53,7 @@ export class SkillCardViewService extends AbstractService {
 
     public async init(): Promise<void> {
         this.assets = path.join(process.cwd(), this.config.app.resources, "cards");
+        this.assetsMode = path.join(process.cwd(), this.config.app.resources, "mode");
         this.http = new HttpClient(this.logger, { name: "OsuSkillCard" });
     }
 
@@ -116,9 +119,9 @@ export class SkillCardViewService extends AbstractService {
     private createForegroundSvg(data: SkillStatsViewDto, skillRank: SkillRankDto): string {
         const theme = skillCardThemes[skillRank.rank];
 
-        const serverName = this.escapeXml(ProviderMeta[data.profile.provider].name);
-        const username = this.escapeXml(data.profile.username);
-        const profileRank = this.escapeXml(this.formatProfileRank(data.profile));
+        const serverName = TextFormatter.escapeXml(ProviderMeta[data.profile.provider].name);
+        const username = TextFormatter.escapeXml(data.profile.username);
+        const profileRank = TextFormatter.escapeXml(this.formatProfileRank(data.profile));
 
         const usernameFontSize = this.getUsernameFontSize(data.profile.username);
         const usernameWidth = this.measureTextWidth(data.profile.username, usernameFontSize, 700);
@@ -227,8 +230,8 @@ export class SkillCardViewService extends AbstractService {
             .slice(0, 5)
             .map((category, index) => {
                 const rowY = skillCardLayout.skillAreaTop + index * skillCardLayout.skillRowHeight;
-                const label = this.escapeXml(category.label);
-                const value = this.escapeXml(`${Math.round(category.average * 100)}`);
+                const label = TextFormatter.escapeXml(category.label);
+                const value = TextFormatter.escapeXml(`${Math.round(category.average * 100)}`);
 
                 return `
                     <text
@@ -345,7 +348,7 @@ export class SkillCardViewService extends AbstractService {
 
     private async createModeIcon(mode: GameMode): Promise<Buffer> {
         const filename = skillCardModeAssets[mode];
-        const asset = await this.getAsset(path.join(this.assets, "Mode", filename));
+        const asset = await this.getAsset(path.join(this.assetsMode, filename));
 
         return await sharp(asset.buffer)
             .resize(skillCardLayout.modeIconSize, skillCardLayout.modeIconSize, {
@@ -462,15 +465,6 @@ export class SkillCardViewService extends AbstractService {
         if (username.length <= 20) return 27;
 
         return 23;
-    }
-
-    private escapeXml(value: string): string {
-        return value
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&apos;");
     }
 
     //#endregion

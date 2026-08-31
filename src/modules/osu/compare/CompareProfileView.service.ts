@@ -18,7 +18,7 @@ import {
 import { PopulatedScoreAverageDto } from "@domain/osu/Score.dto";
 import { GameMode } from "@generated/adapter/types";
 import { EApplicationError, Exception } from "@domain/core/Exception";
-import { isValidNumber } from "@domain/utils";
+import { isValidNumber } from "@domain/utils/utils";
 import { PopulatedUser } from "@domain/osu/Profile.dto";
 
 type TComparisonDirection = "higher" | "lower";

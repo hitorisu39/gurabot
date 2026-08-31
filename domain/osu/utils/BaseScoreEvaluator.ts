@@ -9,9 +9,10 @@ import {
 import { BaseScoreQueryDto } from "../Score.dto";
 import { EScoreQuerySort, ESortOrder } from "../enums/Score.enum";
 import { Grade, Score } from "@generated/adapter/types";
-import { dateRangeContains, rangeContains } from "@domain/utils";
+import { rangeContains } from "@domain/utils/utils";
 import { ModUtils } from "@generated/adapter/mods";
 import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";
+import { dateRangeContains } from "@domain/utils/dateTimeUtils";
 
 export class BaseScoreEvaluator<Q extends BaseScoreQueryDto = BaseScoreQueryDto> {
     protected query: Q | null;

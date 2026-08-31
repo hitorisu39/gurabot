@@ -12,7 +12,7 @@ import {
     METAKEY_SUBCOMMAND_OPTIONS,
 } from "@/core/metakeys";
 import { ICommandOptions, ISubcommandOptions } from "@/core/decorators";
-import { levenshtein } from "@domain/utils";
+import { levenshtein } from "@domain/utils/utils";
 
 @Category(ECommandCategory.General)
 @Command({

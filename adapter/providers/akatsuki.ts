@@ -16,6 +16,7 @@ interface AkatsukiProviderOptions {
 }
 
 interface NormalizedScoreStatistics extends AccuracyStatistics {
+    slider_tail_hit: number;
     ignore_miss: number;
     ignore_hit: number;
     small_tick_miss: number;
@@ -180,6 +181,7 @@ function createUserResponseNormalizer(variant: AkatsukiVariant) {
 
 function normalizeStatistics(raw: AnyRecord): NormalizedScoreStatistics {
     return {
+        slider_tail_hit: 0,
         ignore_miss: 0,
         ignore_hit: 0,
 
