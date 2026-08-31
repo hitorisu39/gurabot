@@ -1,50 +1,60 @@
 import {
-    MessageComponentInteraction,
-    ModalSubmitInteraction,
-    Message,
+    APIModalInteractionResponseCallbackData,
     InteractionResponse,
+    Message,
+    MessageComponentInteraction,
+    MessageCreateOptions,
+    MessageEditOptions,
     MessageFlags,
     ModalBuilder,
-    APIModalInteractionResponseCallbackData,
-    MessageEditOptions,
-    MessageCreateOptions,
+    ModalSubmitInteraction,
 } from "discord.js";
-import { TMessagePayload, IMessageOptions } from "./CommandContext";
+import { TMessagePayload } from "./CommandContext";
+import { InteractionContext } from "./InteractionContext";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 
-export class ComponentContext {
-    public isDeferred = false;
-
+export class ComponentContext extends InteractionContext {
     public params: Record<string, string> = {};
 
-    constructor(public readonly interaction: MessageComponentInteraction | ModalSubmitInteraction) {}
+    public constructor(public readonly interaction: MessageComponentInteraction | ModalSubmitInteraction) {
+        super();
+    }
 
     public get author() {
         return this.interaction.user;
     }
+
     public get member() {
         return this.interaction.member;
     }
+
     public get guild() {
         return this.interaction.guild;
     }
+
     public get channel() {
         return this.interaction.channel;
     }
-    public get customID() {
+
+    public get customID(): string {
         return this.interaction.customId;
     }
 
-    protected normalizePayload(options: TMessagePayload): IMessageOptions {
-        if (typeof options === "string") return { content: options };
-        if (options && "data" in options) return { embeds: [options] };
-        return options as IMessageOptions;
+    /**
+     * Sends a new response to the component interaction.
+     *
+     * Unlike update(), this does not modify the source message.
+     */
+    public async respond(options: TMessagePayload): Promise<Message | InteractionResponse> {
+        return this.reply(options);
     }
 
     /**
      * Shows a modal to the user.
-     * Note: This MUST be the first response to the interaction.
-     * You cannot call this if deferUpdate() or reply() has already been used.
+     *
+     * This MUST be the first response to the interaction.
+     * You cannot call this if deferUpdate(), deferReply(), or reply()
+     * has already been used.
      */
     public async showModal(modal: ModalBuilder | APIModalInteractionResponseCallbackData): Promise<void> {
         if (this.interaction.deferred || this.interaction.replied || this.isDeferred) {
@@ -56,12 +66,10 @@ export class ComponentContext {
 
         if (this.interaction instanceof MessageComponentInteraction) {
             await this.interaction.showModal(modal);
-        } else {
-            throw new Exception(
-                EApplicationError.INTERNAL_ERROR,
-                "This interaction type does not support showing modals.",
-            );
+            return;
         }
+
+        throw new Exception(EApplicationError.INTERNAL_ERROR, "This interaction type does not support showing modals.");
     }
 
     /**
@@ -81,6 +89,9 @@ export class ComponentContext {
         return this.interaction.update(payload);
     }
 
+    /**
+     * Defers an update to the component's source message.
+     */
     public async deferUpdate(): Promise<void> {
         if (this.isDeferred) return;
 
@@ -90,15 +101,36 @@ export class ComponentContext {
         ) {
             await this.interaction.deferUpdate();
         } else {
-            await this.interaction.deferReply({ flags: MessageFlags.Ephemeral });
+            await this.interaction.deferReply({
+                flags: MessageFlags.Ephemeral,
+            });
         }
 
         this.isDeferred = true;
     }
 
+    /**
+     * Defers a new response to this interaction.
+     *
+     * This does not update the component's source message.
+     */
+    public async deferReply(ephemeral = false): Promise<void> {
+        if (this.isDeferred) return;
+        await this.interaction.deferReply(ephemeral ? { flags: MessageFlags.Ephemeral } : {});
+        this.isDeferred = true;
+    }
+
+    /**
+     * Sends a new response to the interaction.
+     *
+     * If deferReply() was called first, this completes that response.
+     */
     public async reply(options: TMessagePayload, ephemeral = false): Promise<Message | InteractionResponse> {
         const payload = this.normalizePayload(options);
-        if (ephemeral) payload.ephemeral = true;
+
+        if (ephemeral) {
+            payload.ephemeral = true;
+        }
 
         if (this.interaction.deferred || this.interaction.replied) {
             return this.interaction.editReply(payload);
@@ -108,7 +140,10 @@ export class ComponentContext {
     }
 
     public get values(): Array<string> {
-        if (this.interaction.isAnySelectMenu()) return this.interaction.values;
+        if (this.interaction.isAnySelectMenu()) {
+            return this.interaction.values;
+        }
+
         return [];
     }
 
@@ -116,6 +151,7 @@ export class ComponentContext {
         if (this.interaction.isModalSubmit()) {
             return this.interaction.fields.getTextInputValue(customId) || null;
         }
+
         return null;
     }
 

@@ -62,7 +62,7 @@ export abstract class AbstractProfileCommand extends AbstractOsuCommand {
 
         // Intentionally populate afterwards so we don't make users wait for the response.
         const populated = await this.osuService.populateMaps(scores);
-        await this.sessionService.update(
+        await this.session.update(
             "osu_profile_view",
             sessionID,
             { scores: populated },

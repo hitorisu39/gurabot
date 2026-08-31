@@ -1,50 +1,47 @@
 import { Import, SelectMenu } from "@/core/decorators";
-import { AbstractComponent } from "@/core/discord/AbstractComponent";
 import { ComponentContext } from "@/core/discord/context/ComponentContext";
 import { Embed } from "@/core/discord/ui/Embed";
-import { SessionService } from "@/modules/cache/Session.service";
-import { OsuService } from "@/modules/osu/Osu.service";
-import { ECompareProfileView, CompareProfileViewDto } from "@domain/osu/views/CompareProfile.view";
-import { PopulatedScore, ScoreWithMaps } from "@domain/osu/Score.dto";
-import { EApplicationError, Exception } from "@domain/core/Exception";
-import { GameMode } from "@generated/adapter/types";
-import { plainToInstance } from "class-transformer";
+import { AbstractSessionComponent } from "@/components/AbstractSessionComponent";
 import { CompareProfileViewService } from "@/modules/osu/compare/CompareProfileView.service";
+import { OsuService } from "@/modules/osu/Osu.service";
+import { EApplicationError, Exception } from "@domain/core/Exception";
+import { PopulatedScore, ScoreWithMaps } from "@domain/osu/Score.dto";
+import { CompareProfileViewDto, ECompareProfileView } from "@domain/osu/views/CompareProfile.view";
+import { GameMode } from "@generated/adapter/types";
 
 @SelectMenu(/^osu_profile_compare:(?<sessionID>[a-zA-Z0-9_-]+)$/)
-export class CompareProfileComponent extends AbstractComponent {
-    @Import() declare private readonly sessionService: SessionService;
+export class CompareProfileComponent extends AbstractSessionComponent<
+    "osu_profile_compare_view",
+    CompareProfileViewDto
+> {
     @Import() declare private readonly compareProfileViewService: CompareProfileViewService;
     @Import() declare private readonly osuService: OsuService;
 
-    public async execute(ctx: ComponentContext): Promise<void> {
-        const sessionID = ctx.params.sessionID;
+    protected readonly sessionKey = "osu_profile_compare_view";
+    protected readonly dto = CompareProfileViewDto;
 
+    public async execute(ctx: ComponentContext): Promise<void> {
+        const { sessionID } = ctx.params;
         if (!sessionID) {
             throw new Exception(EApplicationError.SESSION_EXPIRED);
         }
 
-        const plain = await this.sessionService.get("osu_profile_compare_view", sessionID);
-        if (!plain) {
-            throw new Exception(EApplicationError.SESSION_EXPIRED);
-        }
+        const data = await this.getData(ctx, sessionID);
 
-        const data = plainToInstance(CompareProfileViewDto, plain);
-        if (data.authorID !== ctx.author.id) {
-            throw new Exception(EApplicationError.ACCESS_ERROR);
+        const view = ctx.values[0] as ECompareProfileView;
+        if (!Object.values(ECompareProfileView).includes(view)) {
+            throw new Exception(EApplicationError.INPUT_ERROR);
         }
 
         await ctx.deferUpdate();
 
-        const view = ctx.values[0] as ECompareProfileView;
         const requiresMaps = view === ECompareProfileView.Mapping || view === ECompareProfileView.Top100;
-
         const requiresCalculations = view === ECompareProfileView.Top100;
 
         let changed = false;
 
         if (requiresMaps && (!data.left.mapped || !data.right.mapped)) {
-            await this.sessionService.bump("osu_profile_compare_view", sessionID);
+            await this.session.bump(this.sessionKey, sessionID);
 
             const result = await this.runWithLoading(
                 ctx,
@@ -86,18 +83,17 @@ export class CompareProfileComponent extends AbstractComponent {
                 );
             }
 
-            await this.sessionService.bump("osu_profile_compare_view", sessionID);
+            await this.session.bump(this.sessionKey, sessionID);
 
             const result = await this.runWithLoading(
                 ctx,
                 async () => {
                     const [leftPopulated, rightPopulated] = await Promise.all([
-                        data.left.mapped!.length
-                            ? this.osuService.populateCalculations(data.left.mapped!, data.left.profile.mode)
+                        data.left.mapped?.length
+                            ? this.osuService.populateCalculations(data.left.mapped, data.left.profile.mode)
                             : Promise.resolve([]),
-
-                        data.right.mapped!.length
-                            ? this.osuService.populateCalculations(data.right.mapped!, data.right.profile.mode)
+                        data.right.mapped?.length
+                            ? this.osuService.populateCalculations(data.right.mapped, data.right.profile.mode)
                             : Promise.resolve([]),
                     ]);
 
@@ -119,10 +115,13 @@ export class CompareProfileComponent extends AbstractComponent {
         }
 
         if (changed) {
-            await this.sessionService.update(
-                "osu_profile_compare_view",
+            await this.session.update(
+                this.sessionKey,
                 sessionID,
-                { left: data.left, right: data.right },
+                {
+                    left: data.left,
+                    right: data.right,
+                },
                 this.compareProfileViewService.getTtl(),
             );
         }

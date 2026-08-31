@@ -1,13 +1,11 @@
-// SessionService.ts
-import { randomUUID } from "crypto";
 import { ICacheSchema } from "@domain/core/Cache";
-import { AbstractService } from "@/core/framework/AbstractService";
-import { TObjectKeys } from "@/core";
+import { TCache, TLogger, TObjectKeys } from "@/core";
 import { EApplicationError, Exception } from "@domain/core/Exception";
+import { uuidv7 } from "uuidv7";
 
 type TSessionCallback = (sessionID: string) => void;
 
-export class SessionService extends AbstractService {
+export class Session {
     /**
      * Active timeouts for sessions.
      */
@@ -26,6 +24,11 @@ export class SessionService extends AbstractService {
      */
     private readonly sessionTtl = new Map<string, number>();
 
+    constructor(
+        private readonly cache: TCache,
+        private readonly logger: TLogger,
+    ) {}
+
     //#region API
 
     public async create<K extends keyof ICacheSchema>(
@@ -33,7 +36,7 @@ export class SessionService extends AbstractService {
         data: ICacheSchema[K],
         ttl?: number,
     ): Promise<string> {
-        const sessionID = randomUUID();
+        const sessionID = uuidv7();
         if (ttl) this.setupTimeout(sessionID, ttl);
         await this.cache.set(baseKey, data, ttl, sessionID);
         return sessionID;

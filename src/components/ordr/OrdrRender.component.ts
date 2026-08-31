@@ -1,28 +1,47 @@
-import { AbstractComponent } from "@/core/discord/AbstractComponent";
-import { ComponentContext } from "@/core/discord/context/ComponentContext";
 import { Button, Import, SelectMenu } from "@/core/decorators";
-
-import { SessionService } from "@/modules/cache/Session.service";
+import { ComponentContext } from "@/core/discord/context/ComponentContext";
+import { AbstractSessionComponent } from "@/components/AbstractSessionComponent";
 import { OrdrService } from "@/modules/ordr/Ordr.service";
 import { OrdrRenderService } from "@/modules/ordr/OrdrRender.service";
 import { OrdrScoreRenderService } from "@/modules/ordr/OrdrScoreRender.service";
 import { OrdrRenderViewService } from "@/modules/ordr/OrdrRenderView.service";
 import { OsuService } from "@/modules/osu/Osu.service";
-
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { OrdrRenderCreateDto, TOrdrRenderEvent, TOrdrRenderTerminalEvent } from "@domain/ordr/Ordr.dto";
 import { EOrdrConfigSource } from "@domain/ordr/OrdrConfig.dto";
 import { EOrdrRenderInput, EOrdrRenderStage, OrdrRenderViewDto } from "@domain/ordr/views/OrdrRender.view";
 import { ThrottledAsyncUpdater } from "@domain/utils/ThrottledAsyncUpdater";
 import { plainToInstance } from "class-transformer";
+import { isValidNumber } from "@domain/utils/utils";
+
+abstract class AbstractOrdrRenderComponent extends AbstractSessionComponent<"ordr_render_view", OrdrRenderViewDto> {
+    @Import() declare protected readonly ordrRenderViewService: OrdrRenderViewService;
+
+    protected readonly sessionKey = "ordr_render_view";
+    protected readonly dto = OrdrRenderViewDto;
+
+    protected async persistAndEdit(ctx: ComponentContext, sessionID: string, data: OrdrRenderViewDto): Promise<void> {
+        await this.session.update(this.sessionKey, sessionID, data, this.ordrRenderViewService.getTtl());
+        await ctx.editSourceMessage(this.ordrRenderViewService.build(sessionID, data));
+    }
+
+    protected errorMessage(error: unknown): string {
+        if (error instanceof Exception && error.extra_message) {
+            return error.extra_message;
+        }
+
+        if (error instanceof Error) {
+            return error.message;
+        }
+
+        return "The render request failed unexpectedly.";
+    }
+}
 
 @SelectMenu(/^ordr_render_skin:(?<sessionID>[a-zA-Z0-9_-]+)$/)
-export class OrdrRenderSkinComponent extends AbstractComponent {
-    @Import() declare private readonly sessionService: SessionService;
-    @Import() declare private readonly ordrRenderViewService: OrdrRenderViewService;
-
+export class OrdrRenderSkinComponent extends AbstractOrdrRenderComponent {
     public async execute(ctx: ComponentContext): Promise<void> {
-        const sessionID = ctx.params.sessionID;
+        const { sessionID } = ctx.params;
 
         if (!sessionID) {
             throw new Exception(EApplicationError.SESSION_EXPIRED);
@@ -36,7 +55,7 @@ export class OrdrRenderSkinComponent extends AbstractComponent {
         const index = Number(ctx.values[0]);
         const skin = data.skins[index];
 
-        if (!Number.isInteger(index) || !skin) {
+        if (!isValidNumber(index) || !skin) {
             throw new Exception(EApplicationError.INPUT_ERROR, "Unknown recent skin.");
         }
 
@@ -46,35 +65,13 @@ export class OrdrRenderSkinComponent extends AbstractComponent {
         data.notice = undefined;
 
         await ctx.deferUpdate();
-
         await this.persistAndEdit(ctx, sessionID, data);
-    }
-
-    private async getData(ctx: ComponentContext, sessionID: string): Promise<OrdrRenderViewDto> {
-        const plain = await this.sessionService.get("ordr_render_view", sessionID);
-        if (!plain) {
-            throw new Exception(EApplicationError.SESSION_EXPIRED);
-        }
-
-        const data = plainToInstance(OrdrRenderViewDto, plain);
-        if (data.authorID !== ctx.author.id) {
-            throw new Exception(EApplicationError.ACCESS_ERROR);
-        }
-
-        return data;
-    }
-
-    private async persistAndEdit(ctx: ComponentContext, sessionID: string, data: OrdrRenderViewDto): Promise<void> {
-        await this.sessionService.update("ordr_render_view", sessionID, data, this.ordrRenderViewService.getTtl());
-        await ctx.editSourceMessage(this.ordrRenderViewService.build(sessionID, data));
     }
 }
 
 @Button(/^ordr_render_cached:(?<action>show|rerender):(?<sessionID>[a-zA-Z0-9_-]+)$/)
-export class OrdrRenderCachedComponent extends AbstractComponent {
-    @Import() declare private readonly sessionService: SessionService;
+export class OrdrRenderCachedComponent extends AbstractOrdrRenderComponent {
     @Import() declare private readonly ordrScoreRenderService: OrdrScoreRenderService;
-    @Import() declare private readonly ordrRenderViewService: OrdrRenderViewService;
 
     public async execute(ctx: ComponentContext): Promise<void> {
         const { action, sessionID } = ctx.params as {
@@ -87,6 +84,7 @@ export class OrdrRenderCachedComponent extends AbstractComponent {
         }
 
         const data = await this.getData(ctx, sessionID);
+
         if (data.stage !== EOrdrRenderStage.Cached) {
             throw new Exception(EApplicationError.INPUT_ERROR, "This cached render prompt is no longer active.");
         }
@@ -125,8 +123,8 @@ export class OrdrRenderCachedComponent extends AbstractComponent {
 
         try {
             data.score = await this.ordrScoreRenderService.resolve(data.scoreID);
-            data.forceRerender = true;
 
+            data.forceRerender = true;
             data.stage = EOrdrRenderStage.Confirmation;
             data.notice = undefined;
         } catch (error) {
@@ -135,47 +133,14 @@ export class OrdrRenderCachedComponent extends AbstractComponent {
 
         await this.persistAndEdit(ctx, sessionID, data);
     }
-
-    private async getData(ctx: ComponentContext, sessionID: string): Promise<OrdrRenderViewDto> {
-        const plain = await this.sessionService.get("ordr_render_view", sessionID);
-        if (!plain) {
-            throw new Exception(EApplicationError.SESSION_EXPIRED);
-        }
-
-        const data = plainToInstance(OrdrRenderViewDto, plain);
-        if (data.authorID !== ctx.author.id) {
-            throw new Exception(EApplicationError.ACCESS_ERROR);
-        }
-
-        return data;
-    }
-
-    private async persistAndEdit(ctx: ComponentContext, sessionID: string, data: OrdrRenderViewDto): Promise<void> {
-        await this.sessionService.update("ordr_render_view", sessionID, data, this.ordrRenderViewService.getTtl());
-        await ctx.editSourceMessage(this.ordrRenderViewService.build(sessionID, data));
-    }
-
-    private errorMessage(error: unknown): string {
-        if (error instanceof Exception && error.extra_message) {
-            return error.extra_message;
-        }
-
-        if (error instanceof Error) {
-            return error.message;
-        }
-
-        return "Could not prepare this score for rendering.";
-    }
 }
 
 @Button(/^ordr_render_action:(?<action>render|cancel):(?<sessionID>[a-zA-Z0-9_-]+)$/)
-export class OrdrRenderActionComponent extends AbstractComponent {
-    @Import() declare private readonly sessionService: SessionService;
+export class OrdrRenderActionComponent extends AbstractOrdrRenderComponent {
     @Import() declare private readonly osuService: OsuService;
     @Import() declare private readonly ordrService: OrdrService;
     @Import() declare private readonly ordrRenderService: OrdrRenderService;
     @Import() declare private readonly ordrScoreRenderService: OrdrScoreRenderService;
-    @Import() declare private readonly ordrRenderViewService: OrdrRenderViewService;
 
     public async execute(ctx: ComponentContext): Promise<void> {
         const { action, sessionID } = ctx.params as {
@@ -188,11 +153,13 @@ export class OrdrRenderActionComponent extends AbstractComponent {
         }
 
         const data = await this.getData(ctx, sessionID);
+
         if (data.stage !== EOrdrRenderStage.Confirmation) {
             throw new Exception(EApplicationError.INPUT_ERROR, "This render confirmation is no longer active.");
         }
 
         await ctx.deferUpdate();
+
         if (action === "cancel") {
             await ctx.deleteSourceMessage();
             return;
@@ -202,6 +169,7 @@ export class OrdrRenderActionComponent extends AbstractComponent {
 
         if (data.input === EOrdrRenderInput.Score) {
             scoreLock = await this.prepareScoreSubmission(ctx, sessionID, data);
+
             if (!scoreLock) {
                 return;
             }
@@ -249,7 +217,9 @@ export class OrdrRenderActionComponent extends AbstractComponent {
         if (!lock) {
             data.stage = EOrdrRenderStage.AlreadyRendering;
             data.notice = undefined;
+
             await this.persistAndEdit(ctx, sessionID, data);
+
             return null;
         }
 
@@ -259,12 +229,12 @@ export class OrdrRenderActionComponent extends AbstractComponent {
 
                 if (cached) {
                     await this.ordrScoreRenderService.releaseLock(scoreID, lock);
-                    data.stage = EOrdrRenderStage.Cached;
 
+                    data.stage = EOrdrRenderStage.Cached;
                     data.cachedRenderID = cached.renderID;
                     data.cachedVideoURL = cached.videoURL;
-
                     data.notice = undefined;
+
                     await this.persistAndEdit(ctx, sessionID, data);
 
                     return null;
@@ -278,6 +248,7 @@ export class OrdrRenderActionComponent extends AbstractComponent {
                 lock,
                 "Failed to release score render lock while preparing submission",
             );
+
             throw error;
         }
     }
@@ -303,6 +274,7 @@ export class OrdrRenderActionComponent extends AbstractComponent {
                 data.notice = undefined;
 
                 await this.persistAndEdit(ctx, sessionID, data);
+
                 const created = await this.createRender(data);
                 await this.ordrRenderService.record(data.authorID, created.renderID, data.config);
 
@@ -372,6 +344,7 @@ export class OrdrRenderActionComponent extends AbstractComponent {
         try {
             const terminal = await this.ordrService.waitForRender(renderID, (event) => {
                 this.applyEvent(data, event);
+
                 if (event.type !== "done" && event.type !== "failed") {
                     updater.push(this.cloneView(data));
                 }
@@ -379,6 +352,7 @@ export class OrdrRenderActionComponent extends AbstractComponent {
 
             reachedTerminal = true;
             await updater.close(false);
+
             this.applyTerminalEvent(data, terminal);
 
             if (terminal.type === "done" && data.input === EOrdrRenderInput.Score && data.scoreID) {
@@ -415,13 +389,7 @@ export class OrdrRenderActionComponent extends AbstractComponent {
             data.errorMessage = this.errorMessage(error);
 
             await this.persistAndEdit(ctx, sessionID, data).catch((editError) => {
-                this.logger.warn(
-                    {
-                        error: editError,
-                        renderID,
-                    },
-                    "Failed to display o!rdr tracking error",
-                );
+                this.logger.warn({ error: editError, renderID }, "Failed to display o!rdr tracking error");
             });
         } finally {
             if (reachedTerminal && scoreLock && data.scoreID) {
@@ -459,53 +427,13 @@ export class OrdrRenderActionComponent extends AbstractComponent {
         this.applyEvent(data, event);
     }
 
-    private errorMessage(error: unknown): string {
-        if (error instanceof Exception && error.extra_message) {
-            return error.extra_message;
-        }
-
-        if (error instanceof Error) {
-            return error.message;
-        }
-
-        return "The render request failed unexpectedly.";
-    }
-
     private cloneView(data: OrdrRenderViewDto): OrdrRenderViewDto {
         return plainToInstance(OrdrRenderViewDto, structuredClone(data));
     }
 
-    private async getData(ctx: ComponentContext, sessionID: string): Promise<OrdrRenderViewDto> {
-        const plain = await this.sessionService.get("ordr_render_view", sessionID);
-
-        if (!plain) {
-            throw new Exception(EApplicationError.SESSION_EXPIRED);
-        }
-
-        const data = plainToInstance(OrdrRenderViewDto, plain);
-
-        if (data.authorID !== ctx.author.id) {
-            throw new Exception(EApplicationError.ACCESS_ERROR);
-        }
-
-        return data;
-    }
-
-    private async persistAndEdit(ctx: ComponentContext, sessionID: string, data: OrdrRenderViewDto): Promise<void> {
-        await this.sessionService.update("ordr_render_view", sessionID, data, this.ordrRenderViewService.getTtl());
-
-        await ctx.editSourceMessage(this.ordrRenderViewService.build(sessionID, data));
-    }
-
     private async releaseScoreLock(scoreID: string, token: string, logMessage: string): Promise<void> {
         await this.ordrScoreRenderService.releaseLock(scoreID, token).catch((error) => {
-            this.logger.warn(
-                {
-                    error,
-                    scoreID,
-                },
-                logMessage,
-            );
+            this.logger.warn({ error, scoreID }, logMessage);
         });
     }
 }

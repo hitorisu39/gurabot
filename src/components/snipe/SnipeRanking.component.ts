@@ -1,48 +1,38 @@
 import { Import, SelectMenu } from "@/core/decorators";
-import { AbstractComponent } from "@/core/discord/AbstractComponent";
 import { ComponentContext } from "@/core/discord/context/ComponentContext";
-import { SessionService } from "@/modules/cache/Session.service";
+import { AbstractSessionComponent } from "@/components/AbstractSessionComponent";
 import { SnipeService } from "@/modules/snipe/Snipe.service";
 import { SnipeRankingViewService } from "@/modules/snipe/SnipeRankingView.service";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { ESnipeRankingSort } from "@domain/snipe/enums/Snipe.enum";
 import { SnipeRankingViewDto } from "@domain/snipe/views/SnipeRanking.view";
-import { plainToInstance } from "class-transformer";
 
 @SelectMenu(/^snipe_ranking_sort:(?<sessionID>[a-zA-Z0-9_-]+)$/)
-export class SnipeRankingSortComponent extends AbstractComponent {
-    @Import() declare private readonly sessionService: SessionService;
+export class SnipeRankingSortComponent extends AbstractSessionComponent<"snipe_ranking_view", SnipeRankingViewDto> {
     @Import() declare private readonly snipeService: SnipeService;
     @Import() declare private readonly snipeRankingViewService: SnipeRankingViewService;
 
+    protected readonly sessionKey = "snipe_ranking_view";
+    protected readonly dto = SnipeRankingViewDto;
+
     public async execute(ctx: ComponentContext): Promise<void> {
-        const sessionID = ctx.params.sessionID;
+        const { sessionID } = ctx.params;
         if (!sessionID) {
             throw new Exception(EApplicationError.SESSION_EXPIRED);
         }
 
-        const plain = await this.sessionService.get("snipe_ranking_view", sessionID);
-        if (!plain) {
-            throw new Exception(EApplicationError.SESSION_EXPIRED);
-        }
-
-        const data = plainToInstance(SnipeRankingViewDto, plain);
-        if (data.authorID !== ctx.author.id) {
-            throw new Exception(EApplicationError.ACCESS_ERROR);
-        }
-
+        const data = await this.getData(ctx, sessionID);
         const selected = ctx.values[0] as ESnipeRankingSort;
 
         if (!Object.values(ESnipeRankingSort).includes(selected)) {
             throw new Exception(EApplicationError.INPUT_ERROR);
         }
 
+        await ctx.deferUpdate();
+
         if (selected === data.sort) {
-            await ctx.deferUpdate();
             return;
         }
-
-        await ctx.deferUpdate();
 
         const ranking = await this.snipeService.ranking(data.country, selected);
 
@@ -50,7 +40,8 @@ export class SnipeRankingSortComponent extends AbstractComponent {
         data.page = 1;
         data.players = ranking.players;
 
-        await this.sessionService.update("snipe_ranking_view", sessionID, data, this.snipeRankingViewService.getTtl());
-        await ctx.update(this.snipeRankingViewService.build(sessionID, data));
+        await this.session.update(this.sessionKey, sessionID, data, this.snipeRankingViewService.getTtl());
+        const payload = await this.snipeRankingViewService.build(sessionID, data);
+        await ctx.update(payload);
     }
 }

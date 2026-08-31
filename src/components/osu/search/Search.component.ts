@@ -1,37 +1,29 @@
 import { Import, SelectMenu } from "@/core/decorators";
-import { AbstractComponent } from "@/core/discord/AbstractComponent";
 import { ComponentContext } from "@/core/discord/context/ComponentContext";
-import { SessionService } from "@/modules/cache/Session.service";
+import { AbstractSessionComponent } from "@/components/AbstractSessionComponent";
 import { MapViewService } from "@/modules/osu/map/MapView.service";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { MapViewDto } from "@domain/osu/views/Map.view";
 import { SearchViewDto } from "@domain/osu/views/Search.view";
-import { plainToInstance } from "class-transformer";
+import { isValidNumber } from "@domain/utils/utils";
 
 @SelectMenu(/^osu_search_select:(?<sessionID>[a-zA-Z0-9_-]+)$/)
-export class SearchComponent extends AbstractComponent {
-    @Import() declare private readonly sessionService: SessionService;
+export class SearchComponent extends AbstractSessionComponent<"osu_search_view", SearchViewDto> {
     @Import() declare private readonly mapViewService: MapViewService;
 
-    public async execute(ctx: ComponentContext): Promise<void> {
-        const sessionID = ctx.params.sessionID;
+    protected readonly sessionKey = "osu_search_view";
+    protected readonly dto = SearchViewDto;
 
+    public async execute(ctx: ComponentContext): Promise<void> {
+        const { sessionID } = ctx.params;
         if (!sessionID) {
             throw new Exception(EApplicationError.SESSION_EXPIRED);
         }
 
-        const plain = await this.sessionService.get("osu_search_view", sessionID);
-        if (!plain) {
-            throw new Exception(EApplicationError.SESSION_EXPIRED);
-        }
-
-        const data = plainToInstance(SearchViewDto, plain);
-        if (data.authorID !== ctx.author.id) {
-            throw new Exception(EApplicationError.ACCESS_ERROR);
-        }
+        const data = await this.getData(ctx, sessionID);
 
         const selectedID = Number(ctx.values[0]);
-        if (!Number.isInteger(selectedID)) {
+        if (!isValidNumber(selectedID)) {
             throw new Exception(EApplicationError.INPUT_ERROR, "Invalid beatmapset selection.");
         }
 
@@ -44,6 +36,7 @@ export class SearchComponent extends AbstractComponent {
         }
 
         const allBeatmaps = mapset.beatmaps ?? [];
+
         const filtered =
             data.input.mode !== undefined
                 ? allBeatmaps.filter((beatmap) => beatmap.mode === data.input.mode)
@@ -68,8 +61,8 @@ export class SearchComponent extends AbstractComponent {
 
         const payload = await this.mapViewService.build(sessionID, mapData, true);
 
-        await this.sessionService.transition(
-            "osu_search_view",
+        await this.session.transition(
+            this.sessionKey,
             "osu_map_view",
             sessionID,
             mapData,

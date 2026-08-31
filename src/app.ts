@@ -9,6 +9,7 @@ import { Cache } from "./cache";
 import { ExtendedAdapterClient } from "./adapter";
 import { Calculator } from "./calculator";
 import { Metrics } from "./metrics";
+import { Session } from "./session";
 
 export class Application {
     private readonly config: TConfig;
@@ -20,6 +21,7 @@ export class Application {
     private readonly database: Database;
     private readonly dispatcher: Dispatcher;
     private readonly cache: Cache;
+    private readonly session: Session;
     private readonly adapter: ExtendedAdapterClient;
     private readonly calculator: Calculator;
     private readonly metrics: Metrics;
@@ -34,6 +36,7 @@ export class Application {
         this.discord = new Client(this.config, this.logger, this.dispatcher, this.metrics);
         this.database = new Database(this.config, this.logger, this.metrics);
         this.cache = new Cache(this.config, this.logger, this.metrics);
+        this.session = new Session(this.cache, this.logger);
         this.calculator = new Calculator(this.config, this.logger);
         this.adapter = new ExtendedAdapterClient(this.config, this.logger, this.metrics);
 
@@ -43,6 +46,7 @@ export class Application {
             discord: this.discord,
             dispatcher: this.dispatcher,
             cache: this.cache,
+            session: this.session,
             calculator: this.calculator,
             metrics: this.metrics,
             repository: this.database.get(),
