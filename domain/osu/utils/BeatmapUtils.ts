@@ -57,6 +57,14 @@ export class BeatmapUtils {
         };
     }
 
+    public static bpm(bpm: number, clockRate: number): number {
+        return bpm * clockRate;
+    }
+
+    public static length(length: number, clockRate: number): number {
+        return Math.floor(length / clockRate);
+    }
+
     private static normalizeTarget(input: string): string {
         const trimmed = input.trim();
 

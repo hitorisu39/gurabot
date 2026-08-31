@@ -1,3 +1,4 @@
+import { ParsedMod } from "@generated/adapter/mods";
 import type { GameMode } from "@generated/adapter/types";
 import type {
     BeatmapAttributes,
@@ -163,6 +164,21 @@ export interface IPerformanceCalculationResponse<M extends GameMode> {
     difficulty: IDifficultyCalculationResponse<M>;
     hitResults?: HitResultResponse;
     referenceId?: PerformanceRequest["referenceId"];
+}
+
+//#endregion
+
+//#region Utils
+
+export type TCalculatorMods = NonNullable<DifficultyRequest["mods"]>;
+
+export function toCalculatorMods(mods: ReadonlyArray<ParsedMod>): TCalculatorMods {
+    return mods.map((mod) => ({
+        acronym: mod.acronym,
+        settings: mod.settings
+            ? Object.fromEntries(Object.entries(mod.settings).map(([key, value]) => [key, String(value)]))
+            : {},
+    }));
 }
 
 //#endregion

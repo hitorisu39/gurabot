@@ -10,10 +10,10 @@ import { DescriptionBuilder } from "@/core/discord/ui/DescriptionBuilder";
 import { ScoreFormatter } from "@domain/osu/formatters/Score.formatter";
 import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";
 import { scoreStatsDelimiter } from "@domain/osu/configs/Score.config";
-import { BeatmapAttributesCalculator } from "@domain/osu/utils/BeatmapAttributesCalculator";
 import { EScoreListSize } from "@domain/osu/enums/Score.enum";
 import { MapFormatter } from "@domain/osu/formatters/Map.formatter";
 import { ScoreUtils } from "@domain/osu/utils/ScoreUtils";
+import { BeatmapUtils } from "@domain/osu/utils/BeatmapUtils";
 
 export abstract class AbstractScoreView extends AbstractService {
     @Import() declare protected readonly profileViewService: ProfileViewService;
@@ -79,13 +79,13 @@ export abstract class AbstractScoreView extends AbstractService {
         const statsSecondRow = [pp, comboRatioString, hitsString].filter(Boolean).join(scoreStatsDelimiter);
 
         const attrs = score.calculated.difficulty.beatmap;
-        const liveBpm = BeatmapAttributesCalculator.bpm(score.beatmap.bpm, attrs.clockRate);
-        const liveLength = BeatmapAttributesCalculator.length(score.beatmap.totalLength, attrs.clockRate);
+        const length = BeatmapUtils.length(score.beatmap.totalLength, attrs.clockRate);
+        const bpm = BeatmapUtils.bpm(score.beatmap.bpm, attrs.clockRate);
 
         const statsThirdRow = [
-            MapFormatter.length(liveLength),
+            MapFormatter.length(length),
             MapFormatter.attributes(data.profile.mode, attrs),
-            MapFormatter.bpm(liveBpm),
+            MapFormatter.bpm(bpm),
         ]
             .filter(Boolean)
             .join(scoreStatsDelimiter);

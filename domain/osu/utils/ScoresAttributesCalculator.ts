@@ -5,7 +5,7 @@ import {
     PopulatedScoreAverageFieldDto,
     ScoreModStatistics,
 } from "../Score.dto";
-import { BeatmapAttributesCalculator } from "./BeatmapAttributesCalculator";
+import { BeatmapUtils } from "./BeatmapUtils";
 
 export class ScoresAttributesCalculator {
     public static average(scores: Array<PopulatedScore>): PopulatedScoreAverageDto {
@@ -57,8 +57,8 @@ export class ScoresAttributesCalculator {
             const beatmap = score.beatmap;
             const clockRate = beatmapAttributes.clockRate;
 
-            bpmValues.push(BeatmapAttributesCalculator.bpm(beatmap.bpm, clockRate));
-            lengthValues.push(BeatmapAttributesCalculator.length(beatmap.totalLength, clockRate));
+            bpmValues.push(BeatmapUtils.bpm(beatmap.bpm, clockRate));
+            lengthValues.push(BeatmapUtils.length(beatmap.totalLength, clockRate));
 
             arValues.push(beatmapAttributes.ar);
             odValues.push(beatmapAttributes.od);

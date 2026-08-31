@@ -1,66 +1,80 @@
 model StandardDifficultyAttributes {
-    beatmapID                       Int       @map("beatmap_id")
+    beatmapID                       Int         @map("beatmap_id")
     mods                            String
     custom                          Boolean
 
-    starRating                      Float     @map("star_rating")
-    maxCombo                        Int       @map("max_combo")
+    starRating                      Float       @map("star_rating")
+    maxCombo                        Int         @map("max_combo")
 
-    aimDifficulty                   Float     @map("aim_difficulty")
-    aimDifficultSliderCount         Float     @map("aim_difficult_slider_count")
+    // Effective beatmap attributes
+    cs                              Float
+    ar                              Float
+    od                              Float
+    hp                              Float
+    clockRate                       Float       @map("clock_rate")
 
-    speedDifficulty                 Float     @map("speed_difficulty")
-    speedNoteCount                  Float     @map("speed_note_count")
+    aimDifficulty                   Float       @map("aim_difficulty")
+    aimDifficultSliderCount         Float       @map("aim_difficult_slider_count")
 
-    flashlightDifficulty            Float     @map("flashlight_difficulty")
+    speedDifficulty                 Float       @map("speed_difficulty")
+    speedNoteCount                  Float       @map("speed_note_count")
 
-    readingDifficulty               Float?    @map("reading_difficulty")
-    readingDifficultNoteCount       Float?    @map("reading_difficult_note_count")
+    flashlightDifficulty            Float       @map("flashlight_difficulty")
 
-    sliderFactor                    Float     @map("slider_factor")
+    readingDifficulty               Float?      @map("reading_difficulty")
+    readingDifficultNoteCount       Float?      @map("reading_difficult_note_count")
 
-    aimTopWeightedSliderFactor      Float     @map("aim_top_weighted_slider_factor")
-    speedTopWeightedSliderFactor    Float     @map("speed_top_weighted_slider_factor")
+    sliderFactor                    Float       @map("slider_factor")
 
-    aimDifficultStrainCount         Float     @map("aim_difficult_strain_count")
-    speedDifficultStrainCount       Float     @map("speed_difficult_strain_count")
+    aimTopWeightedSliderFactor      Float       @map("aim_top_weighted_slider_factor")
+    speedTopWeightedSliderFactor    Float       @map("speed_top_weighted_slider_factor")
 
-    nestedScorePerObject            Float     @map("nested_score_per_object")
-    maximumLegacyComboScore         Float     @map("maximum_legacy_combo_score")
-    legacyScoreBaseMultiplier       Float     @map("legacy_score_base_multiplier")
+    aimDifficultStrainCount         Float       @map("aim_difficult_strain_count")
+    speedDifficultStrainCount       Float       @map("speed_difficult_strain_count")
 
-    hitCircleCount                  Int       @map("hit_circle_count")
-    sliderCount                     Int       @map("slider_count")
-    spinnerCount                    Int       @map("spinner_count")
+    nestedScorePerObject            Float       @map("nested_score_per_object")
+    maximumLegacyComboScore         Float       @map("maximum_legacy_combo_score")
+    legacyScoreBaseMultiplier       Float       @map("legacy_score_base_multiplier")
 
-    createdAt                       DateTime  @map("created_at") @default(now())
-    updatedAt                       DateTime  @map("updated_at") @updatedAt @default(now())
+    hitCircleCount                  Int         @map("hit_circle_count")
+    sliderCount                     Int         @map("slider_count")
+    spinnerCount                    Int         @map("spinner_count")
+
+    createdAt                       DateTime    @map("created_at") @default(now())
+    updatedAt                       DateTime    @map("updated_at") @updatedAt @default(now())
 
     @@id([beatmapID, mods])
     @@map("standard_difficulty_attributes")
 }
 
 model TaikoDifficultyAttributes {
-    beatmapID                       Int       @map("beatmap_id")
+    beatmapID                       Int         @map("beatmap_id")
     mods                            String
     custom                          Boolean
 
-    starRating                      Float     @map("star_rating")
-    maxCombo                        Int       @map("max_combo")
+    starRating                      Float       @map("star_rating")
+    maxCombo                        Int         @map("max_combo")
 
-    mechanicalDifficulty            Float?    @map("mechanical_difficulty")
-    rhythmDifficulty                Float     @map("rhythm_difficulty")
-    readingDifficulty               Float     @map("reading_difficulty")
-    colourDifficulty                Float     @map("colour_difficulty")
-    staminaDifficulty               Float     @map("stamina_difficulty")
+    // Effective beatmap attributes
+    cs                              Float
+    ar                              Float
+    od                              Float
+    hp                              Float
+    clockRate                       Float       @map("clock_rate")
 
-    monoStaminaFactor               Float     @map("mono_stamina_factor")
-    consistencyFactor               Float     @map("consistency_factor")
+    mechanicalDifficulty            Float?      @map("mechanical_difficulty")
+    rhythmDifficulty                Float       @map("rhythm_difficulty")
+    readingDifficulty               Float       @map("reading_difficulty")
+    colourDifficulty                Float       @map("colour_difficulty")
+    staminaDifficulty               Float       @map("stamina_difficulty")
 
-    staminaTopStrains               Float     @map("stamina_top_strains")
+    monoStaminaFactor               Float       @map("mono_stamina_factor")
+    consistencyFactor               Float       @map("consistency_factor")
 
-    createdAt                       DateTime  @map("created_at") @default(now())
-    updatedAt                       DateTime  @map("updated_at") @updatedAt @default(now())
+    staminaTopStrains               Float       @map("stamina_top_strains")
+
+    createdAt                       DateTime    @map("created_at") @default(now())
+    updatedAt                       DateTime    @map("updated_at") @updatedAt @default(now())
 
     @@id([beatmapID, mods])
     @@map("taiko_difficulty_attributes")
@@ -73,6 +87,13 @@ model CatchDifficultyAttributes {
 
     starRating                      Float       @map("star_rating")
     maxCombo                        Int         @map("max_combo")
+
+    // Effective beatmap attributes
+    cs                              Float
+    ar                              Float
+    od                              Float
+    hp                              Float
+    clockRate                       Float       @map("clock_rate")
 
     createdAt                       DateTime    @map("created_at") @default(now())
     updatedAt                       DateTime    @map("updated_at") @updatedAt @default(now())
@@ -88,6 +109,13 @@ model ManiaDifficultyAttributes {
 
     starRating                      Float       @map("star_rating")
     maxCombo                        Int         @map("max_combo")
+
+    // Effective beatmap attributes
+    cs                              Float
+    ar                              Float
+    od                              Float
+    hp                              Float
+    clockRate                       Float       @map("clock_rate")
 
     createdAt                       DateTime    @map("created_at") @default(now())
     updatedAt                       DateTime    @map("updated_at") @updatedAt @default(now())

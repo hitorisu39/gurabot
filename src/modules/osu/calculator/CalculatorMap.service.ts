@@ -27,7 +27,7 @@ export class CalculatorMapService extends AbstractService {
     }
 
     public getPath(beatmapID: number): string {
-        return path.join(this.mapPath, `${beatmapID}.osu`)
+        return path.join(this.mapPath, `${beatmapID}.osu`);
     }
 
     public valid(beatmapID: number): boolean {
@@ -48,8 +48,7 @@ export class CalculatorMapService extends AbstractService {
     }
 
     public async download(beatmapID: number): Promise<void> {
-        if (this.valid(beatmapID))
-            return;
+        if (this.valid(beatmapID)) return;
 
         if (this.activeDownloads.has(beatmapID)) {
             this.logger.debug(`Map ${beatmapID} is already downloading. Waiting...`);
@@ -84,7 +83,10 @@ export class CalculatorMapService extends AbstractService {
                     this.logger.warn(error, `Attempt ${attempt}/${this.maxRetries} failed for map ${beatmapID}`);
 
                     if (attempt >= this.maxRetries)
-                        throw new Exception(EApplicationError.INTERNAL_ERROR, `Failed to download beatmap ${beatmapID} after ${this.maxRetries} attempts.`);
+                        throw new Exception(
+                            EApplicationError.INTERNAL_ERROR,
+                            `Failed to download beatmap ${beatmapID} after ${this.maxRetries} attempts.`,
+                        );
 
                     attempt++;
                     await wait(this.retryDelay);

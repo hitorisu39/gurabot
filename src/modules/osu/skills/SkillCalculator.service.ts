@@ -8,11 +8,11 @@ import {
     SkillScoreResultDto,
 } from "@domain/osu/Skill.dto";
 import { PopulatedScore } from "@domain/osu/Score.dto";
-import { BeatmapAttributesCalculator } from "@domain/osu/utils/BeatmapAttributesCalculator";
 import { GameMode } from "@generated/adapter/types";
 import { ESkillType } from "@domain/osu/enums/Skill.enum";
 import { clamp, isValidNumber, smoothstep } from "@domain/utils/utils";
 import { ModUtils } from "@generated/adapter/mods";
+import { BeatmapUtils } from "@domain/osu/utils/BeatmapUtils";
 
 interface IScoreSkillValues {
     score: PopulatedScore;
@@ -111,7 +111,7 @@ export class SkillCalculatorService extends AbstractService {
     }
 
     private createFormulaInput(mode: GameMode, score: PopulatedScore): ISkillFormulaInput {
-        const beatmapAttributes = BeatmapAttributesCalculator.calculate(score.beatmap, score.mods);
+        const beatmapAttributes = score.calculated.difficulty.beatmap;
         const standardDifficulty = score.fullDifficulty as Partial<IStandardDifficultyAttributes>;
         const accuracy = score.accuracy * 100;
 
@@ -121,7 +121,7 @@ export class SkillCalculatorService extends AbstractService {
 
         return {
             stars: score.fullDifficulty.starRating,
-            bpm: BeatmapAttributesCalculator.bpm(score.beatmap.bpm, beatmapAttributes.clockRate),
+            bpm: BeatmapUtils.bpm(score.beatmap.bpm, beatmapAttributes.clockRate),
 
             ar: beatmapAttributes.ar,
             od: beatmapAttributes.od,
@@ -133,7 +133,7 @@ export class SkillCalculatorService extends AbstractService {
             misses: score.statistics.miss ?? 0,
 
             maxCombo: score.fullDifficulty.maxCombo,
-            hitLength: BeatmapAttributesCalculator.length(score.beatmap.hitLength, beatmapAttributes.clockRate),
+            hitLength: BeatmapUtils.length(score.beatmap.hitLength, beatmapAttributes.clockRate),
 
             countCircles,
             countSliders,

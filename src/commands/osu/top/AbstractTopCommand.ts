@@ -118,17 +118,16 @@ export abstract class AbstractTopCommand extends AbstractOsuCommand {
             provider: target.server,
         });
 
-        let finalScores = scores;
+        const populatedScores = await this.osuService.populateScores(
+            scores,
+            evaluator.population,
+            target.mode,
+            target.server,
+        );
 
-        if (evaluator.populated) {
-            finalScores = await this.osuService.populateAll(scores, target.mode, true, target.server);
-        } else if (evaluator.withMaps) {
-            finalScores = await this.osuService.populateMaps(scores, target.server);
-        }
-
-        const filtered = evaluator.filter(finalScores);
+        const filtered = evaluator.filter(populatedScores);
         const sorted = evaluator.sort(filtered);
-        finalScores = evaluator.index(sorted);
+        const finalScores = evaluator.index(sorted);
 
         const data: ScoresViewDto = {
             timestamp: Date.now(),

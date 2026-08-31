@@ -11,7 +11,6 @@ import { ESimulateScoringMode } from "@domain/osu/enums/Simulate.enum";
 import { MapFormatter } from "@domain/osu/formatters/Map.formatter";
 import { ProfileFormatter } from "@domain/osu/formatters/Profile.formatter";
 import { ScoreFormatter } from "@domain/osu/formatters/Score.formatter";
-import { BeatmapAttributesCalculator } from "@domain/osu/utils/BeatmapAttributesCalculator";
 import { SimulateScoreUtils } from "@domain/osu/utils/SimulateScoreUtils";
 import { SimulateViewDto } from "@domain/osu/views/Simulate.view";
 import { AdapterProvider, Beatmap, GameMode } from "@generated/adapter/types";
@@ -20,6 +19,7 @@ import { ModUtils, ParsedMod } from "@generated/adapter/mods";
 import { ButtonStyle } from "discord.js";
 import { ScoreGradeEvaluator } from "@domain/osu/utils/ScoreGradeEvaluator";
 import { scoreStatsCompactDelimiter, scoreStatsDelimiter } from "@domain/osu/configs/Score.config";
+import { BeatmapUtils } from "@domain/osu/utils/BeatmapUtils";
 
 export class SimulateViewService extends AbstractViewService<SimulateViewDto> {
     @Import() declare private readonly calculatorService: CalculatorService;
@@ -106,9 +106,9 @@ export class SimulateViewService extends AbstractViewService<SimulateViewDto> {
         const hitResults = calculated.hitResults!;
 
         const clockRate = beatmapAttributes.clockRate;
-        const liveBpm = BeatmapAttributesCalculator.bpm(map.bpm, clockRate);
-        const liveTotalLength = BeatmapAttributesCalculator.length(map.totalLength, clockRate);
-        const liveHitLength = BeatmapAttributesCalculator.length(map.hitLength, clockRate);
+        const liveBpm = BeatmapUtils.bpm(map.bpm, clockRate);
+        const liveTotalLength = BeatmapUtils.length(map.totalLength, clockRate);
+        const liveHitLength = BeatmapUtils.length(map.hitLength, clockRate);
 
         const grade = ScoreGradeEvaluator.evaluate(map.mode, hitResults, calculationMods);
         const mods = ScoreFormatter.mods(data.mods) || "NM";
@@ -187,7 +187,7 @@ export class SimulateViewService extends AbstractViewService<SimulateViewDto> {
     ): Array<ActionRow> {
         const mods = data.mods.length ? data.mods.map((mod) => mod.acronym).join("") : "NM";
         const effectiveRate = data.clockRate ?? undefined;
-        const effectiveBpm = BeatmapAttributesCalculator.bpm(map.bpm, effectiveRate ?? this.modClockRate(data));
+        const effectiveBpm = BeatmapUtils.bpm(map.bpm, effectiveRate ?? this.modClockRate(data));
         const attributeCount = Object.values(data.attributes).filter((value) => value !== undefined).length;
 
         const settingsRow = new ActionRow()

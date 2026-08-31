@@ -1,3 +1,9 @@
+export enum EScorePopulation {
+    None = 0,
+    Maps = 1,
+    Populated = 2,
+}
+
 export enum EScoreQuerySort {
     Accuracy = "Accuracy",
     Combo = "Combo",
@@ -10,6 +16,10 @@ export enum EScoreQuerySort {
     BPM = "BPM",
     PPFC = "PPFC",
     RankDate = "RankDate",
+    CS = "CS",
+    AR = "AR",
+    OD = "OD",
+    HP = "HP",
 }
 
 export enum ESortOrder {

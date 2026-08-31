@@ -14,11 +14,11 @@ import {
     scoreStatsCompactDelimiter,
     scoreStatsDelimiter,
 } from "@domain/osu/configs/Score.config";
-import { BeatmapAttributesCalculator } from "@domain/osu/utils/BeatmapAttributesCalculator";
 import { EScoreListSize } from "@domain/osu/enums/Score.enum";
 import { MapFormatter } from "@domain/osu/formatters/Map.formatter";
 import { ScoreUtils } from "@domain/osu/utils/ScoreUtils";
 import { ProviderMeta } from "@generated/adapter";
+import { BeatmapUtils } from "@domain/osu/utils/BeatmapUtils";
 
 export class ListScoreView extends AbstractScoreView {
     public getPageSize(size: EScoreListSize, activeAttributes?: Array<string>): number {
@@ -112,9 +112,9 @@ export class ListScoreView extends AbstractScoreView {
 
             // Append filtered map attributes
             if (data.activeAttributes && data.activeAttributes.length > 0) {
-                const attrs = BeatmapAttributesCalculator.calculate(score.beatmap, score.mods);
-                const liveBpm = BeatmapAttributesCalculator.bpm(score.beatmap.bpm, attrs.clockRate);
-                const liveLength = BeatmapAttributesCalculator.length(score.beatmap.totalLength, attrs.clockRate);
+                const attrs = score.calculated.difficulty.beatmap;
+                const bpm = BeatmapUtils.bpm(score.beatmap.bpm, attrs.clockRate);
+                const length = BeatmapUtils.length(score.beatmap.totalLength, attrs.clockRate);
 
                 const attrStrings: string[] = [];
                 for (const attr of data.activeAttributes) {
@@ -132,10 +132,10 @@ export class ListScoreView extends AbstractScoreView {
                             attrStrings.push(`HP: ${DiscordFormatter.fixed(attrs.hp)}`);
                             break;
                         case "BPM":
-                            attrStrings.push(`BPM: ${DiscordFormatter.fixed(liveBpm)}`);
+                            attrStrings.push(`BPM: ${DiscordFormatter.fixed(bpm)}`);
                             break;
                         case "Length":
-                            attrStrings.push(`Length: ${MapFormatter.length(liveLength)}`);
+                            attrStrings.push(`Length: ${MapFormatter.length(length)}`);
                             break;
                         case "RankDate": {
                             const rankedDate = score.beatmapset.rankedDate;
