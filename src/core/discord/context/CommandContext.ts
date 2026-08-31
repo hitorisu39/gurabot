@@ -15,6 +15,7 @@ import {
 } from "discord.js";
 import { ICommandState } from "@domain/core/Command";
 import { ICommandMetadata } from "@/core/decorators";
+import { InteractionContext } from "./InteractionContext";
 
 export type TMessageFile = AttachmentBuilder | AttachmentPayload | BufferResolvable;
 
@@ -34,7 +35,7 @@ export type TMessagePayload = string | EmbedBuilder | IMessageOptions;
  * Abstract command context class responsible for wrapping the interactions
  * coming from Discord.js
  */
-export abstract class CommandContext {
+export abstract class CommandContext extends InteractionContext {
     /**
      * Whether the command was deferred or not.
      */
@@ -110,11 +111,6 @@ export abstract class CommandContext {
      * @returns {string} The Discord URL to the channel or DM.
      */
     public abstract origin(): string;
-
-    /**
-     * Unified method to respond to both messages and interactions.
-     */
-    public abstract respond(options: TMessagePayload): Promise<Message | InteractionResponse | null>;
 
     /**
      * Unified method to reply to both messages and interactions.

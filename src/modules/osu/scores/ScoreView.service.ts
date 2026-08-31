@@ -11,6 +11,8 @@ import { CompareScoreView } from "./CompareScoreView.service";
 import { ScoreUtils } from "@domain/osu/utils/ScoreUtils";
 import { AbstractViewService } from "@/modules/AbstractViewService";
 import { Embed } from "@/core/discord/ui/Embed";
+import { ActionRow } from "@/core/discord/ui/ActionRow";
+import { ButtonStyle, InteractionResponse, Message } from "discord.js";
 
 interface IScoreViewPopulateContext {
     personalScores?: Array<Score> | Promise<Array<Score>>;
@@ -25,6 +27,8 @@ export class ScoreViewService extends AbstractViewService<ScoresViewDto, Record<
     @Import() declare private readonly compareScoreView: CompareScoreView;
 
     protected readonly ttl: number = 180;
+    protected readonly actionButtonsTtl = 30;
+
     private views: Map<EScoreViewLayout, AbstractScoreView> = new Map();
 
     public init(): void {
@@ -47,6 +51,8 @@ export class ScoreViewService extends AbstractViewService<ScoresViewDto, Record<
 
         const components = totalPages > 1 ? [Pagination.build("osu_scores", sessionID, data.page, totalPages)] : [];
         const embed = this.render(data, pageScores, meta);
+
+        if (this.shouldShowActionButtons(data)) components.push(this.buildActionButtons(sessionID));
 
         return {
             content: data.displayQuery ?? undefined,
@@ -91,11 +97,25 @@ export class ScoreViewService extends AbstractViewService<ScoresViewDto, Record<
         const layout = data.layout ?? EScoreViewLayout.List;
         const view = this.getView(layout);
 
-        if (scores.length === 1 && scores[0]) {
+        if (data.scores.length === 1 && scores[0]) {
             return view.renderSingle(data, scores[0]);
         }
 
         return view.render(data, scores, meta);
+    }
+
+    public afterRespond(data: ScoresViewDto, message: Message | InteractionResponse | null): void {
+        if (!message || !this.shouldShowActionButtons(data)) {
+            return;
+        }
+
+        setTimeout(() => {
+            if (message instanceof Message && !message.components.length) {
+                return;
+            }
+
+            message.edit({ components: [] }).catch(() => null);
+        }, this.actionButtonsTtl * 1_000);
     }
 
     private shouldPopulatePlacements(data: ScoresViewDto): boolean {
@@ -109,7 +129,6 @@ export class ScoreViewService extends AbstractViewService<ScoresViewDto, Record<
         provider: AdapterProvider,
     ): Promise<void> {
         const missing = scores.filter((score) => ScoreUtils.pp(score) === undefined);
-
         if (!missing.length) {
             return;
         }
@@ -152,5 +171,20 @@ export class ScoreViewService extends AbstractViewService<ScoresViewDto, Record<
 
     private getView(layout: EScoreViewLayout): AbstractScoreView {
         return this.views.get(layout) ?? this.listScoreView;
+    }
+
+    private shouldShowActionButtons(data: ScoresViewDto): boolean {
+        const score = data.scores[0];
+        return (
+            data.scores.length === 1 &&
+            !!score &&
+            ScoreUtils.allowsScoreActions(score, data.profile.mode, data.profile.provider)
+        );
+    }
+
+    private buildActionButtons(sessionID: string): ActionRow {
+        return new ActionRow()
+            .addButton("Render", `osu_score_action:render:${sessionID}`, ButtonStyle.Secondary, { emoji: "🎥" })
+            .addButton("Scorepost", `osu_score_action:scorepost:${sessionID}`, ButtonStyle.Secondary, { emoji: "🖨️" });
     }
 }

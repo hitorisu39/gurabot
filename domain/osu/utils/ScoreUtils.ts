@@ -1,4 +1,4 @@
-import { Score } from "@generated/adapter/types";
+import { AdapterProvider, GameMode, Score } from "@generated/adapter/types";
 import { PopulatedScore, ScoreWithMaps } from "../Score.dto";
 import { BeatmapUtils } from "./BeatmapUtils";
 
@@ -65,6 +65,16 @@ export class ScoreUtils {
 
     public static isRanked(score: ScoreWithMaps): boolean {
         return !!score.ranked && BeatmapUtils.awardsPerformancePoints(score.beatmap.status);
+    }
+
+    public static allowsScoreActions(score: Score, mode: GameMode, provider: AdapterProvider): boolean {
+        return (
+            provider === AdapterProvider.Bancho &&
+            (score.mode ?? mode) === GameMode.Standard &&
+            score.passed &&
+            score.replay &&
+            score.id > 0
+        );
     }
 
     public static weightedPP(scores: ReadonlyArray<Score>): number {

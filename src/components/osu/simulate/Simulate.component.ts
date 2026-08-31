@@ -1,7 +1,5 @@
-import { AbstractComponent } from "@/core/discord/AbstractComponent";
 import { ComponentContext } from "@/core/discord/context/ComponentContext";
 import { Button, Import, Modal } from "@/core/decorators";
-import { SessionService } from "@/modules/cache/Session.service";
 import { SimulateViewService } from "@/modules/osu/simulate/SimulateView.service";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { ESimulateScoringMode } from "@domain/osu/enums/Simulate.enum";
@@ -9,8 +7,9 @@ import { SimulateScoreUtils } from "@domain/osu/utils/SimulateScoreUtils";
 import { SimulateViewDto } from "@domain/osu/views/Simulate.view";
 import { ModUtils } from "@generated/adapter/mods";
 import { Beatmap, GameMode } from "@generated/adapter/types";
-import { plainToInstance } from "class-transformer";
 import { LabelBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } from "discord.js";
+import { isValidNumber } from "@domain/utils/utils";
+import { AbstractSessionComponent } from "@/components/AbstractSessionComponent";
 
 type TSimulateAction =
     | "mods"
@@ -25,13 +24,44 @@ type TSimulateAction =
     | "score"
     | "scoring";
 
+type TSimulateModalAction = Exclude<TSimulateAction, "scoring">;
+
+abstract class AbstractSimulateComponent extends AbstractSessionComponent<"osu_simulate_view", SimulateViewDto> {
+    @Import() declare protected readonly simulateViewService: SimulateViewService;
+
+    protected readonly sessionKey = "osu_simulate_view";
+    protected readonly dto = SimulateViewDto;
+
+    protected async getData(ctx: ComponentContext, sessionID: string): Promise<SimulateViewDto> {
+        const data = await super.getData(ctx, sessionID);
+
+        data.attributes ??= {};
+        data.statistics ??= {};
+
+        return data;
+    }
+
+    protected getMap(data: SimulateViewDto): Beatmap {
+        const map = data.beatmapset.beatmaps?.find((candidate) => candidate.id === data.beatmapID);
+        if (!map) {
+            throw new Exception(EApplicationError.NOT_FOUND, "Beatmap not found.");
+        }
+
+        return map;
+    }
+
+    protected async persist(ctx: ComponentContext, sessionID: string, data: SimulateViewDto): Promise<void> {
+        await ctx.deferUpdate();
+        await this.session.update(this.sessionKey, sessionID, data, this.simulateViewService.getTtl());
+        const payload = await this.simulateViewService.build(sessionID, data);
+        await ctx.update(payload);
+    }
+}
+
 @Button(
     /^osu_simulate_(?<action>mods|accuracy|combo|rate|attributes|hits|misses|slider_ends|large_ticks|score|scoring):(?<sessionID>[a-zA-Z0-9_-]+)$/,
 )
-export class SimulateButtonComponent extends AbstractComponent {
-    @Import() declare private readonly sessionService: SessionService;
-    @Import() declare private readonly simulateViewService: SimulateViewService;
-
+export class SimulateButtonComponent extends AbstractSimulateComponent {
     public async execute(ctx: ComponentContext): Promise<void> {
         const { action, sessionID } = ctx.params as {
             action?: TSimulateAction;
@@ -46,7 +76,8 @@ export class SimulateButtonComponent extends AbstractComponent {
 
         if (action !== "scoring") {
             const modal = SimulateModalFactory.create(action, sessionID, data);
-            return await ctx.showModal(modal);
+            await ctx.showModal(modal);
+            return;
         }
 
         data.scoringMode =
@@ -61,40 +92,15 @@ export class SimulateButtonComponent extends AbstractComponent {
 
         await this.persist(ctx, sessionID, data);
     }
-
-    private async getData(ctx: ComponentContext, sessionID: string): Promise<SimulateViewDto> {
-        const plain = await this.sessionService.get("osu_simulate_view", sessionID);
-        if (!plain) throw new Exception(EApplicationError.SESSION_EXPIRED);
-
-        const data = plainToInstance(SimulateViewDto, plain);
-        if (data.authorID !== ctx.author.id) {
-            throw new Exception(EApplicationError.ACCESS_ERROR);
-        }
-
-        data.attributes ??= {};
-        data.statistics ??= {};
-
-        return data;
-    }
-
-    private async persist(ctx: ComponentContext, sessionID: string, data: SimulateViewDto): Promise<void> {
-        await ctx.deferUpdate();
-        const payload = await this.simulateViewService.build(sessionID, data);
-        await this.sessionService.update("osu_simulate_view", sessionID, data, this.simulateViewService.getTtl());
-        await ctx.update(payload);
-    }
 }
 
 @Modal(
     /^osu_simulate_modal_(?<action>mods|accuracy|combo|rate|attributes|hits|misses|slider_ends|large_ticks|score):(?<sessionID>[a-zA-Z0-9_-]+)$/,
 )
-export class SimulateModalComponent extends AbstractComponent {
-    @Import() declare private readonly sessionService: SessionService;
-    @Import() declare private readonly simulateViewService: SimulateViewService;
-
+export class SimulateModalComponent extends AbstractSimulateComponent {
     public async execute(ctx: ComponentContext): Promise<void> {
         const { action, sessionID } = ctx.params as {
-            action?: Exclude<TSimulateAction, "scoring">;
+            action?: TSimulateModalAction;
             sessionID?: string;
         };
 
@@ -109,39 +115,30 @@ export class SimulateModalComponent extends AbstractComponent {
             case "mods":
                 this.applyMods(ctx, data);
                 break;
-
             case "accuracy":
                 this.applyAccuracy(ctx, data);
                 break;
-
             case "combo":
-                data.combo = this.optionalInteger(ctx, "combo", 0, 999999);
+                data.combo = this.optionalInteger(ctx, "combo", 0, 999_999);
                 break;
-
             case "rate":
                 this.applyRate(ctx, data, map);
                 break;
-
             case "attributes":
                 this.applyAttributes(ctx, data, map.mode);
                 break;
-
             case "hits":
                 this.applyHits(ctx, data, map.mode);
                 break;
-
             case "misses":
                 this.applyMisses(ctx, data, map.mode);
                 break;
-
             case "slider_ends":
-                data.statistics.countSliderTailMisses = this.optionalInteger(ctx, "slider_tail_misses", 0, 999999);
+                data.statistics.countSliderTailMisses = this.optionalInteger(ctx, "slider_tail_misses", 0, 999_999);
                 break;
-
             case "large_ticks":
-                data.statistics.countLargeTickMisses = this.optionalInteger(ctx, "large_tick_misses", 0, 999999);
+                data.statistics.countLargeTickMisses = this.optionalInteger(ctx, "large_tick_misses", 0, 999_999);
                 break;
-
             case "score":
                 if (data.scoringMode !== ESimulateScoringMode.Stable) {
                     throw new Exception(EApplicationError.INPUT_ERROR, "Score input is only available in Stable mode.");
@@ -151,10 +148,7 @@ export class SimulateModalComponent extends AbstractComponent {
                 break;
         }
 
-        await ctx.deferUpdate();
-        const payload = await this.simulateViewService.build(sessionID, data);
-        await this.sessionService.update("osu_simulate_view", sessionID, data, this.simulateViewService.getTtl());
-        await ctx.update(payload);
+        await this.persist(ctx, sessionID, data);
     }
 
     private applyMods(ctx: ComponentContext, data: SimulateViewDto): void {
@@ -176,6 +170,7 @@ export class SimulateModalComponent extends AbstractComponent {
         }
 
         const uniqueTokens = [...new Set(tokens)];
+
         let mods = ModUtils.parse(uniqueTokens).filter((mod) => mod.acronym !== "DA");
 
         const unknown = mods.find((mod) => mod.type === "Unknown");
@@ -202,7 +197,6 @@ export class SimulateModalComponent extends AbstractComponent {
 
     private applyAccuracy(ctx: ComponentContext, data: SimulateViewDto): void {
         const accuracy = this.optionalNumber(ctx, "accuracy", 0, 100);
-
         data.accuracy = accuracy === undefined ? undefined : accuracy / 100;
 
         if (accuracy !== undefined) {
@@ -211,7 +205,7 @@ export class SimulateModalComponent extends AbstractComponent {
     }
 
     private applyRate(ctx: ComponentContext, data: SimulateViewDto, map: Beatmap): void {
-        const bpm = this.optionalNumber(ctx, "bpm", 1, 99999);
+        const bpm = this.optionalNumber(ctx, "bpm", 1, 99_999);
         const clockRate = this.optionalNumber(ctx, "clock_rate", 0.5, 2);
 
         if (bpm !== undefined && clockRate !== undefined) {
@@ -257,31 +251,28 @@ export class SimulateModalComponent extends AbstractComponent {
 
         switch (mode) {
             case GameMode.Standard:
-                data.statistics.count300 = this.optionalInteger(ctx, "count300", 0, 999999);
-                data.statistics.count100 = this.optionalInteger(ctx, "count100", 0, 999999);
-                data.statistics.count50 = this.optionalInteger(ctx, "count50", 0, 999999);
+                data.statistics.count300 = this.optionalInteger(ctx, "count300", 0, 999_999);
+                data.statistics.count100 = this.optionalInteger(ctx, "count100", 0, 999_999);
+                data.statistics.count50 = this.optionalInteger(ctx, "count50", 0, 999_999);
                 values.push(data.statistics.count300, data.statistics.count100, data.statistics.count50);
                 break;
-
             case GameMode.Taiko:
-                data.statistics.count300 = this.optionalInteger(ctx, "count300", 0, 999999);
-                data.statistics.count100 = this.optionalInteger(ctx, "count100", 0, 999999);
+                data.statistics.count300 = this.optionalInteger(ctx, "count300", 0, 999_999);
+                data.statistics.count100 = this.optionalInteger(ctx, "count100", 0, 999_999);
                 values.push(data.statistics.count300, data.statistics.count100);
                 break;
-
             case GameMode.Catch:
-                data.statistics.count300 = this.optionalInteger(ctx, "count300", 0, 999999);
-                data.statistics.count100 = this.optionalInteger(ctx, "count100", 0, 999999);
-                data.statistics.count50 = this.optionalInteger(ctx, "count50", 0, 999999);
+                data.statistics.count300 = this.optionalInteger(ctx, "count300", 0, 999_999);
+                data.statistics.count100 = this.optionalInteger(ctx, "count100", 0, 999_999);
+                data.statistics.count50 = this.optionalInteger(ctx, "count50", 0, 999_999);
                 values.push(data.statistics.count300, data.statistics.count100, data.statistics.count50);
                 break;
-
             case GameMode.Mania:
-                data.statistics.countGeki = this.optionalInteger(ctx, "countGeki", 0, 999999);
-                data.statistics.count300 = this.optionalInteger(ctx, "count300", 0, 999999);
-                data.statistics.countKatu = this.optionalInteger(ctx, "countKatu", 0, 999999);
-                data.statistics.count100 = this.optionalInteger(ctx, "count100", 0, 999999);
-                data.statistics.count50 = this.optionalInteger(ctx, "count50", 0, 999999);
+                data.statistics.countGeki = this.optionalInteger(ctx, "countGeki", 0, 999_999);
+                data.statistics.count300 = this.optionalInteger(ctx, "count300", 0, 999_999);
+                data.statistics.countKatu = this.optionalInteger(ctx, "countKatu", 0, 999_999);
+                data.statistics.count100 = this.optionalInteger(ctx, "count100", 0, 999_999);
+                data.statistics.count50 = this.optionalInteger(ctx, "count50", 0, 999_999);
                 values.push(
                     data.statistics.countGeki,
                     data.statistics.count300,
@@ -294,33 +285,26 @@ export class SimulateModalComponent extends AbstractComponent {
 
         const supplied = values.filter((value) => value !== undefined).length;
 
-        // if (supplied !== 0 && supplied !== values.length) {
-        //     throw new Exception(
-        //         EApplicationError.INPUT_ERROR,
-        //         "Provide every hit count for the mode, or clear every field.",
-        //     );
-        // }
-
         if (supplied > 0) {
             data.accuracy = undefined;
         }
     }
 
     private applyMisses(ctx: ComponentContext, data: SimulateViewDto, mode: GameMode): void {
-        data.statistics.countMiss = this.optionalInteger(ctx, "countMiss", 0, 999999);
-
+        data.statistics.countMiss = this.optionalInteger(ctx, "countMiss", 0, 999_999);
         if (mode === GameMode.Catch) {
-            data.statistics.countKatu = this.optionalInteger(ctx, "countTinyMiss", 0, 999999);
+            data.statistics.countKatu = this.optionalInteger(ctx, "countTinyMiss", 0, 999_999);
         }
     }
 
     private optionalNumber(ctx: ComponentContext, id: string, min: number, max: number): number | undefined {
         const raw = (ctx.getTextInput(id) ?? "").trim();
-        if (!raw) return undefined;
+        if (!raw) {
+            return undefined;
+        }
 
         const value = Number(raw);
-
-        if (!Number.isFinite(value) || value < min || value > max) {
+        if (!isValidNumber(value) || value < min || value > max) {
             throw new Exception(EApplicationError.INPUT_ERROR, `${id} must be a number between ${min} and ${max}.`);
         }
 
@@ -329,37 +313,11 @@ export class SimulateModalComponent extends AbstractComponent {
 
     private optionalInteger(ctx: ComponentContext, id: string, min: number, max: number): number | undefined {
         const value = this.optionalNumber(ctx, id, min, max);
-
         if (value !== undefined && !Number.isInteger(value)) {
             throw new Exception(EApplicationError.INPUT_ERROR, `${id} must be a whole number.`);
         }
 
         return value;
-    }
-
-    private getMap(data: SimulateViewDto): Beatmap {
-        const map = data.beatmapset.beatmaps?.find((candidate) => candidate.id === data.beatmapID);
-
-        if (!map) {
-            throw new Exception(EApplicationError.NOT_FOUND, "Beatmap not found.");
-        }
-
-        return map;
-    }
-
-    private async getData(ctx: ComponentContext, sessionID: string): Promise<SimulateViewDto> {
-        const plain = await this.sessionService.get("osu_simulate_view", sessionID);
-        if (!plain) throw new Exception(EApplicationError.SESSION_EXPIRED);
-
-        const data = plainToInstance(SimulateViewDto, plain);
-        if (data.authorID !== ctx.author.id) {
-            throw new Exception(EApplicationError.ACCESS_ERROR);
-        }
-
-        data.attributes ??= {};
-        data.statistics ??= {};
-
-        return data;
     }
 }
 
@@ -370,7 +328,6 @@ class SimulateModalFactory {
         data: SimulateViewDto,
     ): ModalBuilder {
         const map = data.beatmapset.beatmaps?.find((candidate) => candidate.id === data.beatmapID);
-
         if (!map) {
             throw new Exception(EApplicationError.NOT_FOUND, "Beatmap not found.");
         }
@@ -389,7 +346,6 @@ class SimulateModalFactory {
                     40,
                 );
                 break;
-
             case "accuracy":
                 modal.setTitle("Simulation Accuracy");
                 this.addInput(
@@ -401,12 +357,10 @@ class SimulateModalFactory {
                     8,
                 );
                 break;
-
             case "combo":
                 modal.setTitle("Simulation Combo");
                 this.addInput(modal, "combo", "Combo", data.combo, "Leave empty for maximum combo", 10);
                 break;
-
             case "rate":
                 modal.setTitle("Simulation BPM / Rate");
                 this.addInput(modal, "bpm", "Target BPM", undefined, "Specify BPM, or use clock rate below", 12);
@@ -419,7 +373,6 @@ class SimulateModalFactory {
                     8,
                 );
                 break;
-
             case "attributes":
                 modal.setTitle("Difficulty Attributes");
 
@@ -431,12 +384,10 @@ class SimulateModalFactory {
                 this.addInput(modal, "od", "OD", data.attributes.od, "0-11", 6);
                 this.addInput(modal, "hp", "HP", data.attributes.hp, "0-11", 6);
                 break;
-
             case "hits":
                 modal.setTitle("Hit Counts");
                 this.addHitInputs(modal, data, map.mode);
                 break;
-
             case "misses":
                 modal.setTitle("Miss Counts");
                 this.addInput(
@@ -500,18 +451,15 @@ class SimulateModalFactory {
                 this.addInput(modal, "count100", "100s", data.statistics.count100, "0", 10);
                 this.addInput(modal, "count50", "50s", data.statistics.count50, "0", 10);
                 break;
-
             case GameMode.Taiko:
                 this.addInput(modal, "count300", "Greats", data.statistics.count300, "0", 10);
                 this.addInput(modal, "count100", "Goods", data.statistics.count100, "0", 10);
                 break;
-
             case GameMode.Catch:
                 this.addInput(modal, "count300", "Fruits", data.statistics.count300, "0", 10);
                 this.addInput(modal, "count100", "Droplets", data.statistics.count100, "0", 10);
                 this.addInput(modal, "count50", "Tiny Droplet Hits", data.statistics.count50, "0", 10);
                 break;
-
             case GameMode.Mania:
                 this.addInput(modal, "countGeki", "Perfects", data.statistics.countGeki, "0", 10);
                 this.addInput(modal, "count300", "Greats", data.statistics.count300, "0", 10);

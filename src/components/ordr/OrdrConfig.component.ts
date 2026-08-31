@@ -1,7 +1,6 @@
-import { AbstractComponent } from "@/core/discord/AbstractComponent";
-import { ComponentContext } from "@/core/discord/context/ComponentContext";
 import { Button, Import, Modal, SelectMenu } from "@/core/decorators";
-import { SessionService } from "@/modules/cache/Session.service";
+import { ComponentContext } from "@/core/discord/context/ComponentContext";
+import { AbstractSessionComponent } from "@/components/AbstractSessionComponent";
 import { OrdrService } from "@/modules/ordr/Ordr.service";
 import { OrdrConfigService } from "@/modules/ordr/OrdrConfig.service";
 import { OrdrConfigViewService } from "@/modules/ordr/OrdrConfigView.service";
@@ -10,6 +9,7 @@ import { EOrdrConfigSource, EOrdrResolution, OrdrConfigDto, OrdrSettingsDto } fr
 import { EOrdrConfigView, OrdrConfigViewDto } from "@domain/ordr/views/OrdrConfig.view";
 import { plainToInstance } from "class-transformer";
 import { LabelBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } from "discord.js";
+import { isValidNumber } from "@domain/utils/utils";
 
 type TBooleanKeys<T> = {
     [K in keyof T]-?: T[K] extends boolean ? K : never;
@@ -101,13 +101,28 @@ const settingViews: Record<TOrdrBooleanSetting, EOrdrConfigView> = {
     showDanserLogo: EOrdrConfigView.Background,
 };
 
-@SelectMenu(/^ordr_config_page:(?<sessionID>[a-zA-Z0-9_-]+)$/)
-export class OrdrConfigPageComponent extends AbstractComponent {
-    @Import() declare private readonly sessionService: SessionService;
-    @Import() declare private readonly ordrConfigViewService: OrdrConfigViewService;
+abstract class AbstractOrdrConfigComponent extends AbstractSessionComponent<"ordr_config_view", OrdrConfigViewDto> {
+    @Import() declare protected readonly ordrConfigViewService: OrdrConfigViewService;
 
+    protected readonly sessionKey = "ordr_config_view";
+    protected readonly dto = OrdrConfigViewDto;
+
+    protected requireBotSettings(data: OrdrConfigViewDto): void {
+        if (data.draft.source === EOrdrConfigSource.Preset) {
+            throw new Exception(EApplicationError.INPUT_ERROR, "Switch to bot-managed settings before editing.");
+        }
+    }
+
+    protected async persist(ctx: ComponentContext, sessionID: string, data: OrdrConfigViewDto): Promise<void> {
+        await this.session.update(this.sessionKey, sessionID, data, this.ordrConfigViewService.getTtl());
+        await ctx.update(this.ordrConfigViewService.build(sessionID, data));
+    }
+}
+
+@SelectMenu(/^ordr_config_page:(?<sessionID>[a-zA-Z0-9_-]+)$/)
+export class OrdrConfigPageComponent extends AbstractOrdrConfigComponent {
     public async execute(ctx: ComponentContext): Promise<void> {
-        const sessionID = ctx.params.sessionID;
+        const { sessionID } = ctx.params;
 
         if (!sessionID) {
             throw new Exception(EApplicationError.SESSION_EXPIRED);
@@ -120,41 +135,24 @@ export class OrdrConfigPageComponent extends AbstractComponent {
             throw new Exception(EApplicationError.INPUT_ERROR, "Unknown configuration page.");
         }
 
+        if (view === data.view) {
+            await ctx.deferUpdate();
+            return;
+        }
+
         data.view = view;
 
         await ctx.deferUpdate();
         await this.persist(ctx, sessionID, data);
-    }
-
-    private async getData(ctx: ComponentContext, sessionID: string): Promise<OrdrConfigViewDto> {
-        const plain = await this.sessionService.get("ordr_config_view", sessionID);
-
-        if (!plain) {
-            throw new Exception(EApplicationError.SESSION_EXPIRED);
-        }
-
-        const data = plainToInstance(OrdrConfigViewDto, plain);
-        if (data.authorID !== ctx.author.id) {
-            throw new Exception(EApplicationError.ACCESS_ERROR);
-        }
-
-        return data;
-    }
-
-    private async persist(ctx: ComponentContext, sessionID: string, data: OrdrConfigViewDto): Promise<void> {
-        await this.sessionService.update("ordr_config_view", sessionID, data, this.ordrConfigViewService.getTtl());
-        await ctx.update(this.ordrConfigViewService.build(sessionID, data));
     }
 }
 
 @Button(
     /^ordr_config_action:(?<action>source_bot|source_preset|refresh|resolution|skin_official|skin_custom|audio|cursor|background|save|discard|reset):(?<sessionID>[a-zA-Z0-9_-]+)$/,
 )
-export class OrdrConfigActionComponent extends AbstractComponent {
-    @Import() declare private readonly sessionService: SessionService;
+export class OrdrConfigActionComponent extends AbstractOrdrConfigComponent {
     @Import() declare private readonly ordrService: OrdrService;
     @Import() declare private readonly ordrConfigService: OrdrConfigService;
-    @Import() declare private readonly ordrConfigViewService: OrdrConfigViewService;
 
     public async execute(ctx: ComponentContext): Promise<void> {
         const { action, sessionID } = ctx.params as {
@@ -171,7 +169,9 @@ export class OrdrConfigActionComponent extends AbstractComponent {
         if (this.isModalAction(action)) {
             this.requireBotSettings(data);
 
-            return await ctx.showModal(OrdrConfigModalFactory.create(action, sessionID, data.draft.settings));
+            await ctx.showModal(OrdrConfigModalFactory.create(action, sessionID, data.draft.settings));
+
+            return;
         }
 
         switch (action) {
@@ -189,16 +189,16 @@ export class OrdrConfigActionComponent extends AbstractComponent {
                 break;
             case "refresh":
                 await ctx.deferUpdate();
-                data.preset = await this.ordrService.preset(ctx.author.id);
 
+                data.preset = await this.ordrService.preset(ctx.author.id);
                 if (!data.preset && data.draft.source === EOrdrConfigSource.Preset) {
                     data.draft.source = EOrdrConfigSource.Bot;
                 }
 
                 data.view = EOrdrConfigView.Overview;
 
-                return await this.persist(ctx, sessionID, data);
-
+                await this.persist(ctx, sessionID, data);
+                return;
             case "resolution":
                 this.requireBotSettings(data);
 
@@ -252,7 +252,6 @@ export class OrdrConfigActionComponent extends AbstractComponent {
         }
 
         const settings = data.draft.settings;
-
         if (!settings.skin.trim()) {
             throw new Exception(EApplicationError.INPUT_ERROR, "A render skin must be specified.");
         }
@@ -309,44 +308,13 @@ export class OrdrConfigActionComponent extends AbstractComponent {
         }
     }
 
-    private requireBotSettings(data: OrdrConfigViewDto): void {
-        if (data.draft.source === EOrdrConfigSource.Preset) {
-            throw new Exception(EApplicationError.INPUT_ERROR, "Switch to bot-managed settings before editing.");
-        }
-    }
-
     private clone(config: OrdrConfigDto): OrdrConfigDto {
         return plainToInstance(OrdrConfigDto, structuredClone(config));
-    }
-
-    private async getData(ctx: ComponentContext, sessionID: string): Promise<OrdrConfigViewDto> {
-        const plain = await this.sessionService.get("ordr_config_view", sessionID);
-
-        if (!plain) {
-            throw new Exception(EApplicationError.SESSION_EXPIRED);
-        }
-
-        const data = plainToInstance(OrdrConfigViewDto, plain);
-
-        if (data.authorID !== ctx.author.id) {
-            throw new Exception(EApplicationError.ACCESS_ERROR);
-        }
-
-        return data;
-    }
-
-    private async persist(ctx: ComponentContext, sessionID: string, data: OrdrConfigViewDto): Promise<void> {
-        await this.sessionService.update("ordr_config_view", sessionID, data, this.ordrConfigViewService.getTtl());
-
-        await ctx.update(this.ordrConfigViewService.build(sessionID, data));
     }
 }
 
 @Button(/^ordr_config_toggle:(?<setting>[a-zA-Z]+):(?<sessionID>[a-zA-Z0-9_-]+)$/)
-export class OrdrConfigToggleComponent extends AbstractComponent {
-    @Import() declare private readonly sessionService: SessionService;
-    @Import() declare private readonly ordrConfigViewService: OrdrConfigViewService;
-
+export class OrdrConfigToggleComponent extends AbstractOrdrConfigComponent {
     public async execute(ctx: ComponentContext): Promise<void> {
         const { setting, sessionID } = ctx.params as {
             setting?: string;
@@ -363,11 +331,9 @@ export class OrdrConfigToggleComponent extends AbstractComponent {
 
         const data = await this.getData(ctx, sessionID);
 
-        if (data.draft.source === EOrdrConfigSource.Preset) {
-            throw new Exception(EApplicationError.INPUT_ERROR, "Switch to bot-managed settings before editing.");
-        }
-
+        this.requireBotSettings(data);
         this.validateDependency(data.draft.settings, setting);
+
         data.draft.settings[setting] = !data.draft.settings[setting];
 
         this.clearDependentSettings(data.draft.settings, setting);
@@ -425,35 +391,11 @@ export class OrdrConfigToggleComponent extends AbstractComponent {
     private isBooleanSetting(value: string): value is TOrdrBooleanSetting {
         return (booleanSettings as ReadonlyArray<string>).includes(value);
     }
-
-    private async getData(ctx: ComponentContext, sessionID: string): Promise<OrdrConfigViewDto> {
-        const plain = await this.sessionService.get("ordr_config_view", sessionID);
-
-        if (!plain) {
-            throw new Exception(EApplicationError.SESSION_EXPIRED);
-        }
-
-        const data = plainToInstance(OrdrConfigViewDto, plain);
-
-        if (data.authorID !== ctx.author.id) {
-            throw new Exception(EApplicationError.ACCESS_ERROR);
-        }
-
-        return data;
-    }
-
-    private async persist(ctx: ComponentContext, sessionID: string, data: OrdrConfigViewDto): Promise<void> {
-        await this.sessionService.update("ordr_config_view", sessionID, data, this.ordrConfigViewService.getTtl());
-
-        await ctx.update(this.ordrConfigViewService.build(sessionID, data));
-    }
 }
 
 @Modal(/^ordr_config_modal:(?<action>skin_official|skin_custom|audio|cursor|background):(?<sessionID>[a-zA-Z0-9_-]+)$/)
-export class OrdrConfigModalComponent extends AbstractComponent {
-    @Import() declare private readonly sessionService: SessionService;
+export class OrdrConfigModalComponent extends AbstractOrdrConfigComponent {
     @Import() declare private readonly ordrService: OrdrService;
-    @Import() declare private readonly ordrConfigViewService: OrdrConfigViewService;
 
     public async execute(ctx: ComponentContext): Promise<void> {
         const { action, sessionID } = ctx.params as {
@@ -466,10 +408,7 @@ export class OrdrConfigModalComponent extends AbstractComponent {
         }
 
         const data = await this.getData(ctx, sessionID);
-
-        if (data.draft.source === EOrdrConfigSource.Preset) {
-            throw new Exception(EApplicationError.INPUT_ERROR, "Switch to bot-managed settings before editing.");
-        }
+        this.requireBotSettings(data);
 
         switch (action) {
             case "skin_official":
@@ -500,13 +439,11 @@ export class OrdrConfigModalComponent extends AbstractComponent {
 
     private async applyOfficialSkin(ctx: ComponentContext, settings: OrdrSettingsDto): Promise<void> {
         const input = (ctx.getTextInput("skin") ?? "").trim();
-
         if (!input) {
             throw new Exception(EApplicationError.INPUT_ERROR, "An official skin name is required.");
         }
 
         const lookup = await this.ordrService.lookupOfficialSkin(input);
-
         if (!lookup.match) {
             const suggestions = lookup.suggestions.map((skin) => `\`${skin.presentationName}\``).join(", ");
             const suffix = suggestions ? ` Closest matches: ${suggestions}.` : "";
@@ -519,14 +456,12 @@ export class OrdrConfigModalComponent extends AbstractComponent {
 
     private async applyCustomSkin(ctx: ComponentContext, settings: OrdrSettingsDto): Promise<void> {
         const input = (ctx.getTextInput("skin") ?? "").trim();
-
         if (!input) {
             throw new Exception(EApplicationError.INPUT_ERROR, "A custom skin ID is required.");
         }
 
         const id = Number(input);
-
-        if (!Number.isInteger(id) || id <= 0) {
+        if (!isValidNumber(id) || id <= 0) {
             throw new Exception(EApplicationError.INPUT_ERROR, "Custom skins must use a positive numeric skin ID.");
         }
 
@@ -580,27 +515,6 @@ export class OrdrConfigModalComponent extends AbstractComponent {
 
         return value;
     }
-
-    private async getData(ctx: ComponentContext, sessionID: string): Promise<OrdrConfigViewDto> {
-        const plain = await this.sessionService.get("ordr_config_view", sessionID);
-
-        if (!plain) {
-            throw new Exception(EApplicationError.SESSION_EXPIRED);
-        }
-
-        const data = plainToInstance(OrdrConfigViewDto, plain);
-
-        if (data.authorID !== ctx.author.id) {
-            throw new Exception(EApplicationError.ACCESS_ERROR);
-        }
-
-        return data;
-    }
-
-    private async persist(ctx: ComponentContext, sessionID: string, data: OrdrConfigViewDto): Promise<void> {
-        await this.sessionService.update("ordr_config_view", sessionID, data, this.ordrConfigViewService.getTtl());
-        await ctx.update(this.ordrConfigViewService.build(sessionID, data));
-    }
 }
 
 class OrdrConfigModalFactory {
@@ -620,6 +534,7 @@ class OrdrConfigModalFactory {
                     100,
                 );
                 break;
+
             case "skin_custom":
                 modal.setTitle("Custom Render Skin");
 
@@ -632,16 +547,19 @@ class OrdrConfigModalFactory {
                     20,
                 );
                 break;
+
             case "audio":
                 modal.setTitle("Render Audio");
                 this.addInput(modal, "global_volume", "Global Volume", settings.globalVolume, "0-100", 3);
                 this.addInput(modal, "music_volume", "Music Volume", settings.musicVolume, "0-100", 3);
                 this.addInput(modal, "hitsound_volume", "Hitsound Volume", settings.hitsoundVolume, "0-100", 3);
                 break;
+
             case "cursor":
                 modal.setTitle("Render Cursor");
                 this.addInput(modal, "cursor_size", "Cursor Size", settings.cursorSize, "0.50-2.00", 4);
                 break;
+
             case "background":
                 modal.setTitle("Background Dimming");
                 this.addInput(modal, "intro_dim", "Intro Dim", settings.introBGDim, "0-100", 3);
