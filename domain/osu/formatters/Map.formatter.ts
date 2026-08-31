@@ -70,8 +70,12 @@ export class MapFormatter {
         return `https://osu.pages.dev/preview#${mapID}`;
     }
 
-    public static stars(stars: number = 0, unicode: boolean = true): string {
+    public static stars(stars: number = 0, unicode: boolean = true, displayStar: boolean = true): string {
         const floored = Math.floor(stars * 100) / 100;
+        if (!displayStar) {
+            return floored.toFixed(2);
+        }
+
         const emoji = unicode ? "★" : "*";
         return `${floored.toFixed(2)}${emoji}`;
     }

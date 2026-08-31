@@ -6,6 +6,7 @@ import { EPersonalBestCase } from "../enums/Score.enum";
 import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";
 import { ScoreUtils } from "../utils/ScoreUtils";
 import { ProfileFormatter } from "./Profile.formatter";
+import { MapFormatter } from "./Map.formatter";
 
 export class ScorepostFormatter {
     /**
@@ -88,7 +89,7 @@ export class ScorepostFormatter {
             "|",
             `${mapset.artist} - ${mapset.title}`,
             `[${beatmap.version}]`,
-            `(${mapset.creator}, ${stars.toFixed(2)}*)`,
+            `(${mapset.creator}, ${MapFormatter.stars(stars, false)})`,
             mods,
             accuracy,
             fullCombo,
