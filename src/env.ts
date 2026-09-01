@@ -225,6 +225,26 @@ export const config = convict({
             },
         },
     },
+    twitch: {
+        client_id: {
+            doc: "Twitch Application client ID.",
+            format: String,
+            default: "",
+            env: "TWITCH_CLIENT_ID",
+        },
+        client_secret: {
+            doc: "Twitch Application client secret.",
+            format: String,
+            default: "",
+            env: "TWITCH_CLIENT_SECRET",
+        },
+        redirect_uri: {
+            doc: "Twitch Application rediect uri.",
+            format: String,
+            default: "http://localhost:3001/oauth/twitch",
+            env: "TWITCH_REDIRECT_URI",
+        },
+    },
     calculator: {
         host: {
             doc: "Calculator gRPC host.",

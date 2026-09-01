@@ -1,4 +1,4 @@
-import { AuthOsuStateDto } from "@domain/auth/Auth.dto";
+import { AuthOsuStateDto, AuthTwitchStateDto } from "@domain/auth/Auth.dto";
 import { CommandsViewDto } from "@domain/general/views/Commands.view";
 import { GuildDto } from "@domain/guild/Guild.dto";
 import { OrdrConfigViewDto } from "@domain/ordr/views/OrdrConfig.view";
@@ -102,4 +102,5 @@ export interface ICacheSchema {
 
     // auth
     auth_osu_state: AuthOsuStateDto;
+    auth_twitch_state: AuthTwitchStateDto;
 }
