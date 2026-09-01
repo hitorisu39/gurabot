@@ -38,6 +38,9 @@ export class UserDto {
     declare scoreListSize: EScoreListSize;
 
     @Expose()
+    declare scoreActions: boolean;
+
+    @Expose()
     declare createdAt: Date;
 
     @Expose()
@@ -50,6 +53,7 @@ export class UserConfigUpdateDto {
     server?: AdapterProvider | null;
     mode?: GameMode | null;
     scoreListSize?: EScoreListSize | null;
+    scoreActions?: boolean;
 }
 
 //#endregion

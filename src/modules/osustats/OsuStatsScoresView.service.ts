@@ -75,6 +75,7 @@ export class OsuStatsScoresViewService extends AbstractViewService<OsuStatsScore
             scores: data.scores,
             displayQuery: null,
             activeAttributes: [],
+            scoreActions: false,
             pageSize: data.pageSize,
             page: 1,
             layout: EScoreViewLayout.List,

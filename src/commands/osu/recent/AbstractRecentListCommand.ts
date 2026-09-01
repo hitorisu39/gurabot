@@ -136,6 +136,7 @@ export abstract class AbstractRecentListCommand extends AbstractOsuCommand {
             scores: finalScores,
             displayQuery: evaluator.display(finalScores.length),
             activeAttributes: activeAttributes,
+            scoreActions: target.scoreActions,
             pageSize: sizeOption,
             page: 1,
         };

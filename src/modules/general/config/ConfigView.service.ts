@@ -107,11 +107,6 @@ export class ConfigViewService extends AbstractService {
                     inline: true,
                 },
                 {
-                    name: "\u200B",
-                    value: "\u200B",
-                    inline: true,
-                },
-                {
                     name: "Score list",
                     value: data.scoreListSize
                         ? this.choiceList(data.scoreListSize, [
@@ -125,7 +120,21 @@ export class ConfigViewService extends AbstractService {
                               },
                           ])
                         : "`Inherited`",
-                    inline: false,
+                    inline: true,
+                },
+                {
+                    name: "Score actions",
+                    value: this.choiceList(data.scoreActions, [
+                        {
+                            value: true,
+                            label: "Enabled",
+                        },
+                        {
+                            value: false,
+                            label: "Disabled",
+                        },
+                    ]),
+                    inline: true,
                 },
             )
             .setFooter({
