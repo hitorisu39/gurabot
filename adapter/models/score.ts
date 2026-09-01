@@ -48,6 +48,7 @@ export const Score = SchemaModel.define("Score", {
     type: Field.String().Optional(),
     userID: Field.Int(),
     accuracy: Field.Float(),
+    startedAt: Field.Date().Optional(),
     endedAt: Field.Date(),
     replay: Field.Boolean(),
     perfect: Field.Boolean(),

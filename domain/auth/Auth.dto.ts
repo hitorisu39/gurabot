@@ -17,21 +17,6 @@ export class AuthOsuStateDto {
     declare provider: AdapterProvider;
 }
 
-// Twitch
-export interface ITwitchAuthResponse {
-    access_token: string;
-    refresh_token: string;
-    expires_in: number;
-    token_type: string;
-    scope: Array<string>;
-    id_token?: string;
-}
-
-export interface ITwitchUserInfo {
-    sub: string;
-    preferred_username?: string;
-}
-
 @Exclude()
 export class AuthTwitchStateDto {
     @Expose()

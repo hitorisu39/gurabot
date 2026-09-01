@@ -534,6 +534,7 @@ const ScoreMapping: Mapping = {
     ranked: "ranked",
     type: "type",
     accuracy: "accuracy",
+    startedAt: "started_at",
     endedAt: "ended_at",
     replay: "replay",
     pp: "pp",

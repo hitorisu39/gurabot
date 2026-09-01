@@ -2,6 +2,7 @@ import { PopulatedUser } from "../Profile.dto";
 import { Exclude, Expose, Type } from "class-transformer";
 import { EScoreListSize, EScoreViewLayout } from "../enums/Score.enum";
 import { PopulatedScore, ScoreWithPlacement } from "../Score.dto";
+import { TwitchScoreLinkDto } from "@domain/twitch/Twitch.dto";
 
 @Exclude()
 export class ScoresViewDto {
@@ -27,6 +28,10 @@ export class ScoresViewDto {
 
     @Expose()
     declare scoreActions: boolean;
+
+    @Expose()
+    @Type(() => TwitchScoreLinkDto)
+    declare twitch?: TwitchScoreLinkDto | null;
 
     @Expose()
     declare page: number;

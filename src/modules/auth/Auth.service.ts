@@ -4,7 +4,7 @@ import path from "path";
 import { Import } from "@/core/decorators";
 import { AbstractService } from "@/core/framework/AbstractService";
 import { HttpClient } from "@/http";
-import { IAuthResponse, ITwitchAuthResponse, ITwitchUserInfo } from "@domain/auth/Auth.dto";
+import { IAuthResponse } from "@domain/auth/Auth.dto";
 import { authConnectionFailImage, authConnectionImage, authConnectionOkImage } from "@domain/auth/configs/Auth.config";
 import { EAuthConnectionType } from "@domain/auth/enums/Auth.enum";
 import { osuBaseUrl } from "@domain/osu/configs/Osu.config";
@@ -32,7 +32,6 @@ export class AuthService extends AbstractService {
             this.html = fs.readFileSync(templatePath, "utf8");
         } catch (error) {
             this.logger.error(error, `Failed to load ${this.templateFile} template.`);
-
             return;
         }
 
@@ -314,26 +313,14 @@ export class AuthService extends AbstractService {
         }
 
         try {
-            const token = await this.exchangeTwitchCode(code);
-            const profile = await this.http.get<ITwitchUserInfo>("https://id.twitch.tv/oauth2/userinfo", {
-                headers: {
-                    Authorization: `Bearer ${token.access_token}`,
-                },
-            });
+            const token = await this.twitchService.exchangeCode(code);
+            const identity = await this.twitchService.identity(token.accessToken);
 
-            if (!profile?.sub) {
-                throw new Error("Twitch did not return a user ID.");
-            }
-
-            await this.twitchService.link(data.osuID, profile.sub);
+            await this.twitchService.link(data.osuID, identity.sub);
             await this.cache.delete("auth_twitch_state", state);
 
             this.logger.debug(
-                {
-                    discord: data.discord,
-                    osuID: data.osuID,
-                    twitchID: profile.sub,
-                },
+                { discord: data.discord, osuID: data.osuID, twitchID: identity.sub },
                 "Twitch account linked",
             );
 
@@ -357,21 +344,5 @@ export class AuthService extends AbstractService {
                 false,
             );
         }
-    }
-
-    private async exchangeTwitchCode(code: string): Promise<ITwitchAuthResponse> {
-        const body = new URLSearchParams({
-            client_id: this.config.twitch.client_id,
-            client_secret: this.config.twitch.client_secret,
-            code,
-            grant_type: "authorization_code",
-            redirect_uri: this.config.twitch.redirect_uri,
-        });
-
-        return this.http.post<ITwitchAuthResponse>("https://id.twitch.tv/oauth2/token", body.toString(), {
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
-        });
     }
 }

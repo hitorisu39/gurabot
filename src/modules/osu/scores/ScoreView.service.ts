@@ -13,14 +13,16 @@ import { AbstractViewService } from "@/modules/AbstractViewService";
 import { Embed } from "@/core/discord/ui/Embed";
 import { ActionRow } from "@/core/discord/ui/ActionRow";
 import { ButtonStyle, InteractionResponse, Message } from "discord.js";
+import { TwitchScoreResolverService } from "@/modules/twitch/TwitchScoreResolver.service";
 
 interface IScoreViewPopulateContext {
     personalScores?: Array<Score> | Promise<Array<Score>>;
     globalScores?: Array<Score> | Promise<Array<Score>>;
 }
 
-export class ScoreViewService extends AbstractViewService<ScoresViewDto, Record<string, unknown>> {
+export class ScoreViewService extends AbstractViewService<ScoresViewDto> {
     @Import() declare private readonly osuService: OsuService;
+    @Import() declare private readonly twitchScoreResolverService: TwitchScoreResolverService;
 
     // Views services
     @Import() declare private readonly listScoreView: ListScoreView;
@@ -68,6 +70,12 @@ export class ScoreViewService extends AbstractViewService<ScoresViewDto, Record<
 
         const pageSize = this.getPageSize(data.pageSize, data.activeAttributes, layout);
         await this.populatePage(data.scores, data.page, pageSize, mode, provider);
+
+        if (data.scores.length === 1 && data.twitch === undefined) {
+            const score = data.scores[0];
+            if (score && ScoreUtils.isPopulated(score))
+                data.twitch = await this.twitchScoreResolverService.resolve(data.profile, score);
+        }
 
         if (!this.shouldPopulatePlacements(data)) {
             return;
