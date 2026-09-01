@@ -1,24 +1,20 @@
 import fs from "fs";
 import http from "http";
 import path from "path";
-
 import { Import } from "@/core/decorators";
 import { AbstractService } from "@/core/framework/AbstractService";
 import { HttpClient } from "@/http";
-
-import { IAuthResponse } from "@domain/auth/Auth.dto";
+import { IAuthResponse, ITwitchAuthResponse, ITwitchUserInfo } from "@domain/auth/Auth.dto";
 import { authConnectionFailImage, authConnectionImage, authConnectionOkImage } from "@domain/auth/configs/Auth.config";
 import { EAuthConnectionType } from "@domain/auth/enums/Auth.enum";
 import { osuBaseUrl } from "@domain/osu/configs/Osu.config";
-
 import { User } from "@generated/adapter/types";
-
-import { OsuService } from "../osu/Osu.service";
 import { UserService } from "../user/User.service";
+import { TwitchService } from "../twitch/Twitch.service";
 
 export class AuthService extends AbstractService {
     @Import() declare private readonly userService: UserService;
-    @Import() declare private readonly osuService: OsuService;
+    @Import() declare private readonly twitchService: TwitchService;
 
     private readonly webDirectory = path.resolve(process.cwd(), "web");
     private readonly templateFile = "auth.html";
@@ -29,9 +25,7 @@ export class AuthService extends AbstractService {
     public async init(): Promise<void> {
         const port = this.config.web.authPort;
 
-        this.http = new HttpClient(this.logger, {
-            name: "WebAuth",
-        });
+        this.http = new HttpClient(this.logger, { name: "WebAuth" });
 
         try {
             const templatePath = path.join(this.webDirectory, this.templateFile);
@@ -52,6 +46,9 @@ export class AuthService extends AbstractService {
 
                 if (req.method === "GET" && url.pathname === "/oauth/osu") {
                     await this.handleOsuAuth(url, res);
+                    return;
+                } else if (req.method === "GET" && url.pathname === "/oauth/twitch") {
+                    await this.handleTwitchAuth(url, res);
                     return;
                 }
 
@@ -282,5 +279,99 @@ export class AuthService extends AbstractService {
                 false,
             );
         }
+    }
+
+    private async handleTwitchAuth(url: URL, res: http.ServerResponse): Promise<void> {
+        const state = url.searchParams.get("state");
+        const code = url.searchParams.get("code");
+
+        if (!state || !code) {
+            this.sendHtml(
+                EAuthConnectionType.Twitch,
+                res,
+                400,
+                "Missing Data",
+                "Missing state or code parameter.",
+                false,
+            );
+
+            return;
+        }
+
+        const data = await this.cache.get("auth_twitch_state", state);
+
+        if (!data) {
+            this.sendHtml(
+                EAuthConnectionType.Twitch,
+                res,
+                400,
+                "Session Expired",
+                "Invalid or expired auth session. Try running the command again.",
+                false,
+            );
+
+            return;
+        }
+
+        try {
+            const token = await this.exchangeTwitchCode(code);
+            const profile = await this.http.get<ITwitchUserInfo>("https://id.twitch.tv/oauth2/userinfo", {
+                headers: {
+                    Authorization: `Bearer ${token.access_token}`,
+                },
+            });
+
+            if (!profile?.sub) {
+                throw new Error("Twitch did not return a user ID.");
+            }
+
+            await this.twitchService.link(data.osuID, profile.sub);
+            await this.cache.delete("auth_twitch_state", state);
+
+            this.logger.debug(
+                {
+                    discord: data.discord,
+                    osuID: data.osuID,
+                    twitchID: profile.sub,
+                },
+                "Twitch account linked",
+            );
+
+            this.sendHtml(
+                EAuthConnectionType.Twitch,
+                res,
+                200,
+                "Authorized",
+                `Your Twitch account has been successfully linked to ${this.config.app.name}. You can close this page now.`,
+                true,
+            );
+        } catch (error) {
+            this.logger.error(error, "Twitch linking error");
+
+            this.sendHtml(
+                EAuthConnectionType.Twitch,
+                res,
+                500,
+                "Failed",
+                "An internal error occurred while trying to link your Twitch account.",
+                false,
+            );
+        }
+    }
+
+    private async exchangeTwitchCode(code: string): Promise<ITwitchAuthResponse> {
+        const body = new URLSearchParams({
+            client_id: this.config.twitch.client_id,
+            client_secret: this.config.twitch.client_secret,
+            code,
+            grant_type: "authorization_code",
+            redirect_uri: this.config.twitch.redirect_uri,
+        });
+
+        return this.http.post<ITwitchAuthResponse>("https://id.twitch.tv/oauth2/token", body.toString(), {
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+        });
     }
 }

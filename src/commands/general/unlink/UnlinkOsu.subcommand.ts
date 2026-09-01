@@ -9,7 +9,7 @@ import { CommandOption } from "@domain/core/Command";
 @Subcommand({
     root: "unlink",
     name: "osu",
-    description: "All your data will be erased if the server option is not set.",
+    description: "Unlink an osu! server, or remove your Discord user data entirely.",
     ephemeral: true,
 })
 export class UnlinkOsuSubcommand extends AbstractCommand {
@@ -31,6 +31,6 @@ export class UnlinkOsuSubcommand extends AbstractCommand {
         }
 
         await this.userService.unlink(ctx.author.id);
-        await ctx.respond(Embed.success("You were unlinked from the bot. All your data was erased."));
+        await ctx.respond(Embed.success("You were unlinked from the bot and your Discord user data was erased."));
     }
 }
