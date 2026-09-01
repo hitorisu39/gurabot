@@ -15,6 +15,7 @@ import { AbstractSessionCommand } from "../AbstractSessionCommand";
 export interface IResolvedOsuContext {
     mode: GameMode;
     server: AdapterProvider;
+    scoreActions: boolean;
 }
 
 export interface IResolvedOsuTarget extends IResolvedOsuContext {
@@ -68,6 +69,7 @@ export abstract class AbstractOsuCommand extends AbstractSessionCommand {
         return {
             mode,
             server,
+            scoreActions: performer?.scoreActions ?? true,
         };
     }
 

@@ -1,4 +1,4 @@
-import { Import, IsEnum, Option, Subcommand } from "@/core/decorators";
+import { Import, IsBoolean, IsEnum, Option, Subcommand } from "@/core/decorators";
 import { AbstractCommand } from "@/core/discord/AbstractCommand";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { ConfigViewService } from "@/modules/general/config/ConfigView.service";
@@ -31,6 +31,10 @@ export class ConfigUserSubcommand extends AbstractCommand {
     @IsEnum(EScoreListSize)
     declare private readonly scoreListSize: CommandOption<EScoreListSize>;
 
+    @Option("score_actions", "Show Render and Scorepost actions on eligible scores.")
+    @IsBoolean()
+    declare private readonly scoreActions: CommandOption<boolean>;
+
     public async execute(ctx: CommandContext): Promise<void> {
         let user = await this.userService.getLinked(ctx.author.id);
 
@@ -44,6 +48,7 @@ export class ConfigUserSubcommand extends AbstractCommand {
         const updates: UserConfigUpdateDto = {};
 
         if (this.scoreListSize.some()) updates.scoreListSize = this.scoreListSize.unwrap();
+        if (this.scoreActions.some()) updates.scoreActions = this.scoreActions.unwrap();
         if (this.mode.some()) updates.mode = this.mode.unwrap();
         if (this.server.some()) updates.server = this.server.unwrap();
 

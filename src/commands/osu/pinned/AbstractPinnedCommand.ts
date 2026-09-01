@@ -135,6 +135,7 @@ export abstract class AbstractPinnedCommand extends AbstractOsuCommand {
             scores: finalScores,
             displayQuery: evaluator.display(finalScores.length),
             activeAttributes,
+            scoreActions: target.scoreActions,
             pageSize: sizeOption,
             page: 1,
         };

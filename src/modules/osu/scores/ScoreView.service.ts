@@ -176,6 +176,7 @@ export class ScoreViewService extends AbstractViewService<ScoresViewDto, Record<
     private shouldShowActionButtons(data: ScoresViewDto): boolean {
         const score = data.scores[0];
         return (
+            data.scoreActions &&
             data.scores.length === 1 &&
             !!score &&
             ScoreUtils.allowsScoreActions(score, data.profile.mode, data.profile.provider)

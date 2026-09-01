@@ -26,6 +26,9 @@ export class ScoresViewDto {
     declare activeAttributes: Array<string>;
 
     @Expose()
+    declare scoreActions: boolean;
+
+    @Expose()
     declare page: number;
 
     @Expose()

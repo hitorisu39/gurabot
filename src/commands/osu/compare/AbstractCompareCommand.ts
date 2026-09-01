@@ -137,6 +137,7 @@ export abstract class AbstractCompareCommand extends AbstractOsuCommand {
             scores: scores,
             displayQuery: displayQuery,
             activeAttributes: evaluator.getActiveAttributes(),
+            scoreActions: target.scoreActions,
             pageSize: EScoreListSize.Detailed,
             page: 1,
             layout: EScoreViewLayout.Compare,

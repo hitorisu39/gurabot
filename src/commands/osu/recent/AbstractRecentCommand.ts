@@ -107,6 +107,7 @@ export abstract class AbstractRecentCommand extends AbstractOsuCommand {
             scores: finalScores,
             displayQuery: displayQuery,
             activeAttributes: evaluator.getActiveAttributes(),
+            scoreActions: target.scoreActions,
             pageSize: EScoreListSize.Detailed,
             page: 1,
         };

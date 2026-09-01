@@ -7,6 +7,7 @@ model User {
     server          String?     // AdapterProvider
     mode            String?     // GameMode
     scoreListSize   String?     @map("score_list_size") // EScoreListSize
+    scoreActions    Boolean     @map("score_actions") @default(true)
 
     createdAt       DateTime    @map("created_at") @default(now())
     updatedAt       DateTime    @map("updated_at") @updatedAt @default(now())
