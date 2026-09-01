@@ -6,8 +6,10 @@ import {
     BeatmapSearchResult,
     Beatmapset,
     GameMode,
+    MatchEvents,
     RankingStatistics,
     RankingType,
+    RealtimeRoomEvents,
     Score,
 } from "@generated/adapter/types";
 import { Import, Trace } from "@/core/decorators";
@@ -23,9 +25,10 @@ import { scoreBestQueryLimit } from "@domain/osu/configs/Score.config";
 import { OsuUserService } from "./OsuUser.service";
 import { OsuScoreService } from "./OsuScore.service";
 import { OsuBeatmapService } from "./OsuBeatmap.service";
-import { IBeatmapsetSearchInput, UserScoreType } from "@domain/osu/Adapter.dto";
+import { IBeatmapsetSearchInput, IMultiplayerEventsOptions, UserScoreType } from "@domain/osu/Adapter.dto";
 import { OsuReplayService } from "./OsuReplay.service";
 import { EScorePopulation } from "@domain/osu/enums/Score.enum";
+import { OsuMultiplayerService } from "./OsuMultiplayer.service";
 
 interface IUserWithScoresInput {
     nameOrID: string | number;
@@ -58,6 +61,7 @@ export class OsuService extends AbstractService {
     @Import() declare private readonly scoreService: OsuScoreService;
     @Import() declare private readonly beatmapService: OsuBeatmapService;
     @Import() declare private readonly replayService: OsuReplayService;
+    @Import() declare private readonly multiplayerService: OsuMultiplayerService;
 
     //#region API
 
@@ -356,6 +360,22 @@ export class OsuService extends AbstractService {
             user,
             context,
         };
+    }
+
+    public async match(
+        id: number,
+        options?: IMultiplayerEventsOptions,
+        provider: AdapterProvider = AdapterProvider.Bancho,
+    ): Promise<MatchEvents> {
+        return this.multiplayerService.match(id, options, provider);
+    }
+
+    public async roomEvents(
+        id: number,
+        options?: IMultiplayerEventsOptions,
+        provider: AdapterProvider = AdapterProvider.Bancho,
+    ): Promise<RealtimeRoomEvents> {
+        return this.multiplayerService.roomEvents(id, options, provider);
     }
 
     @Trace()

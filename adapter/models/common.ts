@@ -132,3 +132,25 @@ export const BeatmapSearchSortOrder = SchemaEnum.define("BeatmapSearchSortOrder"
     Ascending: "Asc",
     Descending: "Desc",
 });
+
+export const MatchEventType = SchemaEnum.define("MatchEventType", {
+    HostChanged: "HostChanged",
+    MatchCreated: "MatchCreated",
+    MatchDisbanded: "MatchDisbanded",
+    Other: "Other",
+    PlayerJoined: "PlayerJoined",
+    PlayerKicked: "PlayerKicked",
+    PlayerLeft: "PlayerLeft",
+});
+
+export const RealtimeRoomEventType = SchemaEnum.define("RealtimeRoomEventType", {
+    GameStarted: "GameStarted",
+    GameAborted: "GameAborted",
+    GameCompleted: "GameCompleted",
+    HostChanged: "HostChanged",
+    PlayerJoined: "PlayerJoined",
+    PlayerKicked: "PlayerKicked",
+    PlayerLeft: "PlayerLeft",
+    RoomCreated: "RoomCreated",
+    RoomDisbanded: "RoomDisbanded",
+});

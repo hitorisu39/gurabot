@@ -1,4 +1,4 @@
-export type FieldType = "Int" | "String" | "Float" | "Boolean" | "Model" | "Date" | "Enum" | "Mods";
+export type FieldType = "Int" | "String" | "Float" | "Boolean" | "Model" | "Date" | "Enum" | "Mods" | "Json";
 
 export class SchemaField {
     public $isOptional: boolean = false;
@@ -51,6 +51,7 @@ export const Field = {
     Date: () => new SchemaField("Date"),
     Enum: (e: SchemaEnum) => new SchemaField("Enum", undefined, e),
     Mods: () => new SchemaField("Mods"),
+    Json: () => new SchemaField("Json"),
 };
 
 export class SchemaModel {
@@ -87,6 +88,10 @@ export type EndpointReturn =
     | RawEndpointReturn;
 
 export interface EndpointConfig {
+    /**
+     * Documentation emitted for the generated client method.
+     */
+    doc?: string;
     path: (args: any) => string;
     method: "GET" | "POST";
     returns: EndpointReturn;

@@ -32,3 +32,9 @@ export interface IBeatmapsetSearchInput {
     // Legacy
     page?: number;
 }
+
+export interface IMultiplayerEventsOptions {
+    limit?: number;
+    before?: number;
+    after?: number;
+}

@@ -20,7 +20,6 @@ function tsTypeFromField(field: SchemaField): string {
     switch (field.$type) {
         case "Enum":
             return field.$enumDef!.$name;
-
         default:
             return tsType(field.$type);
     }
@@ -31,21 +30,23 @@ function tsType(type: SchemaField["$type"]): string {
         case "Int":
         case "Float":
             return "number";
-
         case "String":
             return "string";
-
         case "Boolean":
             return "boolean";
-
         case "Date":
             return "Date";
-
         case "Mods":
             return "ParsedMod[]";
-
-        default:
-            return "any";
+        case "Json":
+            return "JsonValue";
+        case "Model":
+        case "Enum":
+            throw new Error(`Field type "${type}" must be resolved separately`);
+        default: {
+            const exhaustive: never = type;
+            throw new Error(`Unknown field type: ${exhaustive}`);
+        }
     }
 }
 
@@ -120,6 +121,25 @@ function getAccountProviderID(provider: SchemaProvider): string {
 
 function adapterProviderMember(provider: SchemaProvider): string {
     return `AdapterProvider[${JSON.stringify(provider.config.name)}]`;
+}
+
+function generateDocComment(doc: string, indent = ""): string {
+    const normalized = doc
+        .trim()
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .join("\n")
+        .replace(/\*\//g, "*\\/");
+
+    const lines = normalized.split("\n");
+    let output = `${indent}/**\n`;
+
+    for (const line of lines) {
+        output += `${indent} *${line ? ` ${line}` : ""}\n`;
+    }
+
+    output += `${indent} */\n`;
+    return output;
 }
 
 async function generateProviders(): Promise<void> {
@@ -285,13 +305,16 @@ async function generateProviders(): Promise<void> {
 import "reflect-metadata";
 import { Exclude, Expose, Type } from "class-transformer";
 
-import type {
-    AdapterHook,
-} from "../../adapter/engine";
+import type { AdapterHook } from "../../adapter/engine";
+import type { ParsedMod } from "./mods";
 
-import type {
-    ParsedMod,
-} from "./mods";
+export type JsonValue =
+    | string
+    | number
+    | boolean
+    | null
+    | JsonValue[]
+    | { [key: string]: JsonValue };
 
 export type {
     AdapterErrorContext,
@@ -431,6 +454,11 @@ export type {
         for (const [endpointName, globalEndpoint] of globalEndpoints.entries()) {
             const argsType = buildEndpointArgumentsType(globalEndpoint);
             const returnType = Array.from(globalEndpoint.returnTypes).join(" | ");
+
+            const implementation = provider.config.endpoints[endpointName];
+            if (implementation?.doc) {
+                outputTypeFile += generateDocComment(implementation.doc, "    ");
+            }
 
             outputTypeFile += `    ${endpointName}${argsType}: Promise<${returnType}>;\n`;
         }
