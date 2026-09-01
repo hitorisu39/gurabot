@@ -31,9 +31,23 @@ export const ScoreAttributes = SchemaModel.define("ScoreAttributes", {
     pinned: Field.Boolean(),
 });
 
+export const ScoreMatch = SchemaModel.define("ScoreMatch", {
+    slot: Field.Int(),
+    team: Field.String(),
+    pass: Field.Boolean(),
+});
+
 export const Score = SchemaModel.define("Score", {
     id: Field.Int(),
     index: Field.Int(),
+
+    /**
+     * Lazer realtime room data.
+     */
+    playlistItemID: Field.Int().Optional(),
+    roomID: Field.Int().Optional(),
+    soloScoreID: Field.Int().Optional(),
+
     classicTotalScore: Field.Int(),
     preserve: Field.Boolean().Optional(),
     processed: Field.Boolean().Optional(),
@@ -61,6 +75,7 @@ export const Score = SchemaModel.define("Score", {
     totalScore: Field.Int(),
     attributes: Field.Model(ScoreAttributes).Optional(),
     weight: Field.Model(ScoreWeight).Optional(),
+    match: Field.Model(ScoreMatch).Optional(),
     beatmap: Field.Model(Beatmap).Optional(),
     beatmapset: Field.Model(Beatmapset).Optional(),
     user: Field.Model(User).Optional(),

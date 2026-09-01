@@ -12,9 +12,12 @@ import {
     Genre,
     Grade,
     Language,
+    MatchEventType,
     RankingType,
+    RealtimeRoomEventType,
     Status,
 } from "../models/common";
+import { MatchEvents, RealtimeRoomEvents } from "../models/multiplayer";
 import { Score } from "../models/score";
 import { RankingStatistics, User } from "../models/user";
 
@@ -185,6 +188,38 @@ const beatmapSearchSortFieldToPlain: Record<string, string> = {
 const beatmapSearchSortOrderToPlain: Record<string, string> = {
     [BeatmapSearchSortOrder.Ascending]: "asc",
     [BeatmapSearchSortOrder.Descending]: "desc",
+};
+
+const realtimeRoomEventTypeToInstance: Record<string, string> = {
+    game_started: RealtimeRoomEventType.GameStarted,
+    game_aborted: RealtimeRoomEventType.GameAborted,
+    game_completed: RealtimeRoomEventType.GameCompleted,
+    host_changed: RealtimeRoomEventType.HostChanged,
+    player_joined: RealtimeRoomEventType.PlayerJoined,
+    player_kicked: RealtimeRoomEventType.PlayerKicked,
+    player_left: RealtimeRoomEventType.PlayerLeft,
+    room_created: RealtimeRoomEventType.RoomCreated,
+    room_disbanded: RealtimeRoomEventType.RoomDisbanded,
+};
+
+const matchEventTypeToInstance: Record<string, string> = {
+    "host-changed": MatchEventType.HostChanged,
+    "match-created": MatchEventType.MatchCreated,
+    "match-disbanded": MatchEventType.MatchDisbanded,
+    other: MatchEventType.Other,
+    "player-joined": MatchEventType.PlayerJoined,
+    "player-kicked": MatchEventType.PlayerKicked,
+    "player-left": MatchEventType.PlayerLeft,
+};
+
+const matchEventTypeToPlain: Record<string, string> = {
+    [MatchEventType.HostChanged]: "host-changed",
+    [MatchEventType.MatchCreated]: "match-created",
+    [MatchEventType.MatchDisbanded]: "match-disbanded",
+    [MatchEventType.Other]: "other",
+    [MatchEventType.PlayerJoined]: "player-joined",
+    [MatchEventType.PlayerKicked]: "player-kicked",
+    [MatchEventType.PlayerLeft]: "player-left",
 };
 
 //#endregion
@@ -529,6 +564,14 @@ const BeatmapPlaycountMapping: Mapping = {
 const ScoreMapping: Mapping = {
     id: "id",
     index: "$index",
+
+    /**
+     * Lazer realtime room data.
+     */
+    playlistItemID: "playlist_item_id",
+    roomID: "room_id",
+    soloScoreID: "solo_score_id",
+
     preserve: "preserve",
     processed: "processed",
     ranked: "ranked",
@@ -570,6 +613,14 @@ const ScoreMapping: Mapping = {
         path: "current_user_attributes",
         nested: {
             pinned: "pin",
+        },
+    },
+    match: {
+        path: "match",
+        nested: {
+            slot: "slot",
+            team: "team",
+            pass: "pass",
         },
     },
     user: {
@@ -670,6 +721,231 @@ const BeatmapSearchMapping: Mapping = {
     },
 };
 
+const MatchMapping: Mapping = {
+    id: "id",
+    startTime: "start_time",
+    endTime: "end_time",
+    name: "name",
+};
+
+const MatchUserMapping: Mapping = {
+    id: "id",
+    username: "username",
+    countryCode: "country_code",
+    avatarUrl: "avatar_url",
+    online: "is_online",
+    lastVisit: "last_visit",
+};
+
+const MatchGameMapping: Mapping = {
+    id: "id",
+    matchID: "match_id",
+    beatmapID: "beatmap_id",
+    beatmap: {
+        path: "beatmap",
+        nested: BeatmapMapping,
+    },
+    startTime: "start_time",
+    endTime: "end_time",
+    mode: {
+        path: "mode",
+        transform: (v) => modeToInstance[v],
+    },
+    modeInt: "mode_int",
+    mods: "mods",
+    scoringType: "scoring_type",
+    teamType: "team_type",
+    scores: {
+        path: "scores",
+        nested: ScoreMapping,
+    },
+};
+
+const MatchEventMapping: Mapping = {
+    id: "id",
+    detail: {
+        path: "detail",
+        nested: {
+            type: "type",
+            text: "text",
+        },
+    },
+    timestamp: "timestamp",
+    userID: "user_id",
+    game: {
+        path: "game",
+        nested: MatchGameMapping,
+    },
+};
+
+const MatchEventsMapping: Mapping = {
+    match: {
+        path: "match",
+        nested: MatchMapping,
+    },
+    events: {
+        path: "events",
+        nested: MatchEventMapping,
+    },
+    users: {
+        path: "users",
+        nested: MatchUserMapping,
+    },
+    firstEventID: "first_event_id",
+    latestEventID: "latest_event_id",
+    currentGameID: "current_game_id",
+};
+
+const RealtimeRoomUserMapping: Mapping = {
+    id: "id",
+    username: "username",
+    avatarUrl: "avatar_url",
+    countryCode: "country_code",
+    defaultGroup: "default_group",
+    active: "is_active",
+    bot: "is_bot",
+    deleted: "is_deleted",
+    online: "is_online",
+    supporter: "is_supporter",
+    lastVisit: "last_visit",
+    pmFriendsOnly: "pm_friends_only",
+    profileColour: "profile_colour",
+};
+
+const RealtimeRoomBeatmapMapping: Mapping = {
+    id: "id",
+    beatmapsetID: "beatmapset_id",
+    difficulty: "difficulty_rating",
+    lazerOnly: "lazer_only",
+    mode: {
+        path: "mode",
+        transform: (v) => modeToInstance[v],
+    },
+    status: {
+        path: "status",
+        transform: (v) => statusToInstance[v],
+    },
+    totalLength: "total_length",
+    userID: "user_id",
+    version: "version",
+};
+
+const RealtimeRoomBeatmapsetMapping: Mapping = {
+    id: "id",
+    animeCover: "anime_cover",
+    artist: "artist",
+    artistUnicode: "artist_unicode",
+    covers: {
+        path: "covers",
+        nested: CoverMapping,
+    },
+    creator: "creator",
+    favoriteCount: "favourite_count",
+    genre: {
+        path: "genre_id",
+        transform: (v) => genreToInstance[v],
+    },
+    language: {
+        path: "language_id",
+        transform: (v) => languageToInstance[v],
+    },
+    hype: "hype",
+    nsfw: "nsfw",
+    offset: "offset",
+    playcount: "play_count",
+    previewUrl: "preview_url",
+    source: "source",
+    spotlight: "spotlight",
+    status: {
+        path: "status",
+        transform: (v) => statusToInstance[v],
+    },
+    title: "title",
+    titleUnicode: "title_unicode",
+    trackID: "track_id",
+    userID: "user_id",
+    video: "video",
+};
+
+const RealtimeRoomMapping: Mapping = {
+    id: "id",
+    name: "name",
+    description: "description",
+    category: "category",
+    status: "status",
+    type: "type",
+    userID: "user_id",
+    startsAt: "starts_at",
+    endsAt: "ends_at",
+    maxAttempts: "max_attempts",
+    maxParticipants: "max_participants",
+    participantCount: "participant_count",
+    channelID: "channel_id",
+    active: "active",
+    hasPassword: "has_password",
+    queueMode: "queue_mode",
+    autoSkip: "auto_skip",
+    pinned: "pinned",
+};
+
+const RealtimeRoomPlaylistItemMapping: Mapping = {
+    id: "id",
+    roomID: "room_id",
+    beatmapID: "beatmap_id",
+    createdAt: "created_at",
+    rulesetID: "ruleset_id",
+    allowedMods: "allowed_mods",
+    requiredMods: "required_mods",
+    freestyle: "freestyle",
+    expired: "expired",
+    ownerID: "owner_id",
+    playlistOrder: "playlist_order",
+    playedAt: "played_at",
+    details: "details",
+    scores: {
+        path: "scores",
+        nested: ScoreMapping,
+    },
+};
+
+const RealtimeRoomEventMapping: Mapping = {
+    id: "id",
+    createdAt: "created_at",
+    eventType: "event_type",
+    playlistItemID: "playlist_item_id",
+    userID: "user_id",
+};
+
+const RealtimeRoomEventsMapping: Mapping = {
+    beatmaps: {
+        path: "beatmaps",
+        nested: RealtimeRoomBeatmapMapping,
+    },
+    beatmapsets: {
+        path: "beatmapsets",
+        nested: RealtimeRoomBeatmapsetMapping,
+    },
+    currentPlaylistItemID: "current_playlist_item_id",
+    events: {
+        path: "events",
+        nested: RealtimeRoomEventMapping,
+    },
+    firstEventID: "first_event_id",
+    lastEventID: "last_event_id",
+    playlistItems: {
+        path: "playlist_items",
+        nested: RealtimeRoomPlaylistItemMapping,
+    },
+    room: {
+        path: "room",
+        nested: RealtimeRoomMapping,
+    },
+    users: {
+        path: "users",
+        nested: RealtimeRoomUserMapping,
+    },
+};
+
 //#endregion
 
 export const OsuProvider = SchemaProvider.define("osu", {
@@ -706,6 +982,13 @@ export const OsuProvider = SchemaProvider.define("osu", {
         },
         [BeatmapSearchSortOrder.$name]: {
             toPlain: (v) => beatmapSearchSortOrderToPlain[v],
+        },
+        [RealtimeRoomEventType.$name]: {
+            toInstance: (v) => realtimeRoomEventTypeToInstance[v],
+        },
+        [MatchEventType.$name]: {
+            toPlain: (v) => matchEventTypeToPlain[v],
+            toInstance: (v) => matchEventTypeToInstance[v],
         },
     },
     formatters: {
@@ -1048,6 +1331,78 @@ export const OsuProvider = SchemaProvider.define("osu", {
             method: "GET",
             returns: { model: BeatmapPlaycount, isArray: true },
             mapping: BeatmapPlaycountMapping,
+        },
+        match: {
+            doc: `
+            Gets a stable multiplayer match and its event history.
+
+            Pagination is based on event IDs. Use "before" to fetch older events
+            or "after" to fetch newer events. "before" and "after" should not be used together.
+            `,
+            args: {
+                id: Field.Int(),
+                limit: Field.Int().Optional(),
+                before: Field.Int().Optional(),
+                after: Field.Int().Optional(),
+            },
+            path: (args) => {
+                const params = new URLSearchParams();
+
+                if (args.limit !== undefined) {
+                    params.set("limit", String(args.limit));
+                }
+
+                if (args.before !== undefined) {
+                    params.set("before", String(args.before));
+                }
+
+                if (args.after !== undefined) {
+                    params.set("after", String(args.after));
+                }
+
+                const query = params.toString();
+                return `/matches/${args.id}${query ? `?${query}` : ""}`;
+            },
+            method: "GET",
+            returns: MatchEvents,
+            mapping: MatchEventsMapping,
+        },
+        room_events: {
+            doc: `
+            Gets multiplayer events for a lazer realtime room.
+
+            Pagination is based on event IDs rather than offsets.
+            Use the first returned event ID as "before" to fetch older events.
+            Use the last returned event ID as "after" to fetch newer events.
+            "before" and "after" should not be used together.
+            `,
+            args: {
+                id: Field.Int(),
+                limit: Field.Int().Optional(),
+                before: Field.Int().Optional(),
+                after: Field.Int().Optional(),
+            },
+            path: (args) => {
+                const params = new URLSearchParams();
+
+                if (args.limit !== undefined) {
+                    params.set("limit", String(args.limit));
+                }
+
+                if (args.before !== undefined) {
+                    params.set("before", String(args.before));
+                }
+
+                if (args.after !== undefined) {
+                    params.set("after", String(args.after));
+                }
+
+                const query = params.toString();
+                return `/rooms/${args.id}/events${query ? `?${query}` : ""}`;
+            },
+            method: "GET",
+            returns: RealtimeRoomEvents,
+            mapping: RealtimeRoomEventsMapping,
         },
     },
 });
