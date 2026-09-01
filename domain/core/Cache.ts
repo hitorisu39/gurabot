@@ -37,6 +37,7 @@ import { SnipePlayerHistoryDto } from "@domain/snipe/SnipePlayerHistory.dto";
 import { SnipeScoresDto } from "@domain/snipe/SnipeScore.dto";
 import { SnipePlayerListViewDto } from "@domain/snipe/views/SnipePlayerList.view";
 import { SnipePlayerChangesViewDto } from "@domain/snipe/views/SnipePlayerChanges.view";
+import { TwitchStreamDto, TwitchVideoDto } from "@domain/twitch/Twitch.dto";
 
 export interface ICacheSchema {
     // discord
@@ -77,6 +78,10 @@ export interface ICacheSchema {
     // osu!
     osu_user_profile: PopulatedUser;
     osu_scorepost_background_miss: boolean;
+
+    // twitch
+    twitch_videos: Array<TwitchVideoDto>;
+    twitch_stream: TwitchStreamDto | null;
 
     // osu!track
     osutrack_stats_history: Array<OsuTrackStatsHistoryDto>;

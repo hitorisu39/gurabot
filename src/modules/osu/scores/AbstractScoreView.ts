@@ -14,6 +14,7 @@ import { EScoreListSize } from "@domain/osu/enums/Score.enum";
 import { MapFormatter } from "@domain/osu/formatters/Map.formatter";
 import { ScoreUtils } from "@domain/osu/utils/ScoreUtils";
 import { BeatmapUtils } from "@domain/osu/utils/BeatmapUtils";
+import { discordEmoteTwitch } from "@domain/discord/configs/Emotes.config";
 
 export abstract class AbstractScoreView extends AbstractService {
     @Import() declare protected readonly profileViewService: ProfileViewService;
@@ -36,7 +37,12 @@ export abstract class AbstractScoreView extends AbstractService {
         if (!ScoreUtils.isFullyPopulated(score)) return embed;
 
         const placement = ScoreFormatter.placement(score);
-        if (placement) embed.setDescription(placement);
+        const twitch = data.twitch
+            ? `${discordEmoteTwitch} [${data.twitch.type === "liveplay" ? "Liveplay on Twitch" : "Live on Twitch"}](${data.twitch.url})`
+            : null;
+
+        const embedDescription = [twitch, placement].filter(Boolean).join("\n");
+        if (embedDescription) embed.setDescription(embedDescription);
 
         const description = new DescriptionBuilder();
         const isMania = data.profile.mode === GameMode.Mania;
