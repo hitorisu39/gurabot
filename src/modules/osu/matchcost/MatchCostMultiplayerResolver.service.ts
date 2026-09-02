@@ -9,6 +9,7 @@ import {
     MatchCostTargetDto,
     MatchCostUserDto,
 } from "@domain/osu/MatchCost.dto";
+import { wait } from "@domain/utils/utils";
 import {
     AdapterProvider,
     MatchEvent,
@@ -18,6 +19,7 @@ import {
     RealtimeRoomEvents,
     RealtimeRoomPlaylistItem,
 } from "@generated/adapter/types";
+import { plainToInstance } from "class-transformer";
 
 export class MatchCostMultiplayerResolverService extends AbstractService {
     @Import() declare private readonly osuService: OsuService;
@@ -33,13 +35,72 @@ export class MatchCostMultiplayerResolverService extends AbstractService {
      */
     private readonly maxEventPages = 5;
 
+    /**
+     * For how long we want to cache an ongoing match.
+     */
+    private readonly activeCacheTtl = 20;
+
+    /**
+     * For how long we watch to cache an ended match.
+     */
+    private readonly endedCacheTtl = 5 * 60;
+
+    private readonly cacheLockTtl = 15000;
+    private readonly cacheWaitAttempts = 12;
+    private readonly cacheWaitInterval = 250;
+
     public async resolve(target: MatchCostTargetDto): Promise<MatchCostMatchDto> {
+        const cacheID = this.cacheID(target);
+
+        const cached = await this.cache.getInstance("osu_matchcost", MatchCostMatchDto, cacheID);
+        if (cached) {
+            return cached;
+        }
+
+        const lockKey = `lock:osu_matchcost:${cacheID}`;
+        const lock = await this.cache.acquireLock(lockKey, this.cacheLockTtl);
+
+        if (!lock) {
+            const populated = await this.waitForCache(cacheID);
+            if (populated) {
+                return populated;
+            }
+
+            return this.resolveAndCache(target, cacheID);
+        }
+
+        try {
+            /**
+             * Another request may have populated the cache between our initial
+             * miss and acquiring the distributed lock, so check once more.
+             */
+            const cachedAfterLock = await this.cache.getInstance("osu_matchcost", MatchCostMatchDto, cacheID);
+            if (cachedAfterLock) {
+                return cachedAfterLock;
+            }
+
+            return await this.resolveAndCache(target, cacheID);
+        } finally {
+            await this.cache.releaseLock(lockKey, lock);
+        }
+    }
+
+    private async resolveAndCache(target: MatchCostTargetDto, cacheID: string): Promise<MatchCostMatchDto> {
+        let match: MatchCostMatchDto;
+
         switch (target.type) {
             case EMatchCostTargetType.Match:
-                return this.resolveMatch(target.id);
+                match = await this.resolveMatch(target.id);
+                break;
             case EMatchCostTargetType.Room:
-                return this.resolveRoom(target.id);
+                match = await this.resolveRoom(target.id);
+                break;
         }
+
+        const ttl = match.ended ? this.endedCacheTtl : this.activeCacheTtl;
+        await this.cache.set("osu_matchcost", match, ttl, cacheID);
+
+        return match;
     }
 
     private async resolveMatch(id: number): Promise<MatchCostMatchDto> {
@@ -66,7 +127,7 @@ export class MatchCostMultiplayerResolverService extends AbstractService {
 
         const teamVs = response.events.some((event) => event.game?.teamType === "team-vs");
 
-        return {
+        return plainToInstance(MatchCostMatchDto, {
             id,
             type: EMatchCostTargetType.Match,
             name: response.match.name,
@@ -80,7 +141,7 @@ export class MatchCostMultiplayerResolverService extends AbstractService {
                 }),
             ),
             games,
-        };
+        });
     }
 
     private async resolveRoom(id: number): Promise<MatchCostMatchDto> {
@@ -101,7 +162,7 @@ export class MatchCostMultiplayerResolverService extends AbstractService {
         const games = items.map((item) => this.normalizeRoomGame(item));
         const teamVs = items.some((item) => this.roomType(item) === "team_versus");
 
-        return {
+        return plainToInstance(MatchCostMatchDto, {
             id,
             type: EMatchCostTargetType.Room,
             name: response.room.name,
@@ -115,7 +176,7 @@ export class MatchCostMultiplayerResolverService extends AbstractService {
                 }),
             ),
             games,
-        };
+        });
     }
 
     private normalizeRoomGame(item: RealtimeRoomPlaylistItem): MatchCostGameDto {
@@ -231,6 +292,23 @@ export class MatchCostMultiplayerResolverService extends AbstractService {
         initial.users = [...users.values()];
 
         return initial;
+    }
+
+    private async waitForCache(cacheID: string): Promise<MatchCostMatchDto | null> {
+        for (let attempt = 0; attempt < this.cacheWaitAttempts; attempt++) {
+            await wait(this.cacheWaitInterval);
+
+            const cached = await this.cache.getInstance("osu_matchcost", MatchCostMatchDto, cacheID);
+            if (cached) {
+                return cached;
+            }
+        }
+
+        return null;
+    }
+
+    private cacheID(target: MatchCostTargetDto): string {
+        return `${target.type}:${target.id}`;
     }
 
     private parseTeam(value?: string): EMatchCostTeam | undefined {
