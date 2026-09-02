@@ -20,11 +20,6 @@ export class MatchCostViewService extends AbstractService {
     public build(data: MatchCostViewDto): TMessagePayload {
         const embed = new Embed().setTitle(data.name).setURL(MultiplayerFormatter.link(data.type, data.id));
 
-        const highest = data.calculation.players[0];
-        if (highest) {
-            embed.setThumbnail(ProfileFormatter.avatar(AdapterProvider.Bancho, highest.userID));
-        }
-
         if (data.calculation.teamVs) {
             this.buildTeamView(embed, data);
         } else {
