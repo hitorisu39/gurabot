@@ -39,7 +39,7 @@ import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";
 
     See the source code for the exact formula and weighting.
 `)
-@Examples("mc https://osu.ppy.sh/community/matches/111555364 0", "mc https://osu.ppy.sh/multiplayer/rooms/3824813 0")
+@Examples("mc https://osu.ppy.sh/mp/111555364 0 ez=1.99", "mc https://osu.ppy.sh/multiplayer/rooms/3824813 0")
 @Category(ECommandCategory.Osu)
 @Command({
     name: "matchcost",
