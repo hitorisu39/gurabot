@@ -19,13 +19,13 @@ interface IPlayerAccumulator {
 export class MatchCostEvaluatorService extends AbstractService {
     /**
      * Low-sample performances are pulled towards the neutral 1.0 baseline.
-     * A weight of 2 is equivalent to adding two hypothetical average maps,enough to tame one-map outliers
+     * A weight of 2 is equivalent to adding two hypothetical average maps, enough to tame one-map outliers
      * without erasing strong substitutes.
      */
     private readonly priorWeight = 2;
 
     /**
-     * Participation is deliberately a small part of match cost, as we want to value performance more than being present..
+     * Participation is deliberately a small part of match cost, as we want to value performance more than just being present.
      * This ranges from roughly 0.90x for minimal participation to exactly 1.00x for playing every evaluated map.
      */
     private readonly participationBase = 0.9;
