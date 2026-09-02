@@ -953,6 +953,10 @@ async function generateMods(): Promise<void> {
         return this.filterByType(mods, "Fun");
     }
 
+    static isNoMod(value: string): boolean {
+        return value.trim().toUpperCase() === "NM";
+    }
+
     static performanceAffecting(mods: Array<ParsedMod>): Array<ParsedMod> {
         return mods.filter(
             (mod) =>
