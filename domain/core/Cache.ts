@@ -39,6 +39,8 @@ import { SnipePlayerListViewDto } from "@domain/snipe/views/SnipePlayerList.view
 import { SnipePlayerChangesViewDto } from "@domain/snipe/views/SnipePlayerChanges.view";
 import { TwitchStreamDto, TwitchVideoDto } from "@domain/twitch/Twitch.dto";
 import { MatchCostMatchDto } from "@domain/osu/MatchCost.dto";
+import { OsekaiBadgeDto } from "@domain/osekai/OsekaiBadge.dto";
+import { BadgeViewDto } from "@domain/osu/views/Badge.view";
 
 export interface ICacheSchema {
     // discord
@@ -57,6 +59,7 @@ export interface ICacheSchema {
     osu_medal_recent_view: MedalRecentViewDto;
     osu_medal_missing_view: MedalMissingViewDto;
     osu_medal_list_view: MedalListViewDto;
+    osu_badge_view: BadgeViewDto;
     osu_compare_top_view: CompareTopViewDto;
     osu_most_played_view: MostPlayedViewDto;
     osu_search_view: SearchViewDto;
@@ -105,6 +108,7 @@ export interface ICacheSchema {
 
     // osekai
     osekai_medals: Array<OsekaiMedalDto>;
+    osekai_badges: Array<OsekaiBadgeDto>;
     osekai_ranking: OsekaiRankingPageDto;
 
     // auth
