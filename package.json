@@ -21,6 +21,7 @@
         "test": "vitest run",
         "test:watch": "vitest",
         "bench": "vitest bench",
+        "docker:dev": "docker compose -p gurabot-dev -f docker-compose.dev.yml --profile dev up -d",
         "docker:network": "docker network inspect gurabot_monitoring >/dev/null 2>&1 || docker network create gurabot_monitoring",
         "docker:prod": "docker compose --profile prod pull && docker compose --profile prod up -d --no-build --remove-orphans --wait",
         "docker:prod:up": "docker compose --profile prod up -d --no-build --remove-orphans --wait",
