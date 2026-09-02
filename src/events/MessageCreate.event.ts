@@ -16,7 +16,7 @@ export class MessageCreateEvent extends AbstractDiscordEvent<"messageCreate"> {
 
     public async execute(message: OmitPartialGroupDMChannel<Message<boolean>>): Promise<void> {
         // Get the possible beatmap from the message before we process it.
-        const matched = this.beatmapResolverService.fromMessage(message);
+        const matched = await this.beatmapResolverService.fromMessage(message, true);
         if (matched) this.channelService.storeBeatmap(message.channelId, matched).catch(this.logger.error);
 
         if (message.author.bot) return;

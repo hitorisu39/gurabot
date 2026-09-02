@@ -6,12 +6,14 @@ import { EApplicationError, Exception } from "@domain/core/Exception";
 import {
     OrdrCustomSkinDto,
     OrdrOfficialSkinDto,
+    OrdrOfficialSkinLookupDto,
     OrdrOfficialSkinsDto,
     OrdrPresetDto,
     OrdrRenderAddedDto,
     OrdrRenderCreateDto,
     OrdrRenderDoneDto,
     OrdrRenderFailedDto,
+    OrdrRenderLookupDto,
     OrdrRenderProgressDto,
     OrdrReplayFileDto,
     TOrdrRenderEvent,
@@ -32,11 +34,6 @@ type TOrdrServerEvents = {
 interface IBufferedRenderEvent {
     event: TOrdrRenderEvent;
     receivedAt: number;
-}
-
-export interface IOrdrOfficialSkinLookup {
-    match: OrdrOfficialSkinDto | null;
-    suggestions: Array<OrdrOfficialSkinDto>;
 }
 
 export class OrdrService extends AbstractService {
@@ -188,7 +185,8 @@ export class OrdrService extends AbstractService {
         });
     }
 
-    public async lookupOfficialSkin(query: string, suggestionLimit: number = 5): Promise<IOrdrOfficialSkinLookup> {
+    @Trace()
+    public async lookupOfficialSkin(query: string, suggestionLimit: number = 5): Promise<OrdrOfficialSkinLookupDto> {
         const input = query.trim();
 
         if (!input) {
@@ -209,6 +207,16 @@ export class OrdrService extends AbstractService {
             match,
             suggestions: result.skins.slice(0, suggestionLimit),
         };
+    }
+
+    @Trace()
+    public async mapsetIDFromLink(link: string): Promise<number | null> {
+        const response = await this.http.get<OrdrRenderLookupDto>("/ordr/renders", {
+            params: { link, pageSize: 1 },
+        });
+
+        const data = plainToInstance(OrdrRenderLookupDto, response);
+        return data.renders?.[0]?.mapID ?? null;
     }
 
     public async officialSkin(query: string): Promise<OrdrOfficialSkinDto | null> {
