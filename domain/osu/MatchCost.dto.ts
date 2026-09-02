@@ -1,5 +1,6 @@
 import { Exclude, Expose, Type } from "class-transformer";
 import { EMatchCostTargetType, EMatchCostTeam } from "./enums/MatchCost.enum";
+import { SerializableDto } from "@domain/core/Data";
 
 @Exclude()
 export class MatchCostTargetDto {
@@ -64,7 +65,7 @@ export class MatchCostGameDto {
 }
 
 @Exclude()
-export class MatchCostMatchDto {
+export class MatchCostMatchDto extends SerializableDto {
     @Expose()
     declare id: number;
 
