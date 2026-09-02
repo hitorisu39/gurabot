@@ -90,6 +90,9 @@ export const discordEmoteCircles = "<:circles:1301565863802966117>";
 export const discordEmoteSliders = "<:sliders:1301565891342893188>";
 export const discordEmoteSpinners = "<:spinners:1301565914789052538>";
 
+export const discordEmoteBlueTeam = "<:blue_team:1544431251447087204>";
+export const discordEmoteRedTeam = "<:red_team:1544431579395260566>";
+
 export const discordEmoteOnline = "<:online:888890708436611072>";
 export const discordEmoteOffline = "<:offline:888890708310753351>";
 export const discordEmoteOnlineUrl = "https://cdn.discordapp.com/emojis/888890708436611072.webp?size=96";
