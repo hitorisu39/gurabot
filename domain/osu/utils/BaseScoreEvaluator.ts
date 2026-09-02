@@ -44,10 +44,26 @@ export class BaseScoreEvaluator<Q extends BaseScoreQueryDto = BaseScoreQueryDto>
 
         if (this.mods.some()) {
             const modReq = this.mods.unwrap();
-            const targetAcronyms = ModUtils.fromString(modReq.mods).map((m) => m.acronym);
+            const isNoMod = ModUtils.isNoMod(modReq.mods);
+            const targetAcronyms = isNoMod ? [] : ModUtils.fromString(modReq.mods).map((m) => m.acronym);
 
             filtered = filtered.filter((score) => {
                 const scoreAcronyms = score.mods.map((m) => m.acronym);
+
+                /**
+                 * Handle NoMod filtering.
+                 */
+                if (isNoMod) {
+                    switch (modReq.type) {
+                        case EModMatchType.Include:
+                        case EModMatchType.Match:
+                            return scoreAcronyms.length === 0;
+                        case EModMatchType.Exclude:
+                            return scoreAcronyms.length > 0;
+                        default:
+                            return true;
+                    }
+                }
 
                 switch (modReq.type) {
                     case EModMatchType.Include:
