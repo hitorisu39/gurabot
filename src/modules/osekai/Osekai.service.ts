@@ -5,6 +5,7 @@ import { EApplicationError, Exception } from "@domain/core/Exception";
 import { osekaiRankingMeta } from "@domain/osekai/configs/OsekaiRanking.config";
 import { EOsekaiRanking, EOsekaiRankingEntryType } from "@domain/osekai/enums/OsekaiRanking.enum";
 import { IOsekaiCompactData, IOsekaiResponse } from "@domain/osekai/Osekai.dto";
+import { OsekaiBadgeDto } from "@domain/osekai/OsekaiBadge.dto";
 import { OsekaiMedalBeatmapDto, OsekaiMedalCommentDto, OsekaiMedalDto } from "@domain/osekai/OsekaiMedal.dto";
 import { IOsekaiRankingResponse, OsekaiRankingEntryDto, OsekaiRankingPageDto } from "@domain/osekai/OsekaiRanking.dto";
 import { levenshtein } from "@domain/utils/utils";
@@ -18,16 +19,17 @@ export class OsekaiService extends AbstractService {
     private readonly timeout = 5_000;
 
     /**
-     * For how long we want to cache medals data in seconds.
+     * For how long we want to cache data in seconds.
      */
     private readonly medalsCacheTtl = 60 * 60;
-
-    /**
-     * For how long we want to cache ranking data in seconds.
-     */
+    private readonly badgesCacheTtl = 60 * 60;
     private readonly rankingCacheTtl = 60;
 
+    /**
+     * Pending concurrent requests.
+     */
     private pendingMedalsRequest: Promise<Array<OsekaiMedalDto>> | null = null;
+    private pendingBadgesRequest: Promise<Array<OsekaiBadgeDto>> | null = null;
     private readonly pendingRankingRequests = new Map<string, Promise<OsekaiRankingPageDto>>();
 
     public init(): void {
@@ -178,6 +180,73 @@ export class OsekaiService extends AbstractService {
             .slice(0, limit);
     }
 
+    @Trace()
+    public async badges(): Promise<Array<OsekaiBadgeDto>> {
+        const cached = await this.cache.get("osekai_badges");
+        if (cached?.length) return plainToInstance(OsekaiBadgeDto, cached);
+
+        if (this.pendingBadgesRequest) {
+            return await this.pendingBadgesRequest;
+        }
+
+        const request = this.fetchBadges();
+        this.pendingBadgesRequest = request;
+
+        try {
+            return await request;
+        } finally {
+            this.pendingBadgesRequest = null;
+        }
+    }
+
+    @Trace()
+    public async searchBadge(query: string, limit: number = 50): Promise<Array<OsekaiBadgeDto>> {
+        const badges = await this.badges();
+        const normalized = this.normalizeName(query);
+
+        if (!normalized) {
+            return [...badges].sort((a, b) => a.description.localeCompare(b.description)).slice(0, limit);
+        }
+
+        const matches = badges
+            .map((badge) => {
+                const name = this.normalizeName(badge.name);
+                const description = this.normalizeName(badge.description);
+
+                let score = 0;
+
+                if (name === normalized || description === normalized) {
+                    score = 4;
+                } else if (name.startsWith(normalized) || description.startsWith(normalized)) {
+                    score = 3;
+                } else if (description.split(" ").some((word) => word.startsWith(normalized))) {
+                    score = 2;
+                } else if (name.includes(normalized) || description.includes(normalized)) {
+                    score = 1;
+                }
+
+                return {
+                    badge,
+                    score,
+                };
+            })
+            .filter(({ score }) => score > 0);
+
+        const exact = matches.filter(({ score }) => score === 4);
+        const results = exact.length ? exact : matches;
+
+        return results
+            .sort((a, b) => {
+                if (a.score !== b.score) {
+                    return b.score - a.score;
+                }
+
+                return a.badge.description.localeCompare(b.badge.description);
+            })
+            .slice(0, limit)
+            .map(({ badge }) => badge);
+    }
+
     private async fetchMedals(): Promise<Array<OsekaiMedalDto>> {
         const response = await this.http.get<IOsekaiResponse<Array<Record<string, unknown>>>>("/medals/get_all", {
             timeout: this.timeout,
@@ -197,6 +266,33 @@ export class OsekaiService extends AbstractService {
         await this.cache.set("osekai_medals", medals, this.medalsCacheTtl);
 
         return medals;
+    }
+
+    private async fetchBadges(): Promise<Array<OsekaiBadgeDto>> {
+        const response = await this.http.get<IOsekaiResponse<IOsekaiCompactData>>("/badges/get_all?compress=true", {
+            timeout: this.timeout,
+        });
+
+        if (!response?.success) {
+            throw new Exception(
+                EApplicationError.INTERNAL_ERROR,
+                response?.message || `${this.name} returned an error`,
+            );
+        }
+
+        if (!response.content) {
+            throw new Exception(EApplicationError.INTERNAL_ERROR, `${this.name} returned no badge data`);
+        }
+
+        const rows = this.decodeCompact(response.content);
+        const badges = plainToInstance(OsekaiBadgeDto, rows);
+
+        if (!badges.length) {
+            throw new Exception(EApplicationError.INTERNAL_ERROR, `${this.name} returned no badges`);
+        }
+
+        await this.cache.set("osekai_badges", badges, this.badgesCacheTtl);
+        return badges;
     }
 
     private async fetchRanking(
@@ -326,20 +422,37 @@ export class OsekaiService extends AbstractService {
 
     private decodeCompact(data: IOsekaiCompactData): Array<Record<string, unknown>> {
         if (!Array.isArray(data?.k) || !Array.isArray(data?.d)) {
-            throw new Exception(
-                EApplicationError.INTERNAL_ERROR,
-                `${this.name} returned malformed compact ranking data`,
-            );
+            throw new Exception(EApplicationError.INTERNAL_ERROR, `${this.name} returned malformed compact data`);
         }
 
         return data.d.map((values) => {
             const entry: Record<string, unknown> = {};
-
             for (let i = 0; i < data.k.length; i++) {
-                entry[data.k[i]!] = values[i];
+                entry[data.k[i]!] = this.decodeCompactValue(values[i]);
             }
 
             return entry;
         });
+    }
+
+    private decodeCompactValue(value: unknown): unknown {
+        if (this.isCompactData(value)) {
+            return this.decodeCompact(value);
+        }
+
+        if (Array.isArray(value)) {
+            return value.map((entry) => this.decodeCompactValue(entry));
+        }
+
+        return value;
+    }
+
+    private isCompactData(value: unknown): value is IOsekaiCompactData {
+        if (!value || typeof value !== "object") {
+            return false;
+        }
+
+        const compact = value as Partial<IOsekaiCompactData>;
+        return Array.isArray(compact.k) && Array.isArray(compact.d);
     }
 }
