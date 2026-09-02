@@ -10,6 +10,31 @@ export class OrdrPresetDto {
 }
 
 @Exclude()
+export class OrdrRenderLookupEntryDto {
+    @Expose()
+    @Type(() => Number)
+    declare mapID: number;
+}
+
+@Exclude()
+export class OrdrRenderLookupDto {
+    @Expose()
+    @Type(() => OrdrRenderLookupEntryDto)
+    declare renders: Array<OrdrRenderLookupEntryDto>;
+}
+
+@Exclude()
+export class OrdrOfficialSkinLookupDto {
+    @Expose()
+    @Type(() => OrdrOfficialSkinDto)
+    declare match: OrdrOfficialSkinDto | null;
+
+    @Expose()
+    @Type(() => OrdrOfficialSkinDto)
+    declare suggestions: Array<OrdrOfficialSkinDto>;
+}
+
+@Exclude()
 export class OrdrCustomSkinDto {
     @Expose()
     declare found: boolean;

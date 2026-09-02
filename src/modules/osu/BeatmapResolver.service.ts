@@ -20,10 +20,13 @@ import { AdapterProvider, Beatmap } from "@generated/adapter/types";
 import { OsuService } from "./Osu.service";
 import { levenshtein } from "@domain/utils/utils";
 import { discordRegexAnyNumber } from "@domain/discord/configs/Discord.config";
+import { OrdrService } from "../ordr/Ordr.service";
+import { ordrShortLinkRegex, ordrWatchRegex } from "@domain/ordr/configs/Ordr.config";
 
 export class BeatmapResolverService extends AbstractService {
     @Import() declare private readonly channelService: ChannelService;
     @Import() declare private readonly osuService: OsuService;
+    @Import() declare private readonly ordrService: OrdrService;
 
     private readonly matches = [
         { type: EBeatmapMatch.Long, regex: beatmapLongRegex },
@@ -33,48 +36,62 @@ export class BeatmapResolverService extends AbstractService {
         { type: EBeatmapMatch.MapsetShort, regex: mapsetShortRegex },
     ];
 
-    public fromText(text: string): MatchedMapDto | null {
-        if (!text || !text.includes(osuBaseDomain)) return null;
+    public async fromText(text?: string | null, osuOnly: boolean = false): Promise<MatchedMapDto | null> {
+        if (!text) return null;
 
-        for (const { type, regex } of this.matches) {
-            const match = text.match(regex);
-            if (!match) continue;
+        if (text.includes(osuBaseDomain)) {
+            for (const { type, regex } of this.matches) {
+                const match = text.match(regex);
+                if (!match) continue;
 
-            switch (type) {
-                case EBeatmapMatch.Long:
-                    return { beatmapsetID: Number(match[1]), beatmapID: Number(match[2]) };
-                case EBeatmapMatch.Default:
-                case EBeatmapMatch.Short:
-                    return { beatmapID: Number(match[1]), beatmapsetID: null };
-                case EBeatmapMatch.Mapset:
-                case EBeatmapMatch.MapsetShort:
-                    return { beatmapID: null, beatmapsetID: Number(match[1]) };
+                switch (type) {
+                    case EBeatmapMatch.Long:
+                        return { beatmapsetID: Number(match[1]), beatmapID: Number(match[2]) };
+                    case EBeatmapMatch.Default:
+                    case EBeatmapMatch.Short:
+                        return { beatmapID: Number(match[1]), beatmapsetID: null };
+                    case EBeatmapMatch.Mapset:
+                    case EBeatmapMatch.MapsetShort:
+                        return { beatmapID: null, beatmapsetID: Number(match[1]) };
+                }
             }
         }
-        return null;
+
+        if (osuOnly) return null;
+
+        const ordrLink = this.extractOrdrLink(text);
+        if (!ordrLink) return null;
+
+        try {
+            const mapsetID = await this.ordrService.mapsetIDFromLink(ordrLink);
+            if (!mapsetID) return null;
+            return { beatmapID: null, beatmapsetID: mapsetID };
+        } catch (error) {
+            this.logger.debug(error);
+            return null;
+        }
     }
 
-    public fromMessage(message: Message): MatchedMapDto | null {
-        let matched = this.fromText(message.content);
+    public async fromMessage(message: Message, osuOnly: boolean = false): Promise<MatchedMapDto | null> {
+        let matched = await this.fromText(message.content, osuOnly);
         if (matched) return matched;
 
-        if (message.embeds.length > 0) {
-            for (const embed of message.embeds) {
-                const embedString = [
-                    embed.url,
-                    embed.author?.url,
-                    embed.description,
-                    embed.title,
-                    embed.footer?.text,
-                    ...(embed.fields?.map((f) => f.value) || []),
-                ].join(" ");
+        for (const embed of message.embeds) {
+            const embedString = [
+                embed.url,
+                embed.author?.url,
+                embed.description,
+                embed.title,
+                embed.footer?.text,
+                ...(embed.fields?.map((field) => field.value) ?? []),
+            ]
+                .filter(Boolean)
+                .join(" ");
 
-                if (!embedString.includes(osuBaseDomain)) continue;
-
-                matched = this.fromText(embedString);
-                if (matched) return matched;
-            }
+            matched = await this.fromText(embedString, osuOnly);
+            if (matched) return matched;
         }
+
         return null;
     }
 
@@ -84,7 +101,7 @@ export class BeatmapResolverService extends AbstractService {
 
             if (discordRegexAnyNumber.test(val)) return { beatmapID: parseInt(val), beatmapsetID: null };
 
-            const extracted = this.fromText(val);
+            const extracted = await this.fromText(val);
             if (extracted) return extracted;
 
             throw new Exception(EApplicationError.INPUT_ERROR, "Invalid map ID or URL provided.");
@@ -93,7 +110,7 @@ export class BeatmapResolverService extends AbstractService {
         if (ctx instanceof MessageContext && ctx.message.reference?.messageId) {
             try {
                 const replied = await ctx.message.channel.messages.fetch(ctx.message.reference.messageId);
-                const matched = this.fromMessage(replied);
+                const matched = await this.fromMessage(replied);
                 if (matched) return matched;
             } catch (error: any) {
                 if (error?.code !== RESTJSONErrorCodes.UnknownMessage) this.logger.debug(error);
@@ -204,5 +221,13 @@ export class BeatmapResolverService extends AbstractService {
             beatmapsetID: beatmap.beatmapsetID ?? beatmapsetID,
             beatmap,
         };
+    }
+
+    private extractOrdrLink(text: string): string | null {
+        const shortLink = text.match(ordrShortLinkRegex);
+        if (shortLink?.[1]) return shortLink[1];
+
+        const watchLink = text.match(ordrWatchRegex);
+        return watchLink?.[1] ?? null;
     }
 }

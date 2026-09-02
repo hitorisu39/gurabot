@@ -1,6 +1,9 @@
 import { EOrdrResolution, OrdrSettingsDto } from "@domain/ordr/OrdrConfig.dto";
 import { plainToInstance } from "class-transformer";
 
+export const ordrShortLinkRegex = /(?:https?:\/\/)?(?:www\.)?link\.issou\.best\/([a-zA-Z0-9]+)/i;
+export const ordrWatchRegex = /(?:https?:\/\/)?(?:www\.)?ordr\.issou\.best\/watch\/([a-zA-Z0-9]+)/i;
+
 export const ordrDataDelimiter = "  •  ";
 
 const defaultSettings = {
