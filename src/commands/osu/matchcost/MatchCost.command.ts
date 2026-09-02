@@ -44,7 +44,7 @@ import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";
 @Command({
     name: "matchcost",
     description: "Calculates match cost for an osu! match.",
-    aliases: ["mc"],
+    aliases: ["mc", "matchcosts"],
 })
 export class MatchCostCommand extends AbstractCommand {
     @Import() declare private readonly multiplayerResolver: MatchCostMultiplayerResolverService;
