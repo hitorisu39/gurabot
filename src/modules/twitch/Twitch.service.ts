@@ -228,10 +228,8 @@ export class TwitchService extends AbstractService {
      */
     @Trace()
     public async stream(userID: string): Promise<TwitchStreamDto | null> {
-        const cached = await this.cache.get("twitch_stream", userID);
-        if (cached !== undefined) {
-            return cached ? plainToInstance(TwitchStreamDto, cached) : null;
-        }
+        const cached = await this.cache.getInstance("twitch_stream", TwitchStreamDto, userID);
+        if (cached) return cached;
 
         const accessToken = await this.getAppAccessToken();
         const response = await this.apiHttp.get<TwitchStreamsResponseDto>("/streams", {
@@ -248,7 +246,6 @@ export class TwitchService extends AbstractService {
         const stream = data.data?.at(0) ?? null;
 
         await this.cache.set("twitch_stream", stream, this.streamCacheTtl, userID);
-
         return stream;
     }
 
