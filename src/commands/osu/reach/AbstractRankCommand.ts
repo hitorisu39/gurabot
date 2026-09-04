@@ -1,4 +1,4 @@
-import { Aliases, Category, Examples, Help, Import, InjectToken, Option, Required } from "@/core/decorators";
+import { Aliases, Category, Examples, Help, Import, InjectToken, IsString, Option, Required } from "@/core/decorators";
 import { CommandOption, ECommandCategory } from "@domain/core/Command";
 import { AbstractPpTargetCommand, TResolvedPpTarget } from "./AbstractPpTargetCommand";
 import { RankTargetParser } from "@domain/osu/utils/RankTargetParser";
@@ -22,8 +22,9 @@ export abstract class AbstractRankCommand extends AbstractPpTargetCommand {
     @Import() declare private readonly rankPpResolverService: RankPpResolverService;
 
     @Option("rank", "Target global or country rank")
-    @Aliases("target")
     @InjectToken()
+    @IsString()
+    @Aliases("target")
     @Required()
     declare private readonly rank: CommandOption<string>;
 

@@ -1,9 +1,10 @@
-import { Aliases, Inject, IsBoolean, IsInteger, IsNumber, Option } from "@/core/decorators";
+import { Aliases, Inject, IsBoolean, IsInteger, IsNumber, IsString, Option } from "@/core/decorators";
 import { CommandOption } from "@domain/core/Command";
 
 export class SimulateQueryDto {
     @Option("input", "Positional simulation parameters")
     @Inject()
+    @IsString()
     declare input: CommandOption<string>;
 
     @Option("acc", "Specify accuracy")

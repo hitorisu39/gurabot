@@ -1,4 +1,4 @@
-import { IApplicationEvents } from "@/common/events";
+import { ICoreEvents } from "@/core/events";
 import { IApplicationContext } from "../types";
 
 export abstract class AbstractService {
@@ -22,18 +22,18 @@ export abstract class AbstractService {
         this.calculator = ctx.calculator;
     }
 
-    protected dispatch<D extends keyof IApplicationEvents, E extends keyof IApplicationEvents[D]>(
+    protected dispatch<D extends keyof ICoreEvents, E extends keyof ICoreEvents[D]>(
         domain: D,
         event: E,
-        ...args: Parameters<IApplicationEvents[D][E] extends (...args: any) => any ? IApplicationEvents[D][E] : never>
+        ...args: Parameters<ICoreEvents[D][E] extends (...args: any) => any ? ICoreEvents[D][E] : never>
     ): void {
         this.dispatcher.dispatch(domain, event, ...args);
     }
 
-    protected async dispatchAsync<D extends keyof IApplicationEvents, E extends keyof IApplicationEvents[D]>(
+    protected async dispatchAsync<D extends keyof ICoreEvents, E extends keyof ICoreEvents[D]>(
         domain: D,
         event: E,
-        ...args: Parameters<IApplicationEvents[D][E] extends (...args: any) => any ? IApplicationEvents[D][E] : never>
+        ...args: Parameters<ICoreEvents[D][E] extends (...args: any) => any ? ICoreEvents[D][E] : never>
     ): Promise<void> {
         await this.dispatcher.dispatchAsync(domain, event, ...args);
     }

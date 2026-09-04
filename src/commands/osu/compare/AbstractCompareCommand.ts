@@ -53,6 +53,7 @@ export abstract class AbstractCompareCommand extends AbstractOsuCommand {
 
     @Option("map", "Specify a map url or id")
     @InjectMatch(BeatmapUtils.isTarget)
+    @IsString()
     declare private readonly map: CommandOption<string>;
 
     @Option("version", "Specify difficulty name to search for in the mapset")

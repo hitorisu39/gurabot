@@ -1,9 +1,7 @@
-import "reflect-metadata";
 import { describe, expect, test } from "vitest";
 import { EInjectMode, EOptionType, IOptionMetadata } from "@/core/decorators";
 import { CommandParser } from "@/core/discord/options/CommandParser";
 import { CommandContext } from "@/core/discord/context/CommandContext";
-import { METAKEY_COMMAND_PROPERTIES } from "@/core/metakeys";
 import { EModMatchType, ICommandDateRange, ICommandQueryData, ICommandRange } from "@domain/core/Command";
 import { EApplicationError } from "@domain/core/Exception";
 
@@ -29,7 +27,7 @@ function option(
     };
 }
 
-async function parse(content: string, options: Array<IOptionMetadata>) {
+async function parse(content: string, options: ReadonlyArray<IOptionMetadata>) {
     return await CommandParser.parseAndValidate(createContext(content), options);
 }
 
@@ -46,113 +44,93 @@ function iso(date: Date | undefined): string | undefined {
 
 class TestTopQueryDto {}
 
-Reflect.defineMetadata(
-    METAKEY_COMMAND_PROPERTIES,
-    [
-        option({
-            propertyKey: "accuracy",
-            name: "accuracy",
-            type: EOptionType.Range,
-        }),
-
-        option({
-            propertyKey: "combo",
-            name: "combo",
-            type: EOptionType.Range,
-        }),
-
-        option({
-            propertyKey: "misses",
-            name: "misses",
-            type: EOptionType.Range,
-        }),
-
-        option({
-            propertyKey: "artist",
-            name: "artist",
-            type: EOptionType.String,
-        }),
-
-        option({
-            propertyKey: "creator",
-            name: "creator",
-            type: EOptionType.String,
-        }),
-
-        option({
-            propertyKey: "title",
-            name: "title",
-            type: EOptionType.String,
-        }),
-
-        option({
-            propertyKey: "version",
-            name: "version",
-            type: EOptionType.String,
-        }),
-
-        option({
-            propertyKey: "rankedDate",
-            name: "rankdate",
-            type: EOptionType.DateRange,
-        }),
-
-        option({
-            propertyKey: "length",
-            name: "length",
-            type: EOptionType.Range,
-        }),
-
-        option({
-            propertyKey: "cs",
-            name: "cs",
-            type: EOptionType.Range,
-        }),
-
-        option({
-            propertyKey: "ar",
-            name: "ar",
-            type: EOptionType.Range,
-        }),
-
-        option({
-            propertyKey: "hp",
-            name: "hp",
-            type: EOptionType.Range,
-        }),
-
-        option({
-            propertyKey: "od",
-            name: "od",
-            type: EOptionType.Range,
-        }),
-
-        option({
-            propertyKey: "bpm",
-            name: "bpm",
-            type: EOptionType.Range,
-        }),
-
-        option({
-            propertyKey: "stars",
-            name: "stars",
-            type: EOptionType.Range,
-        }),
-
-        option({
-            propertyKey: "pp",
-            name: "pp",
-            type: EOptionType.Range,
-        }),
-
-        option({
-            propertyKey: "ppfc",
-            name: "ppfc",
-            type: EOptionType.Range,
-        }),
-    ],
-    TestTopQueryDto.prototype,
-);
+const topQueryProperties: ReadonlyArray<IOptionMetadata> = [
+    option({
+        propertyKey: "accuracy",
+        name: "accuracy",
+        type: EOptionType.Range,
+    }),
+    option({
+        propertyKey: "combo",
+        name: "combo",
+        type: EOptionType.Range,
+    }),
+    option({
+        propertyKey: "misses",
+        name: "misses",
+        type: EOptionType.Range,
+    }),
+    option({
+        propertyKey: "artist",
+        name: "artist",
+        type: EOptionType.String,
+    }),
+    option({
+        propertyKey: "creator",
+        name: "creator",
+        type: EOptionType.String,
+    }),
+    option({
+        propertyKey: "title",
+        name: "title",
+        type: EOptionType.String,
+    }),
+    option({
+        propertyKey: "version",
+        name: "version",
+        type: EOptionType.String,
+    }),
+    option({
+        propertyKey: "rankedDate",
+        name: "rankdate",
+        type: EOptionType.DateRange,
+    }),
+    option({
+        propertyKey: "length",
+        name: "length",
+        type: EOptionType.Range,
+    }),
+    option({
+        propertyKey: "cs",
+        name: "cs",
+        type: EOptionType.Range,
+    }),
+    option({
+        propertyKey: "ar",
+        name: "ar",
+        type: EOptionType.Range,
+    }),
+    option({
+        propertyKey: "hp",
+        name: "hp",
+        type: EOptionType.Range,
+    }),
+    option({
+        propertyKey: "od",
+        name: "od",
+        type: EOptionType.Range,
+    }),
+    option({
+        propertyKey: "bpm",
+        name: "bpm",
+        type: EOptionType.Range,
+    }),
+    option({
+        propertyKey: "stars",
+        name: "stars",
+        type: EOptionType.Range,
+    }),
+    option({
+        propertyKey: "pp",
+        name: "pp",
+        type: EOptionType.Range,
+    }),
+    option({
+        propertyKey: "ppfc",
+        name: "ppfc",
+        type: EOptionType.Range,
+    }),
+];
 
 enum TestScoreSort {
     CS = "CS",
@@ -199,6 +177,7 @@ const queryOption = option({
     aliases: ["search", "s", "q"],
     type: EOptionType.Query,
     queryDto: TestTopQueryDto,
+    queryProperties: topQueryProperties,
 });
 
 const sortOption = option({
@@ -368,6 +347,53 @@ describe("CommandParser", () => {
             await expectInputError(
                 parse("pp=hello", [ppOption]),
                 "Option `pp` is not a valid range. Valid examples: 1-6, >5, <=10",
+            );
+        });
+
+        test("accepts a range within configured bounds", async () => {
+            const boundedOption = option({
+                propertyKey: "accuracy",
+                name: "accuracy",
+                type: EOptionType.Range,
+                min: 0,
+                max: 100,
+            });
+
+            const result = await parse("accuracy=95-100", [boundedOption]);
+
+            expect(result.accuracy?.unwrap()).toMatchObject({
+                min: 95,
+                max: 100,
+            });
+        });
+
+        test("rejects a range below configured minimum", async () => {
+            const boundedOption = option({
+                propertyKey: "accuracy",
+                name: "accuracy",
+                type: EOptionType.Range,
+                min: 10,
+                max: 100,
+            });
+
+            await expectInputError(
+                parse("accuracy=5", [boundedOption]),
+                "Option `accuracy` cannot contain values below 10.",
+            );
+        });
+
+        test("rejects a range above configured maximum", async () => {
+            const boundedOption = option({
+                propertyKey: "accuracy",
+                name: "accuracy",
+                type: EOptionType.Range,
+                min: 0,
+                max: 100,
+            });
+
+            await expectInputError(
+                parse("accuracy=80-120", [boundedOption]),
+                "Option `accuracy` cannot contain values above 100.",
             );
         });
     });

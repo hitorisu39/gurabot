@@ -74,6 +74,7 @@ export class SimulateCommand extends AbstractSessionCommand {
     @Import() declare private readonly simulateViewService: SimulateViewService;
 
     @Option("map", "Specify a map URL or ID")
+    @IsString()
     declare private readonly map: CommandOption<string>;
 
     @Option("version", "Specify a difficulty name in the mapset")

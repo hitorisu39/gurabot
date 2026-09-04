@@ -3,7 +3,6 @@ import { CommandContext } from "../context/CommandContext";
 import { MessageContext } from "../context/MessageContext";
 import { SlashContext } from "../context/SlashContext";
 import { ApplicationCommandOptionType, Attachment } from "discord.js";
-import { METAKEY_COMMAND_PROPERTIES } from "@/core/metakeys";
 import {
     CommandOption,
     EModMatchType,
@@ -52,7 +51,7 @@ export class CommandParser {
     @Trace()
     public static async parseAndValidate(
         ctx: CommandContext,
-        optionsMeta: Array<IOptionMetadata>,
+        optionsMeta: ReadonlyArray<IOptionMetadata>,
         internalState?: {
             prefixMap: Map<string, string>;
             rawContent: string;
@@ -179,7 +178,7 @@ export class CommandParser {
     }
 
     private static distributeInjectedContent(
-        optionsMeta: Array<IOptionMetadata>,
+        optionsMeta: ReadonlyArray<IOptionMetadata>,
         content: string,
         prefixMap: Map<string, string>,
     ): Map<string, string> {
@@ -332,13 +331,10 @@ export class CommandParser {
                     );
                 }
             }
-
             case EOptionType.Date:
                 return CommandParser.parseDate(meta.name, strVal);
-
             case EOptionType.DateRange:
                 return CommandParser.parseDateRange(meta.name, strVal);
-
             case EOptionType.String: {
                 if (meta.min !== undefined && strVal.length < meta.min) {
                     throw new Exception(
@@ -356,7 +352,6 @@ export class CommandParser {
 
                 return strVal;
             }
-
             case EOptionType.Number:
             case EOptionType.Integer: {
                 const numVal = Number(value);
@@ -388,10 +383,8 @@ export class CommandParser {
 
                 return numVal;
             }
-
             case EOptionType.Enum: {
                 const validValues = Object.values(meta.enumData);
-
                 const matchedValue = validValues.find(
                     (enumValue: any) => String(enumValue).toLowerCase() === strVal.toLowerCase(),
                 );
@@ -405,10 +398,11 @@ export class CommandParser {
 
                 return matchedValue;
             }
-
-            case EOptionType.Range:
-                return CommandParser.parseRange(meta.name, strVal);
-
+            case EOptionType.Range: {
+                const range = CommandParser.parseRange(meta.name, strVal);
+                CommandParser.validateRangeBounds(meta, range);
+                return range;
+            }
             case EOptionType.Boolean: {
                 const lowerVal = strVal.toLowerCase();
 
@@ -479,13 +473,24 @@ export class CommandParser {
         globalPrefixMap: Map<string, string>,
     ): Promise<ICommandQueryData<any>> {
         const dtoClass = meta.queryDto;
+        const properties = meta.queryProperties;
 
-        const properties: Array<IOptionMetadata> =
-            Reflect.getMetadata(METAKEY_COMMAND_PROPERTIES, dtoClass.prototype) ?? [];
+        if (typeof dtoClass !== "function") {
+            throw new Exception(
+                EApplicationError.INTERNAL_ERROR,
+                `Query option \`${meta.name}\` has no generated DTO class.`,
+            );
+        }
+
+        if (!properties) {
+            throw new Exception(
+                EApplicationError.INTERNAL_ERROR,
+                `Query option \`${meta.name}\` has no generated query metadata.`,
+            );
+        }
 
         let queryPrefixMap = new Map<string, string>();
         let cleanedContent = stringContent;
-
         const hasExplicitQuery = CommandParser.hasOptionValue(meta, globalPrefixMap);
 
         if (ctx.isSlash) {
@@ -956,6 +961,30 @@ export class CommandParser {
 
     private static isModsExpression(value: string): boolean {
         return /^(?:\+[a-zA-Z0-9]{2,}!?|-[a-zA-Z0-9]{2,}!)$/.test(value);
+    }
+
+    private static validateRangeBounds(meta: IOptionMetadata, range: ICommandRange): void {
+        const values = [range.min, range.max].filter((value) => Number.isFinite(value));
+
+        if (meta.min !== undefined) {
+            const invalid = values.find((value) => value < meta.min!);
+            if (invalid !== undefined) {
+                throw new Exception(
+                    EApplicationError.INPUT_ERROR,
+                    `Option \`${meta.name}\` cannot contain values below ${meta.min}.`,
+                );
+            }
+        }
+
+        if (meta.max !== undefined) {
+            const invalid = values.find((value) => value > meta.max!);
+            if (invalid !== undefined) {
+                throw new Exception(
+                    EApplicationError.INPUT_ERROR,
+                    `Option \`${meta.name}\` cannot contain values above ${meta.max}.`,
+                );
+            }
+        }
     }
 
     /**
