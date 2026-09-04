@@ -4,14 +4,6 @@ import { CommandContext } from "@/core/discord/context/CommandContext";
 import { CommandOption, ECommandCategory } from "@domain/core/Command";
 import { Embed } from "@/core/discord/ui/Embed";
 import { GuildService } from "@/modules/guild/Guild.service";
-import {
-    METAKEY_COMMAND_OPTIONS,
-    METAKEY_COMMAND_EXAMPLES,
-    METAKEY_GUILD_ONLY,
-    METAKEY_COMMAND_HELP,
-    METAKEY_SUBCOMMAND_OPTIONS,
-} from "@/core/metakeys";
-import { ICommandOptions, ISubcommandOptions } from "@/core/decorators";
 import { levenshtein } from "@domain/utils/utils";
 
 @Category(ECommandCategory.General)
@@ -89,50 +81,45 @@ export class HelpCommand extends AbstractCommand {
             return;
         }
 
-        const subcommandOptions: ISubcommandOptions | undefined = Reflect.getMetadata(
-            METAKEY_SUBCOMMAND_OPTIONS,
-            targetCommand.constructor,
-        );
-        const commandOptions: ICommandOptions | undefined = Reflect.getMetadata(
-            METAKEY_COMMAND_OPTIONS,
-            targetCommand.constructor,
-        );
-
-        const options = subcommandOptions ?? commandOptions;
-        if (!options) return;
-
-        const helpText: string | undefined = Reflect.getMetadata(METAKEY_COMMAND_HELP, targetCommand.constructor);
-        const examples: Array<string> | undefined = Reflect.getMetadata(
-            METAKEY_COMMAND_EXAMPLES,
-            targetCommand.constructor,
-        );
-        const guildOnly: boolean = Reflect.getMetadata(METAKEY_GUILD_ONLY, targetCommand.constructor) ?? false;
+        const options = router.getCommandOptions(targetCommand);
+        const helpText = router.getCommandHelp(targetCommand);
+        const examples = router.getCommandExamples(targetCommand);
+        const guildOnly = router.isCommandGuildOnly(targetCommand);
 
         let descriptionText = helpText ?? options.description ?? "No description provided.";
 
         const context = targetCommand.getHelpContext();
+
         for (const [key, value] of Object.entries(context)) {
             descriptionText = descriptionText.replace(new RegExp(`\\{${key}\\}`, "g"), String(value));
         }
 
         descriptionText = descriptionText.replace(/^[ \t]+/gm, "").trim();
 
-        const commandDisplayName = subcommandOptions
-            ? [subcommandOptions.root, subcommandOptions.group, subcommandOptions.name].filter(Boolean).join(" ")
-            : commandOptions!.name;
-
+        const commandDisplayName = router.getCommandDisplayName(targetCommand);
         const embed = new Embed().setAuthor({ name: commandDisplayName }).setDescription(descriptionText);
 
-        if (examples && examples.length > 0) {
-            const examplesText = examples.map((ex) => `\`${prefix}${ex}\``).join("\n");
-            embed.addFields({ name: "Examples", value: examplesText, inline: true });
+        if (examples.length > 0) {
+            const examplesText = examples.map((example) => `\`${prefix}${example}\``).join("\n");
+
+            embed.addFields({
+                name: "Examples",
+                value: examplesText,
+                inline: true,
+            });
         }
 
-        const aliases =
-            options.aliases && options.aliases.length > 0 ? options.aliases.map((a) => `\`${a}\``).join(", ") : "None";
+        const aliases = options.aliases?.length ? options.aliases.map((alias) => `\`${alias}\``).join(", ") : "None";
 
-        embed.addFields({ name: "Aliases", value: aliases, inline: true });
-        embed.setFooter({ text: guildOnly ? "Available only in servers" : "Available in servers and DM" });
+        embed
+            .addFields({
+                name: "Aliases",
+                value: aliases,
+                inline: true,
+            })
+            .setFooter({
+                text: guildOnly ? "Available only in servers" : "Available in servers and DM",
+            });
 
         await ctx.respond(embed);
     }

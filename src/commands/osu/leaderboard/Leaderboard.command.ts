@@ -52,6 +52,7 @@ export class LeaderboardCommand extends AbstractSessionCommand {
 
     @Option("map", "Specify a beatmap or beatmapset URL or ID")
     @Inject()
+    @IsString()
     declare private readonly map: CommandOption<string>;
 
     @Option("version", "Specify a difficulty name from the beatmapset")

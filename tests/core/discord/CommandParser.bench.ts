@@ -1,7 +1,5 @@
-import "reflect-metadata";
 import { bench, describe } from "vitest";
 import { EInjectMode, EOptionType, IOptionMetadata } from "@/core/decorators";
-import { METAKEY_COMMAND_PROPERTIES } from "@/core/metakeys";
 import { CommandParser } from "@/core/discord/options/CommandParser";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 
@@ -25,39 +23,35 @@ function option(
 
 class QueryDto {}
 
-Reflect.defineMetadata(
-    METAKEY_COMMAND_PROPERTIES,
-    [
-        option({
-            propertyKey: "cs",
-            name: "cs",
-            type: EOptionType.Range,
-        }),
-        option({
-            propertyKey: "ar",
-            name: "ar",
-            type: EOptionType.Range,
-        }),
-        option({
-            propertyKey: "od",
-            name: "od",
-            type: EOptionType.Range,
-        }),
-        option({
-            propertyKey: "length",
-            name: "length",
-            type: EOptionType.Range,
-        }),
-        option({
-            propertyKey: "creator",
-            name: "creator",
-            type: EOptionType.String,
-        }),
-    ],
-    QueryDto.prototype,
-);
+const queryProperties: ReadonlyArray<IOptionMetadata> = [
+    option({
+        propertyKey: "cs",
+        name: "cs",
+        type: EOptionType.Range,
+    }),
+    option({
+        propertyKey: "ar",
+        name: "ar",
+        type: EOptionType.Range,
+    }),
+    option({
+        propertyKey: "od",
+        name: "od",
+        type: EOptionType.Range,
+    }),
+    option({
+        propertyKey: "length",
+        name: "length",
+        type: EOptionType.Range,
+    }),
+    option({
+        propertyKey: "creator",
+        name: "creator",
+        type: EOptionType.String,
+    }),
+];
 
-const simpleOptions = [
+const simpleOptions: ReadonlyArray<IOptionMetadata> = [
     option({
         propertyKey: "name",
         name: "name",
@@ -66,21 +60,21 @@ const simpleOptions = [
     }),
 ];
 
-const realisticOptions = [
+const realisticOptions: ReadonlyArray<IOptionMetadata> = [
     option({
         propertyKey: "name",
         name: "name",
         type: EOptionType.String,
         inject: EInjectMode.Greedy,
     }),
-
     option({
         propertyKey: "query",
         name: "query",
         type: EOptionType.Query,
-        queryDto: QueryDto,
-    }),
 
+        queryDto: QueryDto,
+        queryProperties,
+    }),
     option({
         propertyKey: "mods",
         name: "mods",
@@ -88,14 +82,13 @@ const realisticOptions = [
     }),
 ];
 
-const topIfOptions = [
+const topIfOptions: ReadonlyArray<IOptionMetadata> = [
     option({
         propertyKey: "name",
         name: "name",
         type: EOptionType.String,
         inject: EInjectMode.Greedy,
     }),
-
     option({
         propertyKey: "mods",
         name: "mods",

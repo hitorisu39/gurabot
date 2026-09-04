@@ -1,5 +1,4 @@
-import { IApplicationEvents } from "@/common/events";
-
+import { ICoreEvents } from "@/core/events";
 import { TLogger } from "./types";
 
 export class Dispatcher {
@@ -7,7 +6,7 @@ export class Dispatcher {
 
     constructor(private readonly logger: TLogger) {}
 
-    public on<D extends keyof IApplicationEvents, E extends keyof IApplicationEvents[D]>(
+    public on<D extends keyof ICoreEvents, E extends keyof ICoreEvents[D]>(
         domain: D,
         event: E,
         handler: Function,
@@ -17,10 +16,10 @@ export class Dispatcher {
         this.listeners.set(eventName, [...current, handler]);
     }
 
-    public dispatch<D extends keyof IApplicationEvents, E extends keyof IApplicationEvents[D]>(
+    public dispatch<D extends keyof ICoreEvents, E extends keyof ICoreEvents[D]>(
         domain: D,
         event: E,
-        ...args: Parameters<IApplicationEvents[D][E] extends (...args: any) => any ? IApplicationEvents[D][E] : never>
+        ...args: Parameters<ICoreEvents[D][E] extends (...args: any) => any ? ICoreEvents[D][E] : never>
     ): void {
         const eventName = `${String(domain)}:${String(event)}`;
         const handlers = this.listeners.get(eventName) || [];
@@ -34,10 +33,10 @@ export class Dispatcher {
         }
     }
 
-    public async dispatchAsync<D extends keyof IApplicationEvents, E extends keyof IApplicationEvents[D]>(
+    public async dispatchAsync<D extends keyof ICoreEvents, E extends keyof ICoreEvents[D]>(
         domain: D,
         event: E,
-        ...args: Parameters<IApplicationEvents[D][E] extends (...args: any) => any ? IApplicationEvents[D][E] : never>
+        ...args: Parameters<ICoreEvents[D][E] extends (...args: any) => any ? ICoreEvents[D][E] : never>
     ): Promise<void> {
         const eventName = `${String(domain)}:${String(event)}`;
         const handlers = this.listeners.get(eventName) || [];

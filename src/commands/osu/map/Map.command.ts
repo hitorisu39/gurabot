@@ -53,6 +53,7 @@ export class MapCommand extends AbstractSessionCommand {
 
     @Option("map", "Specify a map url or id")
     @Inject()
+    @IsString()
     declare private readonly map: CommandOption<string>;
 
     @Option("version", "Specify a specific difficulty name in the mapset")

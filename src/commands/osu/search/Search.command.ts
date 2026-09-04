@@ -1,5 +1,16 @@
 import { CommandContext } from "@/core/discord/context/CommandContext";
-import { Category, Command, Examples, Help, Import, Inject, IsBoolean, IsEnum, Option } from "@/core/decorators";
+import {
+    Category,
+    Command,
+    Examples,
+    Help,
+    Import,
+    Inject,
+    IsBoolean,
+    IsEnum,
+    IsString,
+    Option,
+} from "@/core/decorators";
 import { AbstractSessionCommand } from "@/commands/AbstractSessionCommand";
 import { OsuService } from "@/modules/osu/Osu.service";
 import { CommandOption, ECommandCategory } from "@domain/core/Command";
@@ -66,6 +77,7 @@ export class SearchCommand extends AbstractSessionCommand {
 
     @Option("query", "Search query")
     @Inject()
+    @IsString()
     declare private readonly query: CommandOption<string>;
 
     @Option("mode", "Filter by game mode")

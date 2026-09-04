@@ -1,50 +1,23 @@
-import { IApplicationEvents } from "@/common/events";
-import "reflect-metadata";
+import type { ICoreEvents } from "@/core/events";
+import type { PermissionResolvable } from "discord.js";
 
-import {
-    METAKEY_BOT_PERMISSIONS,
-    METAKEY_COMMAND_CATEGORY,
-    METAKEY_COMMAND_EXAMPLES,
-    METAKEY_COMMAND_HELP,
-    METAKEY_COMMAND_OPTIONS,
-    METAKEY_COMMAND_PROPERTIES,
-    METAKEY_COMPONENT_OPTIONS,
-    METAKEY_EVENT_HANDLERS,
-    METAKEY_GUILD_ONLY,
-    METAKEY_IMPORTS,
-    METAKEY_MIDDLEWARE_OPTIONS,
-    METAKEY_NO_USER_INSTALL,
-    METAKEY_SUBCOMMAND_GROUP_OPTIONS,
-    METAKEY_SUBCOMMAND_OPTIONS,
-    METAKEY_USER_PERMISSIONS,
-} from "./metakeys";
-import { PermissionResolvable } from "discord.js";
 import { EComponentType } from "@domain/core/Component";
-import { ProfilerStorage } from "./profiler";
 import { ECommandCategory } from "@domain/core/Command";
+import { ProfilerStorage } from "./profiler";
 
 type Awaitable<T> = T | Promise<T>;
 type EventHandler<T> = T extends (...args: infer A) => infer R ? (...args: A) => Awaitable<R> : never;
 
 export function Import(): PropertyDecorator {
-    return (target: Object, propertyKey: string | symbol) => {
-        const type = Reflect.getMetadata("design:type", target, propertyKey);
-        const imports = Reflect.getMetadata(METAKEY_IMPORTS, target) || [];
-        imports.push({ propertyKey, type });
-        Reflect.defineMetadata(METAKEY_IMPORTS, imports, target);
-    };
+    return () => {};
 }
 
-export function On<D extends keyof IApplicationEvents, E extends keyof IApplicationEvents[D]>(domain: D, event: E) {
-    return function <T extends EventHandler<IApplicationEvents[D][E]>>(
-        target: any,
-        propertyKey: string,
-        descriptor: TypedPropertyDescriptor<T>,
-    ) {
-        const eventHandlers = Reflect.getMetadata(METAKEY_EVENT_HANDLERS, target) || [];
-        eventHandlers.push({ domain, event, propertyKey });
-        Reflect.defineMetadata(METAKEY_EVENT_HANDLERS, eventHandlers, target);
-    };
+export function On<D extends keyof ICoreEvents, E extends keyof ICoreEvents[D]>(_domain: D, _event: E) {
+    return function <T extends EventHandler<ICoreEvents[D][E]>>(
+        _target: any,
+        _propertyKey: string,
+        _descriptor: TypedPropertyDescriptor<T>,
+    ): void {};
 }
 
 //#region Commands
@@ -53,9 +26,9 @@ export interface ICommandOptions {
     name: string;
     description: string;
     aliases?: Array<string>;
-    cooldown?: number; // In seconds, defaults to 2.
-    defer?: boolean; // Auto-defer before execution.
-    ephemeral?: boolean; // If deferred, should it be hidden.
+    cooldown?: number;
+    defer?: boolean;
+    ephemeral?: boolean;
     prefixOnly?: boolean;
     slashOnly?: boolean;
 }
@@ -81,85 +54,48 @@ export interface ISubcommandGroupOptions {
 export interface ICommandMetadata {
     options: ICommandOptions | ISubcommandOptions;
     guildOnly: boolean;
-    userPermissions: Array<PermissionResolvable>;
-    botPermissions: Array<PermissionResolvable>;
+    userPermissions: ReadonlyArray<PermissionResolvable>;
+    botPermissions: ReadonlyArray<PermissionResolvable>;
 }
 
-export function Command(options: ICommandOptions): ClassDecorator {
-    return (target: Function) => {
-        Reflect.defineMetadata(METAKEY_COMMAND_OPTIONS, options, target);
-    };
+export function Command(_options: ICommandOptions): ClassDecorator {
+    return () => {};
 }
 
-export function Subcommand(options: ISubcommandOptions): ClassDecorator {
-    return (target) => {
-        Reflect.defineMetadata(METAKEY_SUBCOMMAND_OPTIONS, options, target);
-    };
+export function Subcommand(_options: ISubcommandOptions): ClassDecorator {
+    return () => {};
 }
 
-export function SubcommandGroup(options: ISubcommandGroupOptions): ClassDecorator {
-    return (target: Function) => {
-        Reflect.defineMetadata(METAKEY_SUBCOMMAND_GROUP_OPTIONS, options, target);
-    };
+export function SubcommandGroup(_options: ISubcommandGroupOptions): ClassDecorator {
+    return () => {};
 }
 
-export function Help(text: string): ClassDecorator {
-    return (target: Function) => {
-        Reflect.defineMetadata(METAKEY_COMMAND_HELP, text, target);
-    };
+export function Help(_text: string): ClassDecorator {
+    return () => {};
 }
 
-export function Examples(...examples: Array<string>): ClassDecorator {
-    return (target: Function) => {
-        Reflect.defineMetadata(METAKEY_COMMAND_EXAMPLES, examples, target);
-    };
+export function Examples(..._examples: Array<string>): ClassDecorator {
+    return () => {};
 }
 
-export function Category(category: ECommandCategory): ClassDecorator {
-    return (target: Function) => {
-        Reflect.defineMetadata(METAKEY_COMMAND_CATEGORY, category, target);
-    };
+export function Category(_category: ECommandCategory): ClassDecorator {
+    return () => {};
 }
 
-/**
- * Restricts this command or subcommand to be used only inside a Guild (Server).
- */
 export function GuildOnly(): ClassDecorator {
-    return (target: Function) => {
-        Reflect.defineMetadata(METAKEY_GUILD_ONLY, true, target);
-    };
+    return () => {};
 }
 
-/**
- * Defines the permissions the USER needs to execute this command/subcommand.
- */
-export function UserPermissions(...permissions: Array<PermissionResolvable>): ClassDecorator {
-    return (target: Function) => {
-        Reflect.defineMetadata(METAKEY_USER_PERMISSIONS, permissions, target);
-    };
+export function UserPermissions(..._permissions: Array<PermissionResolvable>): ClassDecorator {
+    return () => {};
 }
 
-/**
- * Defines the permissions the BOT needs to execute this command/subcommand.
- */
-export function BotPermissions(...permissions: Array<PermissionResolvable>): ClassDecorator {
-    return (target: Function) => {
-        Reflect.defineMetadata(METAKEY_BOT_PERMISSIONS, permissions, target);
-    };
+export function BotPermissions(..._permissions: Array<PermissionResolvable>): ClassDecorator {
+    return () => {};
 }
 
-/**
- * Prevents a root command from being available through a user installation.
- *
- * The command remains available when the app is installed to a guild.
- *
- * This decorator cannot be applied to individual subcommands because Discord
- * defines installation types on the root application command.
- */
 export function NoUserInstall(): ClassDecorator {
-    return (target: Function) => {
-        Reflect.defineMetadata(METAKEY_NO_USER_INSTALL, true, target);
-    };
+    return () => {};
 }
 
 //#endregion
@@ -200,164 +136,97 @@ export interface IOptionMetadata {
 
     min?: number;
     max?: number;
+
     enumData?: any;
     aliases?: Array<string>;
     queryDto?: any;
+    queryProperties?: ReadonlyArray<IOptionMetadata>;
     isInlineIndex?: boolean;
     autocomplete?: boolean;
 }
 
-function getOrCreateProperties(target: any): Array<IOptionMetadata> {
-    let properties = Reflect.getOwnMetadata(METAKEY_COMMAND_PROPERTIES, target);
-    if (!properties) {
-        const parentProperties = Reflect.getMetadata(METAKEY_COMMAND_PROPERTIES, target) || [];
-        properties = parentProperties.map((p: any) => ({ ...p }));
-        Reflect.defineMetadata(METAKEY_COMMAND_PROPERTIES, properties, target);
-    }
-    return properties;
+export function Option(_name: string, _description: string): PropertyDecorator {
+    return () => {};
 }
 
-function updateProperty(target: any, propertyKey: string | symbol, update: Partial<IOptionMetadata>) {
-    const properties = getOrCreateProperties(target);
-    const existing = properties.find((p) => p.propertyKey === propertyKey);
-    if (existing) {
-        Object.assign(existing, update);
-    } else {
-        properties.push({ propertyKey: propertyKey.toString(), required: false, inject: false, ...update } as any);
-    }
+export function Required(): PropertyDecorator {
+    return () => {};
 }
 
-export function Option(name: string, description: string) {
-    return function (target: any, propertyKey: string | symbol) {
-        updateProperty(target, propertyKey, { name, description });
-    };
+export function Autocomplete(): PropertyDecorator {
+    return () => {};
 }
 
-export function Required() {
-    return function (target: any, propertyKey: string | symbol) {
-        updateProperty(target, propertyKey, { required: true });
-    };
+export function Inject(): PropertyDecorator {
+    return () => {};
 }
 
-export function Autocomplete() {
-    return function (target: any, propertyKey: string | symbol) {
-        updateProperty(target, propertyKey, { autocomplete: true });
-    };
+export function InjectToken(): PropertyDecorator {
+    return () => {};
 }
 
-export function Inject() {
-    return function (target: any, propertyKey: string | symbol) {
-        updateProperty(target, propertyKey, {
-            inject: EInjectMode.Greedy,
-        });
-    };
+export function InjectMatch(_matcher: (value: string) => boolean): PropertyDecorator {
+    return () => {};
 }
 
-export function InjectToken() {
-    return function (target: any, propertyKey: string | symbol) {
-        updateProperty(target, propertyKey, {
-            inject: EInjectMode.Token,
-        });
-    };
+export function Aliases(..._aliases: Array<string>): PropertyDecorator {
+    return () => {};
 }
 
-export function InjectMatch(matcher: (value: string) => boolean) {
-    return function (target: any, propertyKey: string | symbol) {
-        updateProperty(target, propertyKey, {
-            inject: EInjectMode.Match,
-            injectMatcher: matcher,
-        });
-    };
+export function IsMods(): PropertyDecorator {
+    return () => {};
 }
 
-export function Aliases(...aliases: Array<string>) {
-    return function (target: any, propertyKey: string | symbol) {
-        updateProperty(target, propertyKey, { aliases: aliases.map((a) => a.toLowerCase()) });
-    };
+export function IsModsArray(): PropertyDecorator {
+    return () => {};
 }
 
-export function IsMods() {
-    return function (target: any, propertyKey: string | symbol) {
-        updateProperty(target, propertyKey, { type: EOptionType.Mods });
-    };
+export function IsQuery(_dtoClass: any): PropertyDecorator {
+    return () => {};
 }
 
-export function IsModsArray() {
-    return function (target: any, propertyKey: string | symbol) {
-        updateProperty(target, propertyKey, { type: EOptionType.ModsArray });
-    };
+export function IsInlineIndex(): PropertyDecorator {
+    return () => {};
 }
 
-export function IsQuery(dtoClass: any) {
-    return function (target: any, propertyKey: string | symbol) {
-        updateProperty(target, propertyKey, { type: EOptionType.Query, queryDto: dtoClass });
-    };
+export function IsString(_minLength?: number, _maxLength?: number): PropertyDecorator {
+    return () => {};
 }
 
-export function IsInlineIndex() {
-    return function (target: any, propertyKey: string | symbol) {
-        updateProperty(target, propertyKey, { isInlineIndex: true });
-    };
+export function IsNumber(_min?: number, _max?: number): PropertyDecorator {
+    return () => {};
 }
 
-export function IsString(minLength?: number, maxLength?: number) {
-    return function (target: any, propertyKey: string | symbol) {
-        updateProperty(target, propertyKey, { type: EOptionType.String, min: minLength, max: maxLength });
-    };
+export function IsInteger(_min?: number, _max?: number): PropertyDecorator {
+    return () => {};
 }
 
-export function IsNumber(min?: number, max?: number) {
-    return function (target: any, propertyKey: string | symbol) {
-        updateProperty(target, propertyKey, { type: EOptionType.Number, min, max });
-    };
+export function IsRange(_min?: number, _max?: number): PropertyDecorator {
+    return () => {};
 }
 
-export function IsInteger(min?: number, max?: number) {
-    return function (target: any, propertyKey: string | symbol) {
-        updateProperty(target, propertyKey, { type: EOptionType.Integer, min, max });
-    };
+export function IsEnum(_enumObj: any): PropertyDecorator {
+    return () => {};
 }
 
-export function IsRange(min?: number, max?: number) {
-    return function (target: any, propertyKey: string | symbol) {
-        updateProperty(target, propertyKey, { type: EOptionType.Range });
-    };
+export function IsBoolean(): PropertyDecorator {
+    return () => {};
 }
 
-export function IsEnum(enumObj: any) {
-    return function (target: any, propertyKey: string | symbol) {
-        updateProperty(target, propertyKey, { type: EOptionType.Enum, enumData: enumObj });
-    };
+export function IsUser(): PropertyDecorator {
+    return () => {};
 }
 
-export function IsBoolean() {
-    return function (target: any, propertyKey: string | symbol) {
-        updateProperty(target, propertyKey, { type: EOptionType.Boolean });
-    };
+export function IsAttachment(): PropertyDecorator {
+    return () => {};
 }
 
-export function IsUser() {
-    return function (target: any, propertyKey: string | symbol) {
-        updateProperty(target, propertyKey, { type: EOptionType.User });
-    };
+export function IsDate(): PropertyDecorator {
+    return () => {};
 }
 
-export function IsAttachment() {
-    return function (target: any, propertyKey: string | symbol) {
-        updateProperty(target, propertyKey, { type: EOptionType.Attachment });
-    };
-}
-
-export function IsDate() {
-    return function (target: any, propertyKey: string | symbol) {
-        updateProperty(target, propertyKey, { type: EOptionType.Date });
-    };
-}
-
-export function IsDateRange() {
-    return function (target: any, propertyKey: string | symbol) {
-        updateProperty(target, propertyKey, { type: EOptionType.DateRange });
-    };
+export function IsDateRange(): PropertyDecorator {
+    return () => {};
 }
 
 //#endregion
@@ -367,16 +236,14 @@ export function IsDateRange() {
 export interface IMiddlewareOptions {
     /**
      * Lower numbers execute earlier.
-     * E.g., Priority 10 runs before Priority 50.
+     *
      * Default: 50
      */
     priority?: number;
 }
 
-export function Middleware(options?: IMiddlewareOptions) {
-    return function (target: Function) {
-        Reflect.defineMetadata(METAKEY_MIDDLEWARE_OPTIONS, options || {}, target);
-    };
+export function Middleware(_options?: IMiddlewareOptions): ClassDecorator {
+    return () => {};
 }
 
 //#endregion
@@ -388,22 +255,20 @@ export interface IComponentOptions {
     type: EComponentType;
 }
 
-export function Component(options: IComponentOptions): ClassDecorator {
-    return (target: Function) => {
-        Reflect.defineMetadata(METAKEY_COMPONENT_OPTIONS, options, target);
-    };
+export function Component(_options: IComponentOptions): ClassDecorator {
+    return () => {};
 }
 
-export function Button(customID: string | RegExp): ClassDecorator {
-    return Component({ customID, type: EComponentType.Button });
+export function Button(_customID: string | RegExp): ClassDecorator {
+    return () => {};
 }
 
-export function SelectMenu(customID: string | RegExp): ClassDecorator {
-    return Component({ customID, type: EComponentType.SelectMenu });
+export function SelectMenu(_customID: string | RegExp): ClassDecorator {
+    return () => {};
 }
 
-export function Modal(customID: string | RegExp): ClassDecorator {
-    return Component({ customID, type: EComponentType.Modal });
+export function Modal(_customID: string | RegExp): ClassDecorator {
+    return () => {};
 }
 
 //#endregion
@@ -413,22 +278,24 @@ export function Modal(customID: string | RegExp): ClassDecorator {
 export function Trace(stepName?: string) {
     return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
         const originalMethod = descriptor.value;
+
         const name = stepName ?? `${target.constructor.name}.${propertyKey}`;
 
         descriptor.value = function (...args: any[]) {
             const profiler = ProfilerStorage.getStore();
-
-            if (!profiler) return originalMethod.apply(this, args);
+            if (!profiler) {
+                return originalMethod.apply(this, args);
+            }
 
             const start = performance.now();
             const result = originalMethod.apply(this, args);
 
             if (result instanceof Promise) {
                 return result.finally(() => profiler.record(name, performance.now() - start));
-            } else {
-                profiler.record(name, performance.now() - start);
-                return result;
             }
+
+            profiler.record(name, performance.now() - start);
+            return result;
         };
 
         return descriptor;
