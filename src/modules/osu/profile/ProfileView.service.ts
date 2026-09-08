@@ -1,5 +1,5 @@
 import { EApplicationError, Exception } from "@domain/core/Exception";
-import { TMessagePayload } from "@/core/discord/context/CommandContext";
+import { TMessagePayload } from "@/core/discord/context/MessagePayload";
 import { ActionRow } from "@/core/discord/ui/ActionRow";
 import { DescriptionBuilder } from "@/core/discord/ui/DescriptionBuilder";
 import { Embed } from "@/core/discord/ui/Embed";

@@ -1,14 +1,16 @@
-import { ChatInputCommandInteraction, InteractionResponse, Message, MessageFlags } from "discord.js";
-
-import { CommandContext, type TMessagePayload } from "./CommandContext";
+import { ChatInputCommandInteraction, Message, MessageFlags } from "discord.js";
+import { CommandContext } from "./CommandContext";
+import { type TMessagePayload } from "./MessagePayload";
 import { Trace } from "@/core/decorators";
 
 export class SlashContext extends CommandContext {
     public readonly isSlash = true;
+
     public readonly commandName: string;
 
-    constructor(public readonly interaction: ChatInputCommandInteraction) {
+    public constructor(public readonly interaction: ChatInputCommandInteraction) {
         super();
+
         this.commandName = interaction.commandName;
     }
 
@@ -28,6 +30,10 @@ export class SlashContext extends CommandContext {
         return this.interaction.member;
     }
 
+    public get isDeferred(): boolean {
+        return this.interaction.deferred;
+    }
+
     public getSubcommandGroup(): string | null {
         return this.interaction.options.getSubcommandGroup(false);
     }
@@ -37,64 +43,56 @@ export class SlashContext extends CommandContext {
     }
 
     @Trace()
-    public async defer(ephemeral?: boolean): Promise<void> {
-        if (this.isDeferred) return;
-        await this.interaction.deferReply({ flags: ephemeral ? MessageFlags.Ephemeral : undefined });
-        this.isDeferred = true;
-    }
-
-    public async respond(options: TMessagePayload): Promise<Message | InteractionResponse> {
-        return this.reply(options);
-    }
-
-    public origin(): string {
-        if (this.guild && this.channel) {
-            return `https://discord.com/channels/${this.guild.id}/${this.channel.id}/#`;
+    public async defer(ephemeral = false): Promise<void> {
+        if (this.interaction.deferred || this.interaction.replied) {
+            return;
         }
 
-        if (this.channel) {
-            return `https://discord.com/channels/@me/${this.channel.id}/#`;
-        }
-
-        return "https://discord.com";
+        await this.interaction.deferReply({
+            flags: ephemeral ? MessageFlags.Ephemeral : undefined,
+        });
     }
 
+    /**
+     * Send/edit the primary slash-command response.
+     */
     @Trace()
-    public async reply(options: TMessagePayload): Promise<Message | InteractionResponse> {
-        const payload = this.normalizePayload(options);
-        const fetchReply = payload.fetch ?? false;
-
-        if (this.interaction.deferred || this.interaction.replied) return this.interaction.editReply(payload);
-        const response = await this.interaction.reply({ ...payload, withResponse: fetchReply });
-
-        if (response instanceof Message) this.responseMessage = response;
-
-        return response;
-    }
-
-    @Trace()
-    public async followUp(options: TMessagePayload): Promise<Message | InteractionResponse | null> {
-        const payload = this.normalizePayload(options);
-
-        if (payload.sendToChannel && this.channel?.isSendable()) {
-            return this.channel.send(payload);
-        }
-
-        if (!this.interaction.deferred && !this.interaction.replied) {
-            return this.reply(payload);
-        }
-
-        return this.interaction.followUp(payload);
-    }
-
-    public async fetchReply(): Promise<Message | null> {
-        if (this.responseMessage) return this.responseMessage;
-
-        if (this.interaction.replied || this.interaction.deferred) {
-            this.responseMessage = await this.interaction.fetchReply();
+    public async respond(options: TMessagePayload): Promise<Message | null> {
+        if (this.interaction.deferred || this.interaction.replied) {
+            this.responseMessage = await this.interaction.editReply(this.toInteractionEditPayload(options));
             return this.responseMessage;
         }
 
-        return null;
+        await this.interaction.reply(this.toInteractionReplyPayload(options));
+        return this.fetchResponse();
+    }
+
+    /**
+     * Send another response after the primary response.
+     * If nothing has acknowledged the interaction yet, promote this to the primary response.
+     */
+    @Trace()
+    public async followUp(options: TMessagePayload): Promise<Message | null> {
+        if (!this.interaction.deferred && !this.interaction.replied) {
+            return this.respond(options);
+        }
+
+        return this.interaction.followUp(this.toInteractionReplyPayload(options));
+    }
+
+    /**
+     * Fetch and cache the primary interaction response.
+     */
+    public async fetchResponse(): Promise<Message | null> {
+        if (this.responseMessage) {
+            return this.responseMessage;
+        }
+
+        if (!this.interaction.replied && !this.interaction.deferred) {
+            return null;
+        }
+
+        this.responseMessage = await this.interaction.fetchReply();
+        return this.responseMessage;
     }
 }

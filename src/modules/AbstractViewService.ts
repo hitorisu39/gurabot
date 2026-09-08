@@ -1,5 +1,5 @@
 import { AbstractService } from "@/core/framework/AbstractService";
-import { TMessagePayload } from "@/core/discord/context/CommandContext";
+import { TMessagePayload } from "@/core/discord/context/MessagePayload";
 import { InteractionResponse, Message } from "discord.js";
 import { AbstractView } from "@/core/discord/views/AbstractView";
 

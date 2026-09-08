@@ -1,5 +1,5 @@
 import { Import } from "@/core/decorators";
-import { TMessagePayload } from "@/core/discord/context/CommandContext";
+import { TMessagePayload } from "@/core/discord/context/MessagePayload";
 import { Pagination } from "@domain/discord/utils/Pagination";
 import { EModMatchType, ICommandMods } from "@domain/core/Command";
 import { TopIfScore } from "@domain/osu/TopIf.dto";

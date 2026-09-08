@@ -1,5 +1,5 @@
 import { Import } from "@/core/decorators";
-import { TMessagePayload } from "@/core/discord/context/CommandContext";
+import { TMessagePayload } from "@/core/discord/context/MessagePayload";
 import { ActionRow } from "@/core/discord/ui/ActionRow";
 import { Embed } from "@/core/discord/ui/Embed";
 import { SelectMenu } from "@/core/discord/ui/SelectMenu";

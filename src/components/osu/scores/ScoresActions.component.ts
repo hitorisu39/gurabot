@@ -119,7 +119,7 @@ export class ScoresScorepostModal extends AbstractScoresActionComponent {
         await ctx.deferReply();
 
         const data = await this.scorepostService.resolve(score.id.toString(), ur, text, timezoneOffset);
-        await ctx.reply(await this.scorepostViewService.build(data));
+        await ctx.respond(await this.scorepostViewService.build(data));
     }
 
     private parseUr(input: string | null): number | undefined {

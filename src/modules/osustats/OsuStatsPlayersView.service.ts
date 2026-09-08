@@ -1,6 +1,6 @@
 import { Import } from "@/core/decorators";
 import { Embed } from "@/core/discord/ui/Embed";
-import { TMessagePayload } from "@/core/discord/context/CommandContext";
+import { TMessagePayload } from "@/core/discord/context/MessagePayload";
 
 import { AbstractViewService } from "@/modules/AbstractViewService";
 import { OsuStatsService } from "@/modules/osustats/OsuStats.service";

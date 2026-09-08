@@ -1,5 +1,5 @@
 import { ActionRow } from "@/core/discord/ui/ActionRow";
-import { TMessagePayload } from "@/core/discord/context/CommandContext";
+import { TMessagePayload } from "@/core/discord/context/MessagePayload";
 import { Embed } from "@/core/discord/ui/Embed";
 import { Import } from "@/core/decorators";
 import { AbstractViewService } from "@/modules/AbstractViewService";

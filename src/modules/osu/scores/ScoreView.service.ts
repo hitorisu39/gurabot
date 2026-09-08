@@ -1,5 +1,5 @@
 import { Import } from "@/core/decorators";
-import { TMessagePayload } from "@/core/discord/context/CommandContext";
+import { TMessagePayload } from "@/core/discord/context/MessagePayload";
 import { Pagination } from "@domain/discord/utils/Pagination";
 import { ScoresViewDto } from "@domain/osu/views/Scores.view";
 import { AdapterProvider, GameMode, Score } from "@generated/adapter/types";

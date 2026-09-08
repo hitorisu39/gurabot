@@ -1,4 +1,4 @@
-import { TMessagePayload } from "@/core/discord/context/CommandContext";
+import { TMessagePayload } from "@/core/discord/context/MessagePayload";
 import { AbstractService } from "@/core/framework/AbstractService";
 import { Embed } from "@/core/discord/ui/Embed";
 import { AsciiTable } from "@domain/discord/utils/AsciiTable";

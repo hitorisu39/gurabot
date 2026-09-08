@@ -1,5 +1,5 @@
 import { Import } from "@/core/decorators";
-import { TMessagePayload } from "@/core/discord/context/CommandContext";
+import { TMessagePayload } from "@/core/discord/context/MessagePayload";
 import { AbstractViewService } from "@/modules/AbstractViewService";
 import { OtrMapViewService } from "./OtrMapView.service";
 import { EOtrMapView, OtrMapViewDto } from "@domain/otr/views/OtrMap.view";

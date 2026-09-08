@@ -1,7 +1,7 @@
 import { Import } from "@/core/decorators";
 import { CalculatorService } from "../calculator/Calculator.service";
 import { MapViewDto } from "@domain/osu/views/Map.view";
-import { TMessagePayload } from "@/core/discord/context/CommandContext";
+import { TMessagePayload } from "@/core/discord/context/MessagePayload";
 import { AdapterProvider, Beatmap, Beatmapset, GameMode } from "@generated/adapter/types";
 import { Embed } from "@/core/discord/ui/Embed";
 import { ProfileFormatter } from "@domain/osu/formatters/Profile.formatter";

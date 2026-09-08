@@ -1,6 +1,6 @@
 import { AttachmentBuilder } from "discord.js";
 import { Import, Trace } from "@/core/decorators";
-import { TMessageFile, TMessagePayload } from "@/core/discord/context/CommandContext";
+import { TMessageFiles, TMessagePayload } from "@/core/discord/context/MessagePayload";
 import { AbstractService } from "@/core/framework/AbstractService";
 import { EScorepostClient } from "@domain/osu/enums/Scorepost.enum";
 import { ScorepostViewDto } from "@domain/osu/views/Scorepost.view";
@@ -15,12 +15,14 @@ export class ScorepostViewService extends AbstractService {
 
     @Trace()
     public async build(data: ScorepostViewDto): Promise<TMessagePayload> {
-        let files: Array<TMessageFile> = [];
+        let files: TMessageFiles = [];
+
         const content = "```" + ScorepostFormatter.text(data.user, data.score, data.text) + "```";
 
         if (data.score.mode === GameMode.Standard) {
             const image = await this.generate(data);
             const filename = `scorepost-${data.score.id}-${data.client}.jpg`;
+
             files = [new AttachmentBuilder(image, { name: filename })];
         }
 

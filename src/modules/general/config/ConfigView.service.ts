@@ -1,6 +1,6 @@
 import { AbstractService } from "@/core/framework/AbstractService";
 import { Embed } from "@/core/discord/ui/Embed";
-import { TMessagePayload } from "@/core/discord/context/CommandContext";
+import { TMessagePayload } from "@/core/discord/context/MessagePayload";
 
 import { GuildDto } from "@domain/guild/Guild.dto";
 import { UserDto } from "@domain/user/User.dto";

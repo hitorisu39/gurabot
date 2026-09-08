@@ -2,7 +2,7 @@ import { Import } from "@/core/decorators";
 import { AbstractViewService } from "@/modules/AbstractViewService";
 import { EOtrMapView, OtrMapViewDto } from "@domain/otr/views/OtrMap.view";
 import { OtrMapViewService } from "./OtrMapView.service";
-import { TMessagePayload } from "@/core/discord/context/CommandContext";
+import { TMessagePayload } from "@/core/discord/context/MessagePayload";
 
 export class OtrMapLeaderboardViewService extends AbstractViewService<OtrMapViewDto> {
     @Import() declare private readonly mapViewService: OtrMapViewService;
