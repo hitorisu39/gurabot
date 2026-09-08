@@ -1,6 +1,6 @@
 import { ICommandState } from "@domain/core/Command";
 import { ICommandMetadata } from "@/core/decorators";
-import { DiscordContext } from "./DiscordContext";
+import { DiscordContext, IDiscordContextEvents } from "./DiscordContext";
 
 /**
  * Base context for command executions.
@@ -27,6 +27,10 @@ export abstract class CommandContext extends DiscordContext {
      * Metadata injected for the executed command.
      */
     declare public metadata: ICommandMetadata;
+
+    protected constructor(events?: IDiscordContextEvents) {
+        super(events);
+    }
 
     /**
      * Get the current slash-command subcommand group.
