@@ -1,6 +1,6 @@
 import { ICacheSchema } from "@domain/core/Cache";
 import { IApplicationContext } from "../types";
-import { InteractionContext } from "./context/InteractionContext";
+import { DiscordContext } from "./context/DiscordContext";
 import { AbstractView } from "./views/AbstractView";
 import { InteractionResponse, Message } from "discord.js";
 
@@ -28,7 +28,7 @@ export abstract class AbstractInteraction {
     }
 
     protected async respondWithSession<K extends keyof ICacheSchema, TOptions>(
-        ctx: InteractionContext,
+        ctx: DiscordContext,
         sessionType: K,
         data: ICacheSchema[K],
         view: AbstractView<ICacheSchema[K], TOptions>,

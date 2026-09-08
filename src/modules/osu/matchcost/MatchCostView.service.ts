@@ -1,5 +1,5 @@
 import { AbstractService } from "@/core/framework/AbstractService";
-import { TMessagePayload } from "@/core/discord/context/CommandContext";
+import { TMessagePayload } from "@/core/discord/context/MessagePayload";
 import { Embed } from "@/core/discord/ui/Embed";
 import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";
 import { MatchCostPlayerResultDto, MatchCostTeamScoreDto } from "@domain/osu/MatchCost.dto";

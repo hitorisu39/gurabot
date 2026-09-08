@@ -1,6 +1,6 @@
 import { SnipePlayerChangesViewDto } from "@domain/snipe/views/SnipePlayerChanges.view";
 import { AbstractViewService } from "../AbstractViewService";
-import { TMessagePayload } from "@/core/discord/context/CommandContext";
+import { TMessagePayload } from "@/core/discord/context/MessagePayload";
 import { snipePlayerChangesPageSize } from "@domain/snipe/configs/Snipe.config";
 import { ESnipePlayerChangeType } from "@domain/snipe/enums/Snipe.enum";
 import { MapFormatter } from "@domain/osu/formatters/Map.formatter";

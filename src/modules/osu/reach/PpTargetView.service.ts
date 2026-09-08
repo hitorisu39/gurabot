@@ -2,7 +2,7 @@ import { Import } from "@/core/decorators";
 import { AbstractService } from "@/core/framework/AbstractService";
 import { ProfileViewService } from "../profile/ProfileView.service";
 import { PpTargetViewDataDto } from "@domain/osu/views/PpTarget.view";
-import { TMessagePayload } from "@/core/discord/context/CommandContext";
+import { TMessagePayload } from "@/core/discord/context/MessagePayload";
 import { ProfileFormatter } from "@domain/osu/formatters/Profile.formatter";
 import { PpTargetRouteDto } from "@domain/osu/Reach.dto";
 import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";

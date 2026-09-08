@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "path";
 import sharp, { type OverlayOptions } from "sharp";
 import { Import, Trace } from "@/core/decorators";
-import { TMessagePayload } from "@/core/discord/context/CommandContext";
+import { TMessagePayload } from "@/core/discord/context/MessagePayload";
 import { AbstractService } from "@/core/framework/AbstractService";
 import { HttpClient } from "@/http";
 import {

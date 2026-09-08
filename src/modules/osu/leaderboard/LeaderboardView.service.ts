@@ -1,5 +1,5 @@
 import { Import } from "@/core/decorators";
-import { TMessagePayload } from "@/core/discord/context/CommandContext";
+import { TMessagePayload } from "@/core/discord/context/MessagePayload";
 import { DescriptionBuilder } from "@/core/discord/ui/DescriptionBuilder";
 import { Embed } from "@/core/discord/ui/Embed";
 import { AbstractViewService } from "@/modules/AbstractViewService";

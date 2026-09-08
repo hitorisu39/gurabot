@@ -106,7 +106,7 @@ export class OrdrRenderCachedComponent extends AbstractOrdrRenderComponent {
             throw new Exception(EApplicationError.INTERNAL_ERROR, "The cached render is missing its video URL.");
         }
 
-        await ctx.sendChannelMessage({
+        await ctx.sendToChannel({
             content: `<@${data.authorID}> ${data.cachedVideoURL}`,
             allowedMentions: {
                 users: [data.authorID],
@@ -372,7 +372,7 @@ export class OrdrRenderActionComponent extends AbstractOrdrRenderComponent {
 
             if (terminal.type === "done") {
                 await ctx
-                    .sendChannelMessage({
+                    .sendToChannel({
                         content: `<@${data.authorID}> ${terminal.data.videoUrl}`,
                         allowedMentions: {
                             users: [data.authorID],

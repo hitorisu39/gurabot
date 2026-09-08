@@ -1,6 +1,6 @@
 import { Import } from "@/core/decorators";
 import { AbstractService } from "@/core/framework/AbstractService";
-import { TMessagePayload } from "@/core/discord/context/CommandContext";
+import { TMessagePayload } from "@/core/discord/context/MessagePayload";
 import { GraphSnipePlayerHistoryService } from "@/modules/osu/graph/GraphSnipePlayerHistory.service";
 import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";
 import { AttachmentBuilder } from "discord.js";

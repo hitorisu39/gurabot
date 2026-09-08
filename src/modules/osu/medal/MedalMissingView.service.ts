@@ -1,5 +1,5 @@
 import { Import } from "@/core/decorators";
-import { TMessagePayload } from "@/core/discord/context/CommandContext";
+import { TMessagePayload } from "@/core/discord/context/MessagePayload";
 import { AbstractViewService } from "@/modules/AbstractViewService";
 import { ProfileViewService } from "@/modules/osu/profile/ProfileView.service";
 import { Pagination } from "@domain/discord/utils/Pagination";

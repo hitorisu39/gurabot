@@ -1,5 +1,5 @@
 import { InteractionResponse, Message } from "discord.js";
-import { TMessagePayload } from "../context/CommandContext";
+import { TMessagePayload } from "../context/MessagePayload";
 
 export interface AbstractView<TData, TOptions = unknown> {
     build(sessionID: string, data: TData, options?: TOptions): TMessagePayload | Promise<TMessagePayload>;

@@ -1,6 +1,6 @@
 import { AbstractService } from "@/core/framework/AbstractService";
 import { Embed } from "@/core/discord/ui/Embed";
-import { TMessagePayload } from "@/core/discord/context/CommandContext";
+import { TMessagePayload } from "@/core/discord/context/MessagePayload";
 import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";
 import { OsekaiMedalBeatmapDto, OsekaiMedalCommentDto } from "@domain/osekai/OsekaiMedal.dto";
 import { TextFormatter } from "@domain/discord/formatters/Text.formatter";

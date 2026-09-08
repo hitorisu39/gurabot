@@ -1,5 +1,5 @@
 import { AbstractInteraction } from "./AbstractInteraction";
-import { TMessagePayload } from "./context/CommandContext";
+import { TMessagePayload } from "./context/MessagePayload";
 import { ComponentContext } from "./context/ComponentContext";
 
 export abstract class AbstractComponent extends AbstractInteraction {

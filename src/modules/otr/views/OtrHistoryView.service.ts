@@ -1,5 +1,5 @@
 import { AbstractService } from "@/core/framework/AbstractService";
-import { TMessagePayload } from "@/core/discord/context/CommandContext";
+import { TMessagePayload } from "@/core/discord/context/MessagePayload";
 import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";
 import { PopulatedUser } from "@domain/osu/Profile.dto";
 import { OtrProfileFormatter } from "@domain/otr/formatters/OtrProfile.formatter";

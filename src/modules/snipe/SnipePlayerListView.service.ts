@@ -1,7 +1,7 @@
 import { Import } from "@/core/decorators";
 import { AbstractViewService } from "@/modules/AbstractViewService";
 import { OsuService } from "@/modules/osu/Osu.service";
-import { TMessagePayload } from "@/core/discord/context/CommandContext";
+import { TMessagePayload } from "@/core/discord/context/MessagePayload";
 import { Pagination } from "@domain/discord/utils/Pagination";
 import { snipePlayerListApiPageSize, snipePlayerListPageSize } from "@domain/snipe/configs/Snipe.config";
 import { SnipePlayerListViewDto } from "@domain/snipe/views/SnipePlayerList.view";

@@ -1,5 +1,6 @@
 import { Message } from "discord.js";
-import { CommandContext, type TMessagePayload } from "./CommandContext";
+import { CommandContext } from "./CommandContext";
+import { type TMessagePayload } from "./MessagePayload";
 import { Trace } from "@/core/decorators";
 
 export class MessageContext extends CommandContext {
@@ -7,15 +8,22 @@ export class MessageContext extends CommandContext {
     public readonly commandName: string;
     public readonly rawContent: string;
 
-    constructor(
+    /**
+     * Message commands don't have Discord's interaction
+     * deferred state, so we maintain our own small flag.
+     */
+    private deferred = false;
+
+    public constructor(
         public readonly message: Message,
         public readonly prefix: string,
     ) {
         super();
+
         const contentWithoutPrefix = message.content.slice(prefix.length).trim();
         const rawArgs = contentWithoutPrefix.split(/ +/);
 
-        this.commandName = rawArgs.shift()?.toLowerCase() || "";
+        this.commandName = rawArgs.shift()?.toLowerCase() ?? "";
         this.rawContent = contentWithoutPrefix.slice(this.commandName.length).trim();
     }
 
@@ -35,59 +43,71 @@ export class MessageContext extends CommandContext {
         return this.message.member;
     }
 
-    public async defer(): Promise<void> {
-        if (this.isDeferred) return;
-
-        if (this.channel.isSendable()) this.channel.sendTyping(); // May randomly take seconds for some reason when awaited for response.
-
-        this.isDeferred = true;
+    public get isDeferred(): boolean {
+        return this.deferred;
     }
 
-    @Trace()
-    public async respond(options: TMessagePayload): Promise<Message | null> {
-        const payload = this.normalizePayload(options);
+    /**
+     * For message commands, "defer" simply means displaying
+     * Discord's typing indicator.
+     */
+    public async defer(_ephemeral?: boolean): Promise<void> {
+        if (this.deferred) {
+            return;
+        }
 
-        if (this.responseMessage) return this.responseMessage.edit(payload);
+        this.deferred = true;
 
         if (this.channel.isSendable()) {
-            this.responseMessage = await this.channel.send(payload);
+            void this.channel.sendTyping().catch(() => undefined);
+        }
+    }
+
+    /**
+     * Send/edit the primary command response.
+     */
+    @Trace()
+    public async respond(options: TMessagePayload): Promise<Message | null> {
+        if (this.responseMessage) {
+            this.responseMessage = await this.responseMessage.edit(this.toMessageEditPayload(options));
+
             return this.responseMessage;
         }
 
-        return null;
-    }
-
-    public origin(): string {
-        if (this.guild && this.channel) {
-            return `https://discord.com/channels/${this.guild.id}/${this.channel.id}/#`;
+        if (!this.channel.isSendable()) {
+            return null;
         }
 
-        if (this.channel) {
-            return `https://discord.com/channels/@me/${this.channel.id}/#`;
-        }
+        this.responseMessage = await this.channel.send(this.toMessageCreatePayload(options));
 
-        return "https://discord.com";
-    }
-
-    @Trace()
-    public async reply(options: TMessagePayload): Promise<Message> {
-        const payload = this.normalizePayload(options);
-
-        if (this.responseMessage) return this.responseMessage.edit(payload);
-
-        this.responseMessage = await this.message.reply(payload);
         return this.responseMessage;
     }
 
+    /**
+     * Send an additional channel message.
+     */
     @Trace()
     public async followUp(options: TMessagePayload): Promise<Message | null> {
-        const payload = this.normalizePayload(options);
-        if (this.channel.isSendable()) return await this.channel.send(payload);
-        return null;
+        if (!this.channel.isSendable()) {
+            return null;
+        }
+
+        return this.channel.send(this.toMessageCreatePayload(options));
     }
 
-    public async fetchReply(): Promise<Message | null> {
+    /**
+     * Retrieve the already-cached primary response.
+     */
+    public async fetchResponse(): Promise<Message | null> {
         return this.responseMessage;
+    }
+
+    /**
+     * A message command has an exact originating message,
+     * so we can provide a more specific URL than the base class.
+     */
+    public override origin(): string {
+        return this.message.url;
     }
 
     public getSubcommandGroup(): string | null {

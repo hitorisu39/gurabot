@@ -1,5 +1,5 @@
 import { AbstractService } from "@/core/framework/AbstractService";
-import { TMessagePayload } from "@/core/discord/context/CommandContext";
+import { TMessagePayload } from "@/core/discord/context/MessagePayload";
 import { UsernameAvailabilityDto } from "@domain/osu/UsernameAvailability.dto";
 import {
     EUsernameAvailabilityStatus,

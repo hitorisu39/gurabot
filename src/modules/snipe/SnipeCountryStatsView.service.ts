@@ -1,6 +1,6 @@
 import { Import } from "@/core/decorators";
 import { AbstractService } from "@/core/framework/AbstractService";
-import { TMessagePayload } from "@/core/discord/context/CommandContext";
+import { TMessagePayload } from "@/core/discord/context/MessagePayload";
 import { Embed } from "@/core/discord/ui/Embed";
 import { GraphSnipeCountryService } from "@/modules/osu/graph/GraphSnipeCountry.service";
 import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";
