@@ -53,13 +53,13 @@ export const config = convict({
             default: "https://gurabot.com",
             env: "APP_DOMAIN",
         },
-        flagsDomain: {
+        flags: {
             doc: "Application flags domain",
             format: String,
             default: "https://raw.githubusercontent.com/hitorisu39/flags-png/main/png256px/",
             env: "APP_FLAGS_DOMAIN",
         },
-        supportServer: {
+        support_server: {
             doc: "Application Discord support server.",
             format: String,
             default: "https://discord.gg/Ed4yeNgWxj",
@@ -282,7 +282,7 @@ export const config = convict({
         },
     },
     web: {
-        authPort: {
+        auth_port: {
             doc: "Web Server auth port.",
             format: Number,
             default: 3001,
@@ -290,17 +290,25 @@ export const config = convict({
         },
     },
     ordr: {
-        defaultSkin: {
+        default_skin: {
             doc: "Default o!rdr skin.",
             format: String,
             default: "- a t m o s p h e r e -",
             env: "ORDR_DEFAULT_SKIN",
         },
-        verificationKey: {
+        verification_key: {
             doc: "o!rdr bot verification key.",
             format: String,
             default: "devmode_success",
             env: "ORDR_VERIFICATION_KEY",
+        },
+    },
+    otr: {
+        api_key: {
+            doc: "o!TR api key.",
+            format: String,
+            default: "",
+            env: "OTR_API_KEY",
         },
     },
 });

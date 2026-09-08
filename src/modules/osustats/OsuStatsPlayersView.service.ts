@@ -35,9 +35,7 @@ export class OsuStatsPlayersViewService extends AbstractViewService<OsuStatsPlay
         const components = [Pagination.buildLazy("osustats_players", sessionID, data.page, data.lastPage)];
         const description = data.players.map((player) => OsuStatsFormatter.player(player)).join("\n");
 
-        const authorIcon = data.country
-            ? DiscordFormatter.countryFlag(this.config.app.flagsDomain, data.country)
-            : undefined;
+        const authorIcon = data.country ? DiscordFormatter.countryFlag(this.config.app.flags, data.country) : undefined;
 
         const embed = new Embed()
             .setAuthor({

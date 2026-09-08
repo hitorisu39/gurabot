@@ -14,7 +14,7 @@ export class InviteCommand extends AbstractCommand {
     public async execute(ctx: CommandContext): Promise<void> {
         await ctx.respond(
             Embed.success(
-                `Invite bot to your server: ${this.config.app.invite}\nSupport server: ${this.config.app.supportServer}`,
+                `Invite bot to your server: ${this.config.app.invite}\nSupport server: ${this.config.app.support_server}`,
             ),
         );
     }

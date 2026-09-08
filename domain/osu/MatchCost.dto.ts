@@ -1,11 +1,11 @@
 import { Exclude, Expose, Type } from "class-transformer";
-import { EMatchCostTargetType, EMatchCostTeam } from "./enums/MatchCost.enum";
+import { EMultiplayerTargetType, EMultiplayerTeam } from "./enums/Multiplayer.enum";
 import { SerializableDto } from "@domain/core/Data";
 
 @Exclude()
 export class MatchCostTargetDto {
     @Expose()
-    declare type: EMatchCostTargetType;
+    declare type: EMultiplayerTargetType;
 
     @Expose()
     declare id: number;
@@ -35,7 +35,7 @@ export class MatchCostScoreDto {
     declare easy: boolean;
 
     @Expose()
-    declare team?: EMatchCostTeam;
+    declare team?: EMultiplayerTeam;
 }
 
 @Exclude()
@@ -70,7 +70,7 @@ export class MatchCostMatchDto extends SerializableDto {
     declare id: number;
 
     @Expose()
-    declare type: EMatchCostTargetType;
+    declare type: EMultiplayerTargetType;
 
     @Expose()
     declare name: string;
@@ -108,7 +108,7 @@ export class MatchCostPlayerResultDto {
     declare gamesPlayed: number;
 
     @Expose()
-    declare team?: EMatchCostTeam;
+    declare team?: EMultiplayerTeam;
 }
 
 @Exclude()

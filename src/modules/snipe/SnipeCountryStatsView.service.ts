@@ -22,7 +22,7 @@ export class SnipeCountryStatsViewService extends AbstractService {
         const embed = new Embed()
             .setAuthor({
                 name: `osu!snipe • ${country} #1 statistics`,
-                iconURL: DiscordFormatter.countryFlag(this.config.app.flagsDomain, country),
+                iconURL: DiscordFormatter.countryFlag(this.config.app.flags, country),
                 url: `${snipeBaseUrl}/rankings/` + `${country.toLowerCase()}/osu/weighted-pp`,
             })
             .addFields(

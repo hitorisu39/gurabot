@@ -41,6 +41,16 @@ import { TwitchStreamDto, TwitchVideoDto } from "@domain/twitch/Twitch.dto";
 import { MatchCostMatchDto } from "@domain/osu/MatchCost.dto";
 import { OsekaiBadgeDto } from "@domain/osekai/OsekaiBadge.dto";
 import { BadgeViewDto } from "@domain/osu/views/Badge.view";
+import { OtrPlayerDto, OtrPlayerStatsDto, OtrPlayerTournamentDto } from "@domain/otr/OtrPlayer.dto";
+import { OtrProfileViewDto } from "@domain/otr/views/OtrProfile.view";
+import { OtrCompareViewDto } from "@domain/otr/views/OtrCompare.view";
+import { OtrTournamentDetailDto } from "@domain/otr/OtrTournament.dto";
+import { OtrMatchDetailDto } from "@domain/otr/OtrMatch.dto";
+import { OtrScoutViewDto } from "@domain/otr/views/OtrScout.view";
+import { OtrLeaderboardPageDto } from "@domain/otr/OtrLeaderboard.dto";
+import { OtrLeaderboardViewDto } from "@domain/otr/views/OtrLeaderboard.view";
+import { OtrBeatmapStatsDto } from "@domain/otr/OtrBeatmap.dto";
+import { OtrMapViewDto } from "@domain/otr/views/OtrMap.view";
 
 export interface ICacheSchema {
     // discord
@@ -76,6 +86,12 @@ export interface ICacheSchema {
 
     ordr_config_view: OrdrConfigViewDto;
     ordr_render_view: OrdrRenderViewDto;
+
+    otr_profile_view: OtrProfileViewDto;
+    otr_compare_view: OtrCompareViewDto;
+    otr_scout_view: OtrScoutViewDto;
+    otr_leaderboard_view: OtrLeaderboardViewDto;
+    otr_map_view: OtrMapViewDto;
 
     general_commands_view: CommandsViewDto;
 
@@ -114,4 +130,13 @@ export interface ICacheSchema {
     // auth
     auth_osu_state: AuthOsuStateDto;
     auth_twitch_state: AuthTwitchStateDto;
+
+    // o!tr
+    otr_player: OtrPlayerDto;
+    otr_player_stats: OtrPlayerStatsDto;
+    otr_player_tournaments: Array<OtrPlayerTournamentDto>;
+    otr_tournament: OtrTournamentDetailDto;
+    otr_match: OtrMatchDetailDto;
+    otr_leaderboard: OtrLeaderboardPageDto;
+    otr_beatmap_stats: OtrBeatmapStatsDto;
 }

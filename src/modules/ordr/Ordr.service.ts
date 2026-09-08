@@ -86,7 +86,7 @@ export class OrdrService extends AbstractService {
     public async preset(discordID: string): Promise<OrdrPresetDto | null> {
         const response = await this.http.getResponse<OrdrPresetDto>("/ordr/presets/bot", {
             params: {
-                key: this.config.ordr.verificationKey,
+                key: this.config.ordr.verification_key,
                 discord_id: discordID,
             },
             validateStatus: (status) => status === 200 || status === 404,
@@ -347,10 +347,10 @@ export class OrdrService extends AbstractService {
         const filename = basename(replayName).slice(0, 128) || "replay.osr";
 
         form.append("replayFile", replayFile, filename);
-        this.append(form, "verificationKey", this.config.ordr.verificationKey);
+        this.append(form, "verificationKey", this.config.ordr.verification_key);
 
         if (config.source === EOrdrConfigSource.Preset) {
-            this.append(form, "skin", config.settings.skin || this.config.ordr.defaultSkin);
+            this.append(form, "skin", config.settings.skin || this.config.ordr.default_skin);
             this.append(form, "resolution", config.settings.resolution);
             this.append(form, "discordUserId", discordUserID);
             return form;

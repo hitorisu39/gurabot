@@ -1,5 +1,5 @@
 import { AbstractService } from "@/core/framework/AbstractService";
-import { EMatchCostTeam } from "@domain/osu/enums/MatchCost.enum";
+import { EMultiplayerTeam } from "@domain/osu/enums/Multiplayer.enum";
 import {
     MatchCostCalculationDto,
     MatchCostGameDto,
@@ -13,7 +13,7 @@ interface IPlayerAccumulator {
     weightedRatioSum: number;
     totalWeight: number;
     gamesPlayed: number;
-    teams: Map<EMatchCostTeam, number>;
+    teams: Map<EMultiplayerTeam, number>;
 }
 
 export class MatchCostEvaluatorService extends AbstractService {
@@ -237,9 +237,9 @@ export class MatchCostEvaluatorService extends AbstractService {
         for (const game of games) {
             const winner = this.gameWinner(game, ezMultiplier);
 
-            if (winner === EMatchCostTeam.Red) {
+            if (winner === EMultiplayerTeam.Red) {
                 red++;
-            } else if (winner === EMatchCostTeam.Blue) {
+            } else if (winner === EMultiplayerTeam.Blue) {
                 blue++;
             }
         }
@@ -328,9 +328,9 @@ export class MatchCostEvaluatorService extends AbstractService {
             }
 
             const winner = this.gameWinner(game, ezMultiplier);
-            if (winner === EMatchCostTeam.Red) {
+            if (winner === EMultiplayerTeam.Red) {
                 red++;
-            } else if (winner === EMatchCostTeam.Blue) {
+            } else if (winner === EMultiplayerTeam.Blue) {
                 blue++;
             }
         }
@@ -343,7 +343,7 @@ export class MatchCostEvaluatorService extends AbstractService {
         return finalWinner ? lastGame.id : undefined;
     }
 
-    private gameWinner(game: MatchCostGameDto, ezMultiplier: number): EMatchCostTeam | undefined {
+    private gameWinner(game: MatchCostGameDto, ezMultiplier: number): EMultiplayerTeam | undefined {
         let red = 0;
         let blue = 0;
         let hasRed = false;
@@ -353,11 +353,11 @@ export class MatchCostEvaluatorService extends AbstractService {
             const value = this.score(score, ezMultiplier);
 
             switch (score.team) {
-                case EMatchCostTeam.Red:
+                case EMultiplayerTeam.Red:
                     red += value;
                     hasRed = true;
                     break;
-                case EMatchCostTeam.Blue:
+                case EMultiplayerTeam.Blue:
                     blue += value;
                     hasBlue = true;
                     break;
@@ -369,11 +369,11 @@ export class MatchCostEvaluatorService extends AbstractService {
         }
 
         if (red > blue) {
-            return EMatchCostTeam.Red;
+            return EMultiplayerTeam.Red;
         }
 
         if (blue > red) {
-            return EMatchCostTeam.Blue;
+            return EMultiplayerTeam.Blue;
         }
 
         return undefined;
@@ -395,8 +395,8 @@ export class MatchCostEvaluatorService extends AbstractService {
         return Math.max(0, this.matchCostBase + (value - 1) * this.matchCostSpread);
     }
 
-    private resolveTeam(teams: Map<EMatchCostTeam, number>): EMatchCostTeam | undefined {
-        let result: EMatchCostTeam | undefined;
+    private resolveTeam(teams: Map<EMultiplayerTeam, number>): EMultiplayerTeam | undefined {
+        let result: EMultiplayerTeam | undefined;
         let highestCount = 0;
 
         for (const [team, count] of teams) {

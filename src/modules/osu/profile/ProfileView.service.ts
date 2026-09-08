@@ -524,7 +524,7 @@ export class ProfileViewService extends AbstractViewService<ProfileViewDto, EPro
             .setThumbnail(ProfileFormatter.avatar(profile.provider, profile.id, timestamp))
             .setAuthor({
                 name: author,
-                iconURL: DiscordFormatter.countryFlag(this.config.app.flagsDomain, profile.countryCode),
+                iconURL: DiscordFormatter.countryFlag(this.config.app.flags, profile.countryCode),
                 url: ProfileFormatter.link(profile.provider, profile.id, profile.mode),
             });
 

@@ -22,7 +22,6 @@ export function isValidDate(value: Date | null | undefined): value is Date {
  */
 export function isTimezoneOffset(value: string): boolean {
     const normalized = normalizeTimezone(value);
-
     return /^UTC[+-]\d{1,2}(?::\d{2})?$/i.test(normalized) && isValidTimezoneOffset(normalized);
 }
 
@@ -41,7 +40,6 @@ export function normalizeTimezone(value?: string | null): string {
     }
 
     const normalized = value.trim();
-
     if (/^(?:UTC|Z)$/i.test(normalized)) {
         return "UTC+0";
     }
@@ -101,7 +99,6 @@ export function dateRangeContains(range: ICommandDateRange, value: Date): boolea
 
     if (range.min) {
         const min = range.min.getTime();
-
         passesMin = range.minInclusive ? timestamp >= min : timestamp > min;
     }
 
@@ -109,7 +106,6 @@ export function dateRangeContains(range: ICommandDateRange, value: Date): boolea
 
     if (range.max) {
         const max = range.max.getTime();
-
         passesMax = range.maxInclusive ? timestamp <= max : timestamp < max;
     }
 

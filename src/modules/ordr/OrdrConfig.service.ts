@@ -19,7 +19,7 @@ interface IOrdrConfigRecord {
 
 export class OrdrConfigService extends AbstractService {
     public defaults(): OrdrSettingsDto {
-        return createDefaultOrdrSettings(this.config.ordr.defaultSkin);
+        return createDefaultOrdrSettings(this.config.ordr.default_skin);
     }
 
     public async getOrCreate(userID: string, repository?: TRepository): Promise<OrdrConfigDto> {

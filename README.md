@@ -165,10 +165,11 @@ gurabot relies on projects and services from the osu!, Discord, Node.js, .NET, P
 Special thanks to:
 - [o!rdr](https://ordr.issou.best/) for replay rendering functionality.
 - [osu!daily](https://osudaily.net/) for pp <-> rank conversion functionality.
-- [osu!track](https://ameobea.me/osutrack/) for historic ranking data.
-- [osekai](https://inex.osekai.net/) for medals and other data.
-- [osu!stats](https://osustats.ppy.sh/) for scores data.
-- [huismetbenen](https://snipe.huismetbenen.nl/) for national rankings.
+- [osu!track](https://ameobea.me/osutrack/) for historic rankings data.
+- [osekai](https://inex.osekai.net/) for medals and other related data.
+- [osu!stats](https://osustats.ppy.sh/) for global scores data.
+- [huismetbenen](https://snipe.huismetbenen.nl/) for national rankings data.
+- [o!TR](https://otr.stagec.net/) for (unofficial) tournament rating and other related data.
 - everyone who has contributed code, testing, bug reports, suggestions, or provided other support.
 
 # License

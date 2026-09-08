@@ -23,7 +23,7 @@ export class AuthService extends AbstractService {
     declare private http: HttpClient;
 
     public async init(): Promise<void> {
-        const port = this.config.web.authPort;
+        const port = this.config.web.auth_port;
 
         this.http = new HttpClient(this.logger, { name: "WebAuth" });
 
@@ -181,7 +181,7 @@ export class AuthService extends AbstractService {
                   `<a href="${this.config.app.domain}/privacy">Privacy</a>`,
                   `</nav>`,
               ].join("")
-            : `You can contact us <a href="${this.config.app.supportServer}">here</a> for support.`;
+            : `You can contact us <a href="${this.config.app.support_server}">here</a> for support.`;
 
         const checkmarkImage = success ? authConnectionOkImage : authConnectionFailImage;
 
