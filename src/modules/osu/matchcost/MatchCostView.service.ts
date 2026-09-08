@@ -6,7 +6,7 @@ import { MatchCostPlayerResultDto, MatchCostTeamScoreDto } from "@domain/osu/Mat
 import { ProfileFormatter } from "@domain/osu/formatters/Profile.formatter";
 import { MatchCostViewDto } from "@domain/osu/views/MatchCost.view";
 import { AdapterProvider } from "@generated/adapter/types";
-import { EMatchCostTeam } from "@domain/osu/enums/MatchCost.enum";
+import { EMultiplayerTeam } from "@domain/osu/enums/Multiplayer.enum";
 import { discordEmoteBlueTeam, discordEmoteRedTeam } from "@domain/discord/configs/Emotes.config";
 import { MultiplayerFormatter } from "@domain/osu/formatters/Multiplayer.formatter";
 
@@ -35,8 +35,8 @@ export class MatchCostViewService extends AbstractService {
     private buildTeamView(embed: Embed, data: MatchCostViewDto): void {
         const allPlayers = data.calculation.players;
 
-        const red = allPlayers.filter((player) => player.team === EMatchCostTeam.Red);
-        const blue = allPlayers.filter((player) => player.team === EMatchCostTeam.Blue);
+        const red = allPlayers.filter((player) => player.team === EMultiplayerTeam.Red);
+        const blue = allPlayers.filter((player) => player.team === EMultiplayerTeam.Blue);
 
         if (data.calculation.teamScore) {
             const label = data.ended ? "Final score" : "Current score";

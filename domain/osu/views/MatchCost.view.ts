@@ -1,6 +1,6 @@
 import { Exclude, Expose, Type } from "class-transformer";
 import { MatchCostCalculationDto } from "@domain/osu/MatchCost.dto";
-import { EMatchCostTargetType } from "../enums/MatchCost.enum";
+import { EMultiplayerTargetType } from "../enums/Multiplayer.enum";
 
 @Exclude()
 export class MatchCostViewDto {
@@ -8,7 +8,7 @@ export class MatchCostViewDto {
     declare id: number;
 
     @Expose()
-    declare type: EMatchCostTargetType;
+    declare type: EMultiplayerTargetType;
 
     @Expose()
     declare name: string;

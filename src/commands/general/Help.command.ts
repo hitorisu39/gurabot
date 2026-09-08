@@ -37,7 +37,7 @@ export class HelpCommand extends AbstractCommand {
                 },
                 {
                     name: "Discord Server",
-                    value: `[Join](${this.config.app.supportServer})`,
+                    value: `[Join](${this.config.app.support_server})`,
                     inline: true,
                 },
                 {

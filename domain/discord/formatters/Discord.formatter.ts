@@ -23,11 +23,13 @@ export class DiscordFormatter {
         return `${domain}/${fileName}.${extension}`;
     }
 
-    public static countryEmoji(countryCode: string): string {
+    public static countryEmoji(countryCode?: string | null): string {
+        if (!countryCode) return "🌐";
+
         const code = countryCode.trim().toUpperCase();
 
         if (!/^[A-Z]{2}$/.test(code)) {
-            return "🏳️";
+            return "🌐";
         }
 
         return String.fromCodePoint(...[...code].map((char) => 0x1f1e6 + char.charCodeAt(0) - 65));
@@ -36,7 +38,6 @@ export class DiscordFormatter {
     public static link(label: string | number, url: string, name?: string | number | null, backtick?: boolean): string {
         const formattedLabel = backtick ? `\`${label}\`` : label;
         if (name) return `[${formattedLabel}](${url} "${name}")`;
-
         return `[${formattedLabel}](${url})`;
     }
 
@@ -82,8 +83,12 @@ export class DiscordFormatter {
         return arrowMap[direction];
     }
 
-    public static delta(value: number): string {
-        const prefix = value > 0 ? "+" : "";
+    public static empty(): string {
+        return "\u200B";
+    }
+
+    public static delta(value: number | string): string {
+        const prefix = Number(value) > 0 ? "+" : "";
         return `${prefix}${DiscordFormatter.number(value)}`;
     }
 

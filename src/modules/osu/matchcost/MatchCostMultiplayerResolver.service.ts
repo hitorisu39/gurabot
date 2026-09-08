@@ -1,7 +1,7 @@
 import { Import } from "@/core/decorators";
 import { AbstractService } from "@/core/framework/AbstractService";
 import { OsuService } from "@/modules/osu/Osu.service";
-import { EMatchCostTargetType, EMatchCostTeam } from "@domain/osu/enums/MatchCost.enum";
+import { EMultiplayerTargetType, EMultiplayerTeam } from "@domain/osu/enums/Multiplayer.enum";
 import {
     MatchCostGameDto,
     MatchCostMatchDto,
@@ -89,10 +89,10 @@ export class MatchCostMultiplayerResolverService extends AbstractService {
         let match: MatchCostMatchDto;
 
         switch (target.type) {
-            case EMatchCostTargetType.Match:
+            case EMultiplayerTargetType.Match:
                 match = await this.resolveMatch(target.id);
                 break;
-            case EMatchCostTargetType.Room:
+            case EMultiplayerTargetType.Room:
                 match = await this.resolveRoom(target.id);
                 break;
         }
@@ -129,7 +129,7 @@ export class MatchCostMultiplayerResolverService extends AbstractService {
 
         return plainToInstance(MatchCostMatchDto, {
             id,
-            type: EMatchCostTargetType.Match,
+            type: EMultiplayerTargetType.Match,
             name: response.match.name,
             ended: !!response.match.endTime,
             teamVs,
@@ -164,7 +164,7 @@ export class MatchCostMultiplayerResolverService extends AbstractService {
 
         return plainToInstance(MatchCostMatchDto, {
             id,
-            type: EMatchCostTargetType.Room,
+            type: EMultiplayerTargetType.Room,
             name: response.room.name,
             ended: !response.room.active,
             teamVs,
@@ -311,12 +311,12 @@ export class MatchCostMultiplayerResolverService extends AbstractService {
         return `${target.type}:${target.id}`;
     }
 
-    private parseTeam(value?: string): EMatchCostTeam | undefined {
+    private parseTeam(value?: string): EMultiplayerTeam | undefined {
         switch (value?.toLowerCase()) {
             case "red":
-                return EMatchCostTeam.Red;
+                return EMultiplayerTeam.Red;
             case "blue":
-                return EMatchCostTeam.Blue;
+                return EMultiplayerTeam.Blue;
             default:
                 return undefined;
         }

@@ -55,16 +55,17 @@ export class ScoreFormatter {
         return comboStr;
     }
 
-    public static miss(count?: number, zero?: boolean): string {
+    public static miss(count?: number, zero: boolean = false): string {
         if ((count && count > 0) || zero) {
             return `${count}${discordEmoteMiss}`;
         }
         return "";
     }
 
-    public static mods(mods: Array<ParsedMod>): string {
-        if (!mods.length) return "";
-        return `+${mods.map((mod) => this.mod(mod)).join("")}`;
+    public static mods(mods: Array<ParsedMod>, sign: boolean = true, nomod: boolean = false): string {
+        const signText = sign ? "+" : "";
+        if (!mods.length) return nomod ? `${signText}NM` : "";
+        return `${signText}${mods.map((mod) => this.mod(mod)).join("")}`;
     }
 
     public static accuracy(acc: number): string {

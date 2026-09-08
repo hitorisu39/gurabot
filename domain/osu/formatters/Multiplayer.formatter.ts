@@ -1,12 +1,12 @@
-import { EMatchCostTargetType } from "../enums/MatchCost.enum";
+import { EMultiplayerTargetType } from "../enums/Multiplayer.enum";
 
 export class MultiplayerFormatter {
-    public static link(type: EMatchCostTargetType, id: number): string {
+    public static link(type: EMultiplayerTargetType, id: number): string {
         switch (type) {
-            case EMatchCostTargetType.Room:
+            case EMultiplayerTargetType.Room:
                 return `https://osu.ppy.sh/multiplayer/rooms/${id}`;
             default:
-            case EMatchCostTargetType.Match:
+            case EMultiplayerTargetType.Match:
                 return `https://osu.ppy.sh/community/matches/${id}`;
         }
     }

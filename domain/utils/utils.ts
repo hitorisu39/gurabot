@@ -40,6 +40,29 @@ export function smoothstep(edge0: number, edge1: number, value: number): number 
     return normalized * normalized * (3 - 2 * normalized);
 }
 
+export function median(values: ReadonlyArray<number>): number {
+    if (!values.length) {
+        return 0;
+    }
+
+    const sorted = [...values].sort((a, b) => a - b);
+    const middle = Math.floor(sorted.length / 2);
+
+    if (sorted.length % 2) {
+        return sorted[middle]!;
+    }
+
+    return (sorted[middle - 1]! + sorted[middle]!) / 2;
+}
+
+export function minimum<T>(values: ReadonlyArray<T>, selector: (value: T) => number): T {
+    return values.reduce((best, value) => (selector(value) < selector(best) ? value : best));
+}
+
+export function maximum<T>(values: ReadonlyArray<T>, selector: (value: T) => number): T {
+    return values.reduce((best, value) => (selector(value) > selector(best) ? value : best));
+}
+
 export function isValidNumber(value: number | undefined | null): value is number {
     return typeof value === "number" && Number.isFinite(value);
 }

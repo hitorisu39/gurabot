@@ -1,5 +1,5 @@
 import { MatchCostTargetDto } from "@domain/osu/MatchCost.dto";
-import { EMatchCostTargetType } from "../enums/MatchCost.enum";
+import { EMultiplayerTargetType } from "../enums/Multiplayer.enum";
 
 export class MultiplayerTargetParser {
     private static readonly stableRegex = /^https?:\/\/osu\.ppy\.sh\/(?:community\/matches|mp)\/(\d+)\/?$/i;
@@ -15,7 +15,7 @@ export class MultiplayerTargetParser {
         const stable = trimmed.match(this.stableRegex);
         if (stable?.[1]) {
             return {
-                type: EMatchCostTargetType.Match,
+                type: EMultiplayerTargetType.Match,
                 id: Number(stable[1]),
             };
         }
@@ -23,7 +23,7 @@ export class MultiplayerTargetParser {
         const room = trimmed.match(this.roomRegex);
         if (room?.[1]) {
             return {
-                type: EMatchCostTargetType.Room,
+                type: EMultiplayerTargetType.Room,
                 id: Number(room[1]),
             };
         }
