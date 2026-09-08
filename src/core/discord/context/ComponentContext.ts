@@ -6,7 +6,7 @@ import {
     ModalBuilder,
     ModalSubmitInteraction,
 } from "discord.js";
-import { DiscordContext } from "./DiscordContext";
+import { DiscordContext, IDiscordContextEvents } from "./DiscordContext";
 import { TMessagePayload } from "./MessagePayload";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 
@@ -33,8 +33,11 @@ export class ComponentContext extends DiscordContext {
      */
     private acknowledgement: TComponentAcknowledgement = "none";
 
-    public constructor(public readonly interaction: MessageComponentInteraction | ModalSubmitInteraction) {
-        super();
+    public constructor(
+        public readonly interaction: MessageComponentInteraction | ModalSubmitInteraction,
+        events?: IDiscordContextEvents,
+    ) {
+        super(events);
     }
 
     public get author() {
@@ -65,7 +68,7 @@ export class ComponentContext extends DiscordContext {
      * Sends/edits this component's NEW response.
      * This never intentionally modifies the component's source message.
      */
-    public async respond(options: TMessagePayload): Promise<Message | null> {
+    public async doRespond(options: TMessagePayload): Promise<Message | null> {
         /**
          * If we've already created a separate response message, edit that exact message.
          */
@@ -118,7 +121,7 @@ export class ComponentContext extends DiscordContext {
     /**
      * Send an additional response.
      */
-    public async followUp(options: TMessagePayload): Promise<Message | null> {
+    public async doFollowUp(options: TMessagePayload): Promise<Message | null> {
         if (this.acknowledgement === "none" && !this.interaction.deferred && !this.interaction.replied) {
             return this.respond(options);
         }

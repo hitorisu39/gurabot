@@ -2,6 +2,7 @@ import { Message } from "discord.js";
 import { CommandContext } from "./CommandContext";
 import { type TMessagePayload } from "./MessagePayload";
 import { Trace } from "@/core/decorators";
+import { IDiscordContextEvents } from "./DiscordContext";
 
 export class MessageContext extends CommandContext {
     public readonly isSlash = false;
@@ -17,8 +18,9 @@ export class MessageContext extends CommandContext {
     public constructor(
         public readonly message: Message,
         public readonly prefix: string,
+        events?: IDiscordContextEvents,
     ) {
-        super();
+        super(events);
 
         const contentWithoutPrefix = message.content.slice(prefix.length).trim();
         const rawArgs = contentWithoutPrefix.split(/ +/);
@@ -67,7 +69,7 @@ export class MessageContext extends CommandContext {
      * Send/edit the primary command response.
      */
     @Trace()
-    public async respond(options: TMessagePayload): Promise<Message | null> {
+    public async doRespond(options: TMessagePayload): Promise<Message | null> {
         if (this.responseMessage) {
             this.responseMessage = await this.responseMessage.edit(this.toMessageEditPayload(options));
 
@@ -87,7 +89,7 @@ export class MessageContext extends CommandContext {
      * Send an additional channel message.
      */
     @Trace()
-    public async followUp(options: TMessagePayload): Promise<Message | null> {
+    public async doFollowUp(options: TMessagePayload): Promise<Message | null> {
         if (!this.channel.isSendable()) {
             return null;
         }

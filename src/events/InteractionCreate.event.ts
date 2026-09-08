@@ -14,7 +14,7 @@ export class InteractionCreateEvent extends AbstractDiscordEvent<"interactionCre
         }
 
         if (interaction.isChatInputCommand()) {
-            const ctx = new SlashContext(interaction);
+            const ctx = new SlashContext(interaction, this.contextEvents);
             return this.dispatcher.dispatch("discord", "command", ctx);
         }
 

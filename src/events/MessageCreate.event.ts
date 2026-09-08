@@ -46,7 +46,7 @@ export class MessageCreateEvent extends AbstractDiscordEvent<"messageCreate"> {
             return;
         }
 
-        const ctx = new MessageContext(message, prefix);
+        const ctx = new MessageContext(message, prefix, this.contextEvents);
         this.dispatcher.dispatch("discord", "command", ctx);
     }
 }

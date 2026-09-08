@@ -2,15 +2,18 @@ import { ChatInputCommandInteraction, Message, MessageFlags } from "discord.js";
 import { CommandContext } from "./CommandContext";
 import { type TMessagePayload } from "./MessagePayload";
 import { Trace } from "@/core/decorators";
+import { IDiscordContextEvents } from "./DiscordContext";
 
 export class SlashContext extends CommandContext {
     public readonly isSlash = true;
 
     public readonly commandName: string;
 
-    public constructor(public readonly interaction: ChatInputCommandInteraction) {
-        super();
-
+    public constructor(
+        public readonly interaction: ChatInputCommandInteraction,
+        events?: IDiscordContextEvents,
+    ) {
+        super(events);
         this.commandName = interaction.commandName;
     }
 
@@ -57,7 +60,7 @@ export class SlashContext extends CommandContext {
      * Send/edit the primary slash-command response.
      */
     @Trace()
-    public async respond(options: TMessagePayload): Promise<Message | null> {
+    public async doRespond(options: TMessagePayload): Promise<Message | null> {
         if (this.interaction.deferred || this.interaction.replied) {
             this.responseMessage = await this.interaction.editReply(this.toInteractionEditPayload(options));
             return this.responseMessage;
@@ -72,7 +75,7 @@ export class SlashContext extends CommandContext {
      * If nothing has acknowledged the interaction yet, promote this to the primary response.
      */
     @Trace()
-    public async followUp(options: TMessagePayload): Promise<Message | null> {
+    public async doFollowUp(options: TMessagePayload): Promise<Message | null> {
         if (!this.interaction.deferred && !this.interaction.replied) {
             return this.respond(options);
         }

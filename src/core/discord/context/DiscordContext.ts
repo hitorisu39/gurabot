@@ -16,6 +16,18 @@ import {
 
 import { IMessageOptions, IResponseOptions, TMessagePayload } from "./MessagePayload";
 
+export type TDiscordResponseKind = "respond" | "followUp";
+
+export interface IDiscordResponseEvent {
+    readonly ctx: DiscordContext;
+    readonly kind: TDiscordResponseKind;
+    readonly message: Message;
+}
+
+export interface IDiscordContextEvents {
+    response?(event: IDiscordResponseEvent): void;
+}
+
 /**
  * Base abstraction for every execution context.
  * Defines the behaviour shared between message commands, slash commands, components and modals.
@@ -54,17 +66,43 @@ export abstract class DiscordContext {
      */
     public abstract get isDeferred(): boolean;
 
+    protected constructor(private readonly events: IDiscordContextEvents = {}) {}
+
     /**
-     * Send or modify this context's primary response.
-     * Calling respond() repeatedly edits the same logical primary response rather than creating additional messages.
+     * Send/edit this context's primary response.
+     * The actual Discord implementation is delegated to doRespond(),
+     * while lifecycle events are handled centrally here.
      */
-    public abstract respond(options: TMessagePayload): Promise<Message | null>;
+    public async respond(options: TMessagePayload): Promise<Message | null> {
+        const message = await this.doRespond(options);
+        if (message) {
+            this.emitResponse("respond", message);
+        }
+
+        return message;
+    }
 
     /**
      * Send an additional response.
-     * If no primary response exists yet, implementations may promote this to respond().
      */
-    public abstract followUp(options: TMessagePayload): Promise<Message | null>;
+    public async followUp(options: TMessagePayload): Promise<Message | null> {
+        const message = await this.doFollowUp(options);
+        if (message) {
+            this.emitResponse("followUp", message);
+        }
+
+        return message;
+    }
+
+    /**
+     * Discord-specific primary response implementation.
+     */
+    protected abstract doRespond(options: TMessagePayload): Promise<Message | null>;
+
+    /**
+     * Discord-specific follow-up implementation.
+     */
+    protected abstract doFollowUp(options: TMessagePayload): Promise<Message | null>;
 
     /**
      * Let Discord know that producing the primary response
@@ -119,6 +157,14 @@ export abstract class DiscordContext {
         }
 
         return this.sendTo(this.channel, options);
+    }
+
+    private emitResponse(kind: TDiscordResponseKind, message: Message): void {
+        this.events.response?.({
+            ctx: this,
+            kind,
+            message,
+        });
     }
 
     /**
