@@ -6,7 +6,7 @@ import { EApplicationError, Exception } from "@domain/core/Exception";
 import { ProviderMeta } from "@generated/adapter";
 import { AttachmentBuilder } from "discord.js";
 import { OsuService } from "@/modules/osu/Osu.service";
-import { SkillCalculatorService } from "@/modules/osu/skills/SkillCalculator.service";
+import { SkillEvaluatorService } from "@/modules/osu/skills/SkillEvaluator.service";
 import { GraphSkillsCurveService } from "@/modules/osu/graph/GraphSkillsCurve.service";
 import { ProfileViewService } from "@/modules/osu/profile/ProfileView.service";
 import { scoreBestQueryLimit } from "@domain/osu/configs/Score.config";
@@ -19,13 +19,12 @@ import { scoreBestQueryLimit } from "@domain/osu/configs/Score.config";
 @Category(ECommandCategory.Osu)
 export abstract class AbstractGraphSkillsCurveCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
-    @Import() declare private readonly skillCalculatorService: SkillCalculatorService;
+    @Import() declare private readonly skillEvaluatorService: SkillEvaluatorService;
     @Import() declare private readonly graphSkillsCurveService: GraphSkillsCurveService;
     @Import() declare private readonly profileViewService: ProfileViewService;
 
     public async execute(ctx: CommandContext): Promise<void> {
         const target = await this.resolveTarget(ctx);
-
         const timestamp = Date.now();
 
         const { user, scores } = await this.osuService.userWithScores({
@@ -52,7 +51,7 @@ export abstract class AbstractGraphSkillsCurveCommand extends AbstractOsuCommand
             );
         }
 
-        const result = this.skillCalculatorService.calculateDistribution(target.mode, populated);
+        const result = this.skillEvaluatorService.calculateDistribution(target.mode, populated);
         const categories = result.categories.filter((category) => category.values.length > 0);
 
         if (!categories.length) {
@@ -70,7 +69,6 @@ export abstract class AbstractGraphSkillsCurveCommand extends AbstractOsuCommand
 
         await ctx.respond({
             embeds: [embed],
-
             files: [
                 new AttachmentBuilder(image, {
                     name: filename,

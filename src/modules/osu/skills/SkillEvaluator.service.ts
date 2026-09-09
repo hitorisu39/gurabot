@@ -56,12 +56,12 @@ interface ISkillDefinition {
     label: string;
 }
 
-export class SkillCalculatorService extends AbstractService {
+export class SkillEvaluatorService extends AbstractService {
     private readonly topScoreCount = 3;
     private readonly standardWeightDecay = 0.901;
     private readonly standardWeightDivisor = 10;
 
-    public calculate(mode: GameMode, scores: Array<PopulatedScore>): SkillCalculationResultDto {
+    public evaluate(mode: GameMode, scores: Array<PopulatedScore>): SkillCalculationResultDto {
         const evaluated = this.evaluateScores(mode, scores);
         const weighted = mode === GameMode.Standard;
 
@@ -334,7 +334,6 @@ export class SkillCalculatorService extends AbstractService {
         const combo = this.comboRatio(input);
 
         const missRate = input.misses / Math.max(1, input.maxCombo);
-
         const movementExecution = 0.86 + 0.24 * Math.pow(accuracy, 2) + 0.1 * Math.sqrt(combo);
 
         const movementMissPenalty = Math.exp(-Math.min(0.3, missRate * 8));
