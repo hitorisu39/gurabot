@@ -27,7 +27,7 @@ export class Client {
     /**
      * Underlying Discord.js client instance.
      */
-    private readonly client: DiscordClient;
+    public readonly client: DiscordClient;
 
     /**
      * Underlying cluster client.
