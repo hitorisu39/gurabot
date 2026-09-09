@@ -3,7 +3,7 @@ import { AbstractDiscordEvent } from "@/core/discord/AbstractDiscordEvent";
 import { MessageContext } from "@/core/discord/context/MessageContext";
 import { ChannelService } from "@/modules/channel/Channel.service";
 import { GuildService } from "@/modules/guild/Guild.service";
-import { BeatmapResolverService } from "@/modules/osu/BeatmapResolver.service";
+import { BeatmapObserverService } from "@/modules/osu/BeatmapObserver.service";
 import { discordRegexSpecialCharacters } from "@domain/discord/configs/Discord.config";
 import { OmitPartialGroupDMChannel, Message, PermissionFlagsBits } from "discord.js";
 
@@ -12,12 +12,20 @@ export class MessageCreateEvent extends AbstractDiscordEvent<"messageCreate"> {
 
     @Import() declare private readonly guildService: GuildService;
     @Import() declare private readonly channelService: ChannelService;
-    @Import() declare private readonly beatmapResolverService: BeatmapResolverService;
+    @Import() declare private readonly beatmapObserverService: BeatmapObserverService;
 
     public async execute(message: OmitPartialGroupDMChannel<Message<boolean>>): Promise<void> {
-        // Get the possible beatmap from the message before we process it.
-        const matched = await this.beatmapResolverService.fromMessage(message, true);
-        if (matched) this.channelService.storeBeatmap(message.channelId, matched).catch(this.logger.error);
+        /**
+         * Observe beatmaps sent by users and other bots.
+         * Beatmaps sent by us are observed via the response event.
+         */
+        if (message.author.id !== this.discord.client.user?.id) {
+            this.beatmapObserverService
+                .observe(message)
+                .catch((error) =>
+                    this.logger.warn({ error, messageID: message.id }, "Failed to observe beatmap from message."),
+                );
+        }
 
         if (message.author.bot) return;
 
