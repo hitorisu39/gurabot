@@ -4,7 +4,7 @@ import { EApplicationError, Exception } from "@domain/core/Exception";
 import { SkillStatsViewDto } from "@domain/osu/views/SkillStats.view";
 import { ProviderMeta } from "@generated/adapter";
 import { OsuService } from "@/modules/osu/Osu.service";
-import { SkillCalculatorService } from "@/modules/osu/skills/SkillCalculator.service";
+import { SkillEvaluatorService } from "@/modules/osu/skills/SkillEvaluator.service";
 import { AbstractOsuCommand } from "../AbstractOsuCommand";
 import { ECommandCategory } from "@domain/core/Command";
 import { scoreBestQueryLimit } from "@domain/osu/configs/Score.config";
@@ -12,7 +12,7 @@ import { scoreBestQueryLimit } from "@domain/osu/configs/Score.config";
 @Category(ECommandCategory.Osu)
 export abstract class AbstractSkillCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
-    @Import() declare private readonly skillCalculatorService: SkillCalculatorService;
+    @Import() declare private readonly skillEvaluatorService: SkillEvaluatorService;
 
     protected async createSkillData(ctx: CommandContext): Promise<SkillStatsViewDto> {
         const target = await this.resolveTarget(ctx);
@@ -41,7 +41,7 @@ export abstract class AbstractSkillCommand extends AbstractOsuCommand {
             );
         }
 
-        const result = this.skillCalculatorService.calculate(target.mode, populated);
+        const result = this.skillEvaluatorService.evaluate(target.mode, populated);
         const hasValidSkills = result.categories.some((category) => category.topScores.length > 0);
 
         if (!hasValidSkills) {
