@@ -1,0 +1,83 @@
+model FarmDataset {
+    mode        Int      @id
+    snapshotID  Int      @unique @map("snapshot_id")
+    checkedAt   DateTime @default(now()) @map("checked_at")
+    updatedAt   DateTime @updatedAt @map("updated_at")
+
+    snapshot FarmSnapshot @relation("farm_dataset_snapshot", fields: [snapshotID], references: [id], onDelete: Restrict)
+
+    @@map("farm_datasets")
+}
+
+model FarmSnapshot {
+    id              Int      @id @default(autoincrement())
+    mode            Int
+    sourceUpdatedAt DateTime @map("source_updated_at")
+    importedAt      DateTime @default(now()) @map("imported_at")
+    mapsetCount     Int      @default(0) @map("mapset_count")
+    mapCount        Int      @default(0) @map("map_count")
+
+    dataset FarmDataset? @relation("farm_dataset_snapshot")
+    mapsets FarmMapset[]
+
+    @@index([mode, importedAt])
+    @@map("farm_snapshots")
+}
+
+model FarmMapset {
+    snapshotID Int    @map("snapshot_id")
+    mapsetID   Int    @map("mapset_id")
+
+    artist String
+    title  String
+    bpm    Float
+
+    snapshot FarmSnapshot @relation(fields: [snapshotID], references: [id], onDelete: Cascade)
+    maps FarmMap[]
+
+    @@id([snapshotID, mapsetID])
+    @@map("farm_mapsets")
+}
+
+model FarmMap {
+    snapshotID Int @map("snapshot_id")
+    beatmapID  Int @map("beatmap_id")
+    mapsetID   Int @map("mapset_id")
+    mods       Int
+
+    farmValue   Float @map("farm_value")
+    farmability Float
+
+    pp       Float?
+    adjusted Float
+
+    version String
+
+    length          Int
+    effectiveLength Float @map("effective_length")
+    effectiveBpm    Float @map("effective_bpm")
+
+    stars     Float
+    passCount Int   @map("pass_count")
+
+    ageHours Float    @map("age_hours")
+    rankedAt DateTime @map("ranked_at")
+
+    ar          Float
+    effectiveAr Float @map("effective_ar")
+    cs          Float
+    od          Float
+    hp          Float
+
+    mapset FarmMapset @relation(fields: [snapshotID, mapsetID], references: [snapshotID, mapsetID], onDelete: Cascade)
+
+    @@id([snapshotID, beatmapID, mods])
+    @@index([snapshotID, farmability])
+    @@index([snapshotID, pp])
+    @@index([snapshotID, stars])
+    @@index([snapshotID, effectiveBpm])
+    @@index([snapshotID, effectiveLength])
+    @@index([snapshotID, rankedAt])
+    @@index([snapshotID, mods, farmability])
+    @@map("farm_maps")
+}
