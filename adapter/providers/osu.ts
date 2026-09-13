@@ -20,6 +20,7 @@ import {
 import { MatchEvents, RealtimeRoomEvents } from "../models/multiplayer";
 import { Score } from "../models/score";
 import { RankingStatistics, User } from "../models/user";
+import { AccuracyStatistics, calculateAccuracy, calculateManiaGrade } from "../osu/utils";
 
 //#region Transformers
 
@@ -221,6 +222,63 @@ const matchEventTypeToPlain: Record<string, string> = {
     [MatchEventType.PlayerKicked]: "player-kicked",
     [MatchEventType.PlayerLeft]: "player-left",
 };
+
+/**
+ * osu!mania accuracy correction for stable scores.
+ */
+function getScoreAccuracyStatistics(raw: any): AccuracyStatistics {
+    const statistics = raw.statistics ?? {};
+
+    return {
+        miss: statistics.miss ?? 0,
+        meh: statistics.meh ?? 0,
+        ok: statistics.ok ?? 0,
+        good: statistics.good ?? 0,
+        great: statistics.great ?? 0,
+        perfect: statistics.perfect ?? 0,
+    };
+}
+
+function hasSilverGradeMod(raw: any): boolean {
+    if (!Array.isArray(raw.mods)) {
+        return false;
+    }
+
+    return raw.mods.some((mod: any) => {
+        const acronym = typeof mod === "string" ? mod : mod?.acronym;
+        return acronym === "HD" || acronym === "FL" || acronym === "FI";
+    });
+}
+
+function mapScoreAccuracy(value: number, raw: any): number {
+    if (raw.ruleset_id !== 3) {
+        return value;
+    }
+
+    const legacyTotalScore = raw.legacy_total_score;
+    if (!legacyTotalScore) {
+        return value;
+    }
+
+    return calculateAccuracy(3, getScoreAccuracyStatistics(raw));
+}
+
+function mapScoreGrade(value: string, raw: any): string {
+    const apiGrade = gradeToInstance[value] ?? value;
+
+    if (raw.ruleset_id !== 3) {
+        return apiGrade;
+    }
+
+    const legacyTotalScore = raw.legacy_total_score;
+
+    if (!legacyTotalScore) {
+        return apiGrade;
+    }
+
+    const accuracy = calculateAccuracy(3, getScoreAccuracyStatistics(raw));
+    return calculateManiaGrade(accuracy, raw.passed !== false, hasSilverGradeMod(raw));
+}
 
 //#endregion
 
@@ -576,7 +634,10 @@ const ScoreMapping: Mapping = {
     processed: "processed",
     ranked: "ranked",
     type: "type",
-    accuracy: "accuracy",
+    accuracy: {
+        path: "accuracy",
+        transform: mapScoreAccuracy,
+    },
     startedAt: "started_at",
     endedAt: "ended_at",
     replay: "replay",
@@ -603,7 +664,7 @@ const ScoreMapping: Mapping = {
     bestID: "best_id",
     grade: {
         path: "rank",
-        transform: (v) => gradeToInstance[v],
+        transform: mapScoreGrade,
     },
     userID: "user_id",
     perfect: "is_perfect_combo",

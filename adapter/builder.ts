@@ -65,16 +65,19 @@ export class SchemaModel {
     }
 }
 
+export type InstanceTransform = (value: any, raw?: any) => any;
+export type PlainTransform = (val: any) => any;
+
 export type TransformConfig = {
-    toInstance?: (val: any) => any;
-    toPlain?: (val: any) => any;
+    toInstance?: InstanceTransform;
+    toPlain?: PlainTransform;
 };
 
 export type EndpointResponseTransform = (data: unknown, args: Record<string, any>) => Promise<unknown> | unknown;
 
 export type MappingConfig =
     | string
-    | { path?: string; default?: any; nested?: Mapping; transform?: ((value: any) => any) | TransformConfig };
+    | { path?: string; default?: any; nested?: Mapping; transform?: InstanceTransform | TransformConfig };
 export type ArgType = FieldType | `${FieldType}?`;
 export type Mapping = Record<string, MappingConfig>;
 
