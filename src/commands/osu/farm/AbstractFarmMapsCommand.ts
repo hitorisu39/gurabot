@@ -21,14 +21,14 @@ import { FarmMapsViewDto } from "@domain/farm/views/FarmMaps.view";
 import { GameMode } from "@generated/adapter/types";
 
 @Help(`
-    Browses farm maps from the osu!pps dataset.
-    Unlike \`/farm recommend\`, no filters are inferred from a player's top plays.
+    Browses farm maps from the osu-pps dataset.
+    Unlike the recommend command, no filters are inferred from a player's top plays.
 
     **Filters**
     \\- __\`pp\`__: average top-play PP, e.g. \`pp>=400\`, \`pp=350-500\`
     \\- __\`length\`__: effective map length in seconds, e.g. \`length<180\`, \`length=120-300\`
     \\- __\`bpm\`__: effective BPM, e.g. \`bpm>=200\`, \`bpm=180-240\`
-    \\- __\`stars\`__: osu!pps star rating, e.g. \`stars>=6\`, \`stars=6.5-7.5\`
+    \\- __\`stars\`__: base (nomod) star rating, e.g. \`stars>=6\`, \`stars=6.5-7.5\`
     \\- __\`ar\`__: effective approach rate, e.g. \`ar>=9.5\`, \`ar=9-10.5\`
     \\- __\`cs\`__: circle size, e.g. \`cs=4\`, \`cs=3.5-5\`
     \\- __\`od\`__: overall difficulty, e.g. \`od>=9\`, \`od=8.5-10\`
@@ -46,7 +46,7 @@ import { GameMode } from "@generated/adapter/types";
 @Examples(
     "farmmaps",
     "farmmaps +dt bpm>=200 length<180",
-    "farmmaps stars=6.5..7.5 sort=pp order=desc",
+    "farmmaps stars=6.5-7.5 sort=pp order=desc",
     "farmmaps ranked>=2024 sort=ranked order=desc",
 )
 @Category(ECommandCategory.Osu)
@@ -128,7 +128,6 @@ export abstract class AbstractFarmMapsCommand extends AbstractCommand {
         };
 
         const data: FarmMapsViewDto = {
-            timestamp: Date.now(),
             authorID: ctx.author.id,
             mode: this.mode.unwrapOr(GameMode.Standard),
             query,

@@ -37,6 +37,11 @@ interface IFarmRecommendCreateResult {
     recommendations: Array<FarmRecommendationDto>;
 }
 
+interface IFarmRecommendProfileResult {
+    profile: PopulatedUser;
+    query: IFarmMapQuery;
+}
+
 export class FarmRecommendService extends AbstractService {
     @Import() declare private readonly osuService: OsuService;
     @Import() declare private readonly calculatorService: CalculatorService;
@@ -47,7 +52,7 @@ export class FarmRecommendService extends AbstractService {
     private readonly candidateLimit = 100;
 
     @Trace()
-    public async create(input: IFarmRecommendCreateInput): Promise<IFarmRecommendCreateResult> {
+    public async profile(input: IFarmRecommendCreateInput): Promise<IFarmRecommendProfileResult> {
         const { user, scores } = await this.osuService.userWithScores({
             nameOrID: input.nameOrID,
             mode: input.mode,
@@ -77,11 +82,19 @@ export class FarmRecommendService extends AbstractService {
             input.overrides,
         );
 
-        const recommendations = await this.recommend(query, input.count ?? this.recommendationCount);
-
         return {
             profile: user,
             query,
+        };
+    }
+
+    @Trace()
+    public async create(input: IFarmRecommendCreateInput): Promise<IFarmRecommendCreateResult> {
+        const result = await this.profile(input);
+        const recommendations = await this.recommend(result.query, input.count ?? this.recommendationCount);
+
+        return {
+            ...result,
             recommendations,
         };
     }
@@ -166,8 +179,15 @@ export class FarmRecommendService extends AbstractService {
             excludeBeatmapIDs: [...new Set(topBeatmapIDs)],
             sort: overrides.sort === EFarmRecommendSort.Farmability ? EFarmSort.Farmability : EFarmSort.Random,
             order: EFarmSortOrder.Descending,
-            limit: this.candidateLimit,
         };
+    }
+
+    @Trace()
+    public async recommendations(
+        query: IFarmMapQuery,
+        count = this.recommendationCount,
+    ): Promise<Array<FarmRecommendationDto>> {
+        return this.recommend(query, count);
     }
 
     private async recommend(query: IFarmMapQuery, count: number): Promise<Array<FarmRecommendationDto>> {

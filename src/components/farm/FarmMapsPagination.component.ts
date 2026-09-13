@@ -32,7 +32,6 @@ export class FarmMapsPaginationComponent extends AbstractPaginationButton<"osu_f
 
     protected async preparePage(data: FarmMapsViewDto): Promise<void> {
         await this.farmMapsService.populatePage(data);
-        data.timestamp = Date.now();
     }
 }
 
@@ -62,6 +61,5 @@ export class FarmMapsPaginationModal extends AbstractPaginationModal<"osu_farm_m
 
     protected async preparePage(data: FarmMapsViewDto): Promise<void> {
         await this.farmMapsService.populatePage(data);
-        data.timestamp = Date.now();
     }
 }

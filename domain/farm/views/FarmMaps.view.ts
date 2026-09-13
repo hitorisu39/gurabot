@@ -6,9 +6,6 @@ import { FarmMapsMapDto } from "../FarmMaps.dto";
 @Exclude()
 export class FarmMapsViewDto {
     @Expose()
-    declare timestamp: number;
-
-    @Expose()
     declare authorID: string;
 
     @Expose()
