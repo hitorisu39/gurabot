@@ -8,7 +8,7 @@ const HT = 256;
 
 export function getFarmability(farmValue: number, adjusted: number, ageHours: number): number {
     return (1_000 * farmValue) / Math.pow(adjusted || 1, 0.65) / Math.pow(ageHours || 1, 0.35);
-};
+}
 
 export function getFarmSpeedRate(mods: number): number {
     if ((mods & DT) === DT) {
@@ -20,7 +20,7 @@ export function getFarmSpeedRate(mods: number): number {
     }
 
     return 1;
-};
+}
 
 export function getFarmEffectiveAr(ar: number, mods: number): number {
     let moddedAr = ar;
@@ -48,7 +48,7 @@ export function getFarmEffectiveAr(ar: number, mods: number): number {
     }
 
     return Math.round((5 - (effectiveApproachTime - 1_200) / 120) * 100) / 100;
-};
+}
 
 export function normalizeFarmMap(map: FarmMapCsvDto, bpm: number): IFarmMapImport {
     const speedRate = getFarmSpeedRate(map.mods);
@@ -82,4 +82,4 @@ export function normalizeFarmMap(map: FarmMapCsvDto, bpm: number): IFarmMapImpor
         od: map.accuracy,
         hp: map.drain,
     };
-};
+}

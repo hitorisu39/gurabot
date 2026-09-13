@@ -1,7 +1,7 @@
 import { EOrdrConfigSource, OrdrConfigDto } from "@domain/ordr/OrdrConfig.dto";
 import type { Prisma } from "@generated/prisma/client";
 
-export const getLatestOrdrRenderQuery = (userID: string, after: Date) => {
+export function getLatestOrdrRenderQuery(userID: string, after: Date) {
     return {
         where: {
             userID,
@@ -13,9 +13,9 @@ export const getLatestOrdrRenderQuery = (userID: string, after: Date) => {
             createdAt: "desc",
         },
     } satisfies Prisma.OrdrRenderFindFirstArgs;
-};
+}
 
-export const getRecentOrdrSkinsQuery = (userID: string) => {
+export function getRecentOrdrSkinsQuery(userID: string) {
     return {
         where: {
             userID,
@@ -32,9 +32,9 @@ export const getRecentOrdrSkinsQuery = (userID: string) => {
             customSkin: true,
         },
     } satisfies Prisma.OrdrRenderFindManyArgs;
-};
+}
 
-export const getCreateOrdrRenderQuery = (userID: string, renderID: number, config: OrdrConfigDto) => {
+export function getCreateOrdrRenderQuery(userID: string, renderID: number, config: OrdrConfigDto) {
     const usesBotSettings = config.source === EOrdrConfigSource.Bot;
 
     return {
@@ -46,4 +46,4 @@ export const getCreateOrdrRenderQuery = (userID: string, renderID: number, confi
             customSkin: usesBotSettings ? config.settings.customSkin : null,
         },
     } satisfies Prisma.OrdrRenderCreateArgs;
-};
+}

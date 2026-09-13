@@ -30,19 +30,6 @@ import {
 import { SearchViewService } from "@/modules/osu/search/SearchView.service";
 import { IBeatmapsetSearchInput } from "@domain/osu/Adapter.dto";
 
-const PublicBeatmapSearchStatus = {
-    Any: BeatmapSearchStatus.Any,
-    Leaderboard: BeatmapSearchStatus.Leaderboard,
-    Ranked: BeatmapSearchStatus.Ranked,
-    Qualified: BeatmapSearchStatus.Qualified,
-    Loved: BeatmapSearchStatus.Loved,
-    Pending: BeatmapSearchStatus.Pending,
-    WIP: BeatmapSearchStatus.WIP,
-    Graveyard: BeatmapSearchStatus.Graveyard,
-} as const;
-
-type TPublicBeatmapSearchStatus = (typeof PublicBeatmapSearchStatus)[keyof typeof PublicBeatmapSearchStatus];
-
 @Help(`
     Searches osu! beatmapsets using the same search syntax as the beatmap page.
     Query filters such as \`stars>=5\`, \`bpm>180\`, \`ar=9\`, \`artist="Camellia"\` work normally.
@@ -85,8 +72,8 @@ export class SearchCommand extends AbstractSessionCommand {
     declare private readonly mode: CommandOption<GameMode>;
 
     @Option("status", "Filter by beatmapset status")
-    @IsEnum(PublicBeatmapSearchStatus)
-    declare private readonly status: CommandOption<TPublicBeatmapSearchStatus>;
+    @IsEnum(BeatmapSearchStatus)
+    declare private readonly status: CommandOption<BeatmapSearchStatus>;
 
     @Option("genre", "Filter by genre")
     @IsEnum(Genre)

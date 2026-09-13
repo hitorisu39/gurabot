@@ -202,7 +202,7 @@ class FarmUpdater {
         });
 
         if (!metadata.lastUpdated || !Number.isFinite(metadata.lastUpdated.getTime())) {
-            throw new Error(`osu!pps returned invalid metadata for ${mode}.`);
+            throw new Error(`osu-pps returned invalid metadata for ${mode}.`);
         }
 
         return metadata;
@@ -413,7 +413,7 @@ class FarmUpdater {
 
     private assertFinite(value: number, name: string): void {
         if (!Number.isFinite(value)) {
-            throw new Error(`osu!pps returned invalid ${name}.`);
+            throw new Error(`osu-pps returned invalid ${name}.`);
         }
     }
 
