@@ -20,7 +20,7 @@
         "lint:fix": "eslint . --fix",
         "format": "prettier --write .",
         "format:check": "prettier --check .",
-        "test": "yarn build:core && vitest run",
+        "test": "yarn build:adapter && build:core && vitest run",
         "test:watch": "yarn build:core && vitest",
         "bench": "vitest bench",
         "docker:dev": "docker compose -p gurabot-dev -f docker-compose.dev.yml --profile dev up -d",

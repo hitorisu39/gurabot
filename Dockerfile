@@ -1,7 +1,7 @@
 # ---------------------------------------------------------
 # Shared runtime base
 # ---------------------------------------------------------
-FROM node:20-bookworm-slim AS base
+FROM node:22-bookworm-slim AS base
 
 WORKDIR /gurabot
 
