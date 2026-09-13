@@ -61,6 +61,8 @@ services:
         restart: unless-stopped
         networks:
             - gurabot_network
+        ports:
+            - "127.0.0.1:${DATABASE_PORT:-5432}:${DATABASE_PORT:-5432}"
         environment:
             POSTGRES_USER: ${DATABASE_USERNAME:-postgres}
             POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-postgres}
