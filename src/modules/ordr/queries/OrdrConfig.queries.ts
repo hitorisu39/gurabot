@@ -1,23 +1,22 @@
 import { EOrdrConfigSource, OrdrSettingsDto } from "@domain/ordr/OrdrConfig.dto";
 import { instanceToPlain } from "class-transformer";
-
 import type { Prisma } from "@generated/prisma/client";
 
-const serializeOrdrSettings = (settings: OrdrSettingsDto): Prisma.InputJsonObject => {
+function serializeOrdrSettings(settings: OrdrSettingsDto): Prisma.InputJsonObject {
     return instanceToPlain(settings, {
         exposeUnsetFields: false,
     }) as Prisma.InputJsonObject;
-};
+}
 
-export const getOrCreateOrdrUserQuery = (userID: string) => {
+export function getOrCreateOrdrUserQuery(userID: string) {
     return {
         where: { id: userID },
         create: { id: userID },
         update: {},
     } satisfies Prisma.UserUpsertArgs;
-};
+}
 
-export const getOrCreateOrdrConfigQuery = (userID: string, settings: OrdrSettingsDto) => {
+export function getOrCreateOrdrConfigQuery(userID: string, settings: OrdrSettingsDto) {
     return {
         where: { userID },
         create: {
@@ -27,9 +26,9 @@ export const getOrCreateOrdrConfigQuery = (userID: string, settings: OrdrSetting
         },
         update: {},
     } satisfies Prisma.OrdrConfigUpsertArgs;
-};
+}
 
-export const getSaveOrdrConfigQuery = (userID: string, source: EOrdrConfigSource, settings: OrdrSettingsDto) => {
+export function getSaveOrdrConfigQuery(userID: string, source: EOrdrConfigSource, settings: OrdrSettingsDto) {
     const serialized = serializeOrdrSettings(settings);
 
     return {
@@ -44,4 +43,4 @@ export const getSaveOrdrConfigQuery = (userID: string, source: EOrdrConfigSource
             settings: serialized,
         },
     } satisfies Prisma.OrdrConfigUpsertArgs;
-};
+}

@@ -1,6 +1,9 @@
 import { GameMode } from "@generated/adapter/types";
 
+import type { EModMatchType, ICommandDateRange, ICommandMods, ICommandRange } from "@domain/core/Command";
+
 export enum EFarmSort {
+    Random = "Random",
     Farmability = "Farmability",
     Stars = "Stars",
     Bpm = "Bpm",
@@ -9,47 +12,50 @@ export enum EFarmSort {
     Ranked = "Ranked",
 }
 
+/**
+ * Lowercase to match Prisma's type.
+ */
 export enum EFarmSortOrder {
     Ascending = "asc",
     Descending = "desc",
 }
 
+export enum EFarmRecommendSort {
+    Random = "Random",
+    Farmability = "Farmability",
+}
+
+export interface IFarmMapKey {
+    beatmapID: number;
+    mods: number;
+}
+
+export interface IFarmModsQuery {
+    type: EModMatchType;
+    bits: number;
+}
+
 export interface IFarmMapQuery {
     mode: GameMode;
-    mods?: ReadonlyArray<number>;
+    mods?: IFarmModsQuery | null;
+    pp?: ICommandRange | null;
+    length?: ICommandRange | null;
+    bpm?: ICommandRange | null;
+    stars?: ICommandRange | null;
+    ranked?: ICommandDateRange | null;
+    ar?: ICommandRange | null;
+    cs?: ICommandRange | null;
+    od?: ICommandRange | null;
+    hp?: ICommandRange | null;
 
-    ppMin?: number;
-    ppMax?: number;
-
-    lengthMin?: number;
-    lengthMax?: number;
-
-    bpmMin?: number;
-    bpmMax?: number;
-
-    starsMin?: number;
-    starsMax?: number;
-
-    rankedMin?: Date;
-    rankedMax?: Date;
-
-    arMin?: number;
-    arMax?: number;
-
-    csMin?: number;
-    csMax?: number;
-
-    odMin?: number;
-    odMax?: number;
-
-    hpMin?: number;
-    hpMax?: number;
+    excludeBeatmapIDs?: ReadonlyArray<number>;
 
     sort?: EFarmSort;
     order?: EFarmSortOrder;
-
     limit?: number;
     offset?: number;
+
+    randomSeed?: number | null;
 }
 
 export interface IFarmMapImport {
@@ -81,4 +87,39 @@ export interface IFarmMapImport {
     cs: number;
     od: number;
     hp: number;
+}
+
+export interface IFarmMapQueryRow {
+    beatmapID: number;
+    mapsetID: number;
+    version: string;
+    mods: number;
+    pp: number | null;
+    farmability: number;
+    stars: number;
+    effectiveBpm: number;
+    effectiveLength: number;
+    rankedAt: Date;
+    effectiveAr: number;
+    cs: number;
+    od: number;
+    hp: number;
+    mapset: {
+        artist: string;
+        title: string;
+    };
+}
+
+export interface IFarmRecommendOverrides {
+    pp?: ICommandRange | null;
+    length?: ICommandRange | null;
+    bpm?: ICommandRange | null;
+    stars?: ICommandRange | null;
+    ranked?: ICommandDateRange | null;
+    ar?: ICommandRange | null;
+    cs?: ICommandRange | null;
+    od?: ICommandRange | null;
+    hp?: ICommandRange | null;
+    mods?: ICommandMods | null;
+    sort: EFarmRecommendSort;
 }

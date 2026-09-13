@@ -1,72 +1,170 @@
 import { FarmMapsetCsvDto } from "@domain/farm/Farm.dto";
 import { EFarmSort, EFarmSortOrder, IFarmMapImport, IFarmMapQuery } from "@domain/farm/Farm.types";
-import type { Prisma } from "@generated/prisma/client";
+import { EModMatchType, ICommandDateRange, ICommandRange } from "@domain/core/Command";
+import { Prisma } from "@generated/prisma/client";
+import { isValidNumber } from "@domain/utils/utils";
 
-const range = (min?: number, max?: number) => {
-    return {
-        ...(min !== undefined ? { gte: min } : {}),
-        ...(max !== undefined ? { lte: max } : {}),
-    };
-};
+function addNumberRange(conditions: Array<Prisma.Sql>, column: Prisma.Sql, range?: ICommandRange | null): void {
+    if (!range) return;
 
-const getFarmMapOrder = (sort: EFarmSort, direction: EFarmSortOrder): Prisma.FarmMapOrderByWithRelationInput => {
+    if (range.exact !== undefined && isValidNumber(range.exact)) {
+        conditions.push(Prisma.sql`${column} = ${range.exact}`);
+        return;
+    }
+
+    if (isValidNumber(range.min)) {
+        conditions.push(
+            range.minInclusive ? Prisma.sql`${column} >= ${range.min}` : Prisma.sql`${column} > ${range.min}`,
+        );
+    }
+
+    if (isValidNumber(range.max)) {
+        conditions.push(
+            range.maxInclusive ? Prisma.sql`${column} <= ${range.max}` : Prisma.sql`${column} < ${range.max}`,
+        );
+    }
+}
+
+function addDateRange(conditions: Array<Prisma.Sql>, column: Prisma.Sql, range?: ICommandDateRange | null): void {
+    if (!range) return;
+
+    if (range.exact) {
+        conditions.push(Prisma.sql`${column} = ${range.exact}`);
+        return;
+    }
+
+    if (range.min) {
+        conditions.push(
+            range.minInclusive ? Prisma.sql`${column} >= ${range.min}` : Prisma.sql`${column} > ${range.min}`,
+        );
+    }
+
+    if (range.max) {
+        conditions.push(
+            range.maxInclusive ? Prisma.sql`${column} <= ${range.max}` : Prisma.sql`${column} < ${range.max}`,
+        );
+    }
+}
+
+function addMods(conditions: Array<Prisma.Sql>, query: IFarmMapQuery): void {
+    if (!query.mods) return;
+
+    const { type, bits } = query.mods;
+
+    switch (type) {
+        case EModMatchType.Match:
+            conditions.push(Prisma.sql`m.mods = ${bits}`);
+            return;
+        case EModMatchType.Include:
+            conditions.push(bits === 0 ? Prisma.sql`m.mods = 0` : Prisma.sql`(m.mods & ${bits}) = ${bits}`);
+            return;
+        case EModMatchType.Exclude:
+            conditions.push(bits === 0 ? Prisma.sql`m.mods <> 0` : Prisma.sql`(m.mods & ${bits}) = 0`);
+            return;
+    }
+}
+
+function getFarmMapConditions(snapshotID: number, query: IFarmMapQuery): Array<Prisma.Sql> {
+    const conditions: Array<Prisma.Sql> = [Prisma.sql`m.snapshot_id = ${snapshotID}`];
+
+    addMods(conditions, query);
+    addNumberRange(conditions, Prisma.sql`m.pp`, query.pp);
+    addNumberRange(conditions, Prisma.sql`m.effective_length`, query.length);
+    addNumberRange(conditions, Prisma.sql`m.effective_bpm`, query.bpm);
+    addNumberRange(conditions, Prisma.sql`m.stars`, query.stars);
+    addDateRange(conditions, Prisma.sql`m.ranked_at`, query.ranked);
+    addNumberRange(conditions, Prisma.sql`m.effective_ar`, query.ar);
+    addNumberRange(conditions, Prisma.sql`m.cs`, query.cs);
+    addNumberRange(conditions, Prisma.sql`m.od`, query.od);
+    addNumberRange(conditions, Prisma.sql`m.hp`, query.hp);
+
+    if (query.excludeBeatmapIDs?.length) {
+        conditions.push(Prisma.sql`m.beatmap_id NOT IN (${Prisma.join(query.excludeBeatmapIDs)})`);
+    }
+
+    return conditions;
+}
+
+function getFarmOrder(sort: EFarmSort, order: EFarmSortOrder, randomSeed?: number | null): Prisma.Sql {
+    if (sort === EFarmSort.Random) {
+        if (isValidNumber(randomSeed)) {
+            return Prisma.sql`
+                md5(
+                    concat_ws(
+                        ':',
+                        m.beatmap_id::text,
+                        m.mods::text,
+                        ${randomSeed}::text
+                    )
+                ) ASC
+            `;
+        }
+
+        return Prisma.sql`RANDOM()`;
+    }
+
+    const direction = order === EFarmSortOrder.Ascending ? Prisma.sql`ASC` : Prisma.sql`DESC`;
+
     switch (sort) {
         case EFarmSort.Farmability:
-            return { farmability: direction };
+            return Prisma.sql`m.farmability ${direction}, m.beatmap_id ASC, m.mods ASC`;
         case EFarmSort.Stars:
-            return { stars: direction };
+            return Prisma.sql`m.stars ${direction}, m.beatmap_id ASC, m.mods ASC`;
         case EFarmSort.Bpm:
-            return { effectiveBpm: direction };
+            return Prisma.sql`m.effective_bpm ${direction}, m.beatmap_id ASC, m.mods ASC`;
         case EFarmSort.Length:
-            return { effectiveLength: direction };
+            return Prisma.sql`m.effective_length ${direction}, m.beatmap_id ASC, m.mods ASC`;
         case EFarmSort.PP:
-            return {
-                pp: {
-                    sort: direction,
-                    nulls: "last",
-                },
-            };
+            return Prisma.sql`m.pp ${direction} NULLS LAST, m.beatmap_id ASC, m.mods ASC`;
         case EFarmSort.Ranked:
-            return { rankedAt: direction };
+            return Prisma.sql`m.ranked_at ${direction}, m.beatmap_id ASC, m.mods ASC`;
+        default:
+            return Prisma.sql`m.farmability DESC, m.beatmap_id ASC, m.mods ASC`;
     }
-};
+}
 
-const farmMapSelect = {
-    beatmapID: true,
-    mapsetID: true,
+export function getFarmMapsQuery(snapshotID: number, query: IFarmMapQuery): Prisma.Sql {
+    const conditions = getFarmMapConditions(snapshotID, query);
+    const sort = query.sort ?? EFarmSort.Farmability;
+    const order = query.order ?? EFarmSortOrder.Descending;
+    const orderBy = getFarmOrder(sort, order);
+    const limit = Math.min(Math.max(query.limit ?? 20, 1), 100);
+    const offset = Math.max(query.offset ?? 0, 0);
 
-    version: true,
-    mods: true,
+    return Prisma.sql`
+        SELECT
+            m.beatmap_id       AS "beatmapID",
+            m.mapset_id        AS "mapsetID",
+            m.version,
+            m.mods,
+            m.pp,
+            m.farmability,
+            m.stars,
+            m.effective_bpm    AS "effectiveBpm",
+            m.effective_length AS "effectiveLength",
+            m.ranked_at        AS "rankedAt",
+            m.effective_ar     AS "effectiveAr",
+            m.cs,
+            m.od,
+            m.hp,
+            json_build_object(
+                'artist', s.artist,
+                'title', s.title
+            ) AS "mapset"
+        FROM farm_maps m
+        INNER JOIN farm_mapsets s
+            ON s.snapshot_id = m.snapshot_id
+            AND s.mapset_id = m.mapset_id
+        WHERE ${Prisma.join(conditions, " AND ")}
+        ORDER BY ${orderBy}
+        LIMIT ${limit}
+        OFFSET ${offset}
+    `;
+}
 
-    pp: true,
-    farmability: true,
-
-    stars: true,
-
-    effectiveBpm: true,
-    effectiveLength: true,
-
-    rankedAt: true,
-
-    effectiveAr: true,
-
-    cs: true,
-    od: true,
-    hp: true,
-
-    mapset: {
-        select: {
-            artist: true,
-            title: true,
-        },
-    },
-} satisfies Prisma.FarmMapSelect;
-
-export const getFarmDatasetQuery = (mode: number) => {
+export function getFarmDatasetQuery(mode: number) {
     return {
-        where: {
-            mode,
-        },
+        where: { mode },
         select: {
             snapshotID: true,
             checkedAt: true,
@@ -77,190 +175,73 @@ export const getFarmDatasetQuery = (mode: number) => {
             },
         },
     } satisfies Prisma.FarmDatasetFindUniqueArgs;
-};
+}
 
-export const getFarmMapsQuery = (snapshotID: number, query: IFarmMapQuery) => {
-    const sort = query.sort ?? EFarmSort.Farmability;
-    const direction = query.order ?? EFarmSortOrder.Descending;
-
-    return {
-        where: {
-            snapshotID,
-
-            ...(query.mods?.length
-                ? {
-                      mods: {
-                          in: [...query.mods],
-                      },
-                  }
-                : {}),
-
-            ...(query.ppMin !== undefined || query.ppMax !== undefined
-                ? {
-                      pp: range(query.ppMin, query.ppMax),
-                  }
-                : {}),
-
-            ...(query.lengthMin !== undefined || query.lengthMax !== undefined
-                ? {
-                      effectiveLength: range(query.lengthMin, query.lengthMax),
-                  }
-                : {}),
-
-            ...(query.bpmMin !== undefined || query.bpmMax !== undefined
-                ? {
-                      effectiveBpm: range(query.bpmMin, query.bpmMax),
-                  }
-                : {}),
-
-            ...(query.starsMin !== undefined || query.starsMax !== undefined
-                ? {
-                      stars: range(query.starsMin, query.starsMax),
-                  }
-                : {}),
-
-            ...(query.arMin !== undefined || query.arMax !== undefined
-                ? {
-                      effectiveAr: range(query.arMin, query.arMax),
-                  }
-                : {}),
-
-            ...(query.csMin !== undefined || query.csMax !== undefined
-                ? {
-                      cs: range(query.csMin, query.csMax),
-                  }
-                : {}),
-
-            ...(query.odMin !== undefined || query.odMax !== undefined
-                ? {
-                      od: range(query.odMin, query.odMax),
-                  }
-                : {}),
-
-            ...(query.hpMin !== undefined || query.hpMax !== undefined
-                ? {
-                      hp: range(query.hpMin, query.hpMax),
-                  }
-                : {}),
-
-            ...(query.rankedMin || query.rankedMax
-                ? {
-                      rankedAt: {
-                          ...(query.rankedMin
-                              ? {
-                                    gte: query.rankedMin,
-                                }
-                              : {}),
-
-                          ...(query.rankedMax
-                              ? {
-                                    lte: query.rankedMax,
-                                }
-                              : {}),
-                      },
-                  }
-                : {}),
-        },
-
-        orderBy: [
-            getFarmMapOrder(sort, direction),
-
-            {
-                beatmapID: "asc",
-            },
-
-            {
-                mods: "asc",
-            },
-        ],
-
-        take: Math.min(Math.max(query.limit ?? 20, 1), 100),
-
-        skip: Math.max(query.offset ?? 0, 0),
-
-        select: farmMapSelect,
-    } satisfies Prisma.FarmMapFindManyArgs;
-};
-
-export const getCreateFarmSnapshotQuery = (mode: number, sourceUpdatedAt: Date) => {
+export function getCreateFarmSnapshotQuery(mode: number, sourceUpdatedAt: Date) {
     return {
         data: {
             mode,
             sourceUpdatedAt,
         },
     } satisfies Prisma.FarmSnapshotCreateArgs;
-};
+}
 
-export const getFinalizeFarmSnapshotQuery = (snapshotID: number, mapsetCount: number, mapCount: number) => {
+export function getFinalizeFarmSnapshotQuery(snapshotID: number, mapsetCount: number, mapCount: number) {
     return {
-        where: {
-            id: snapshotID,
-        },
+        where: { id: snapshotID },
         data: {
             mapsetCount,
             mapCount,
         },
     } satisfies Prisma.FarmSnapshotUpdateArgs;
-};
+}
 
-export const getActivateFarmDatasetQuery = (mode: number, snapshotID: number, checkedAt: Date) => {
+export function getActivateFarmDatasetQuery(mode: number, snapshotID: number, checkedAt: Date) {
     return {
-        where: {
-            mode,
-        },
+        where: { mode },
         create: {
             mode,
             checkedAt,
             snapshot: {
-                connect: {
-                    id: snapshotID,
-                },
+                connect: { id: snapshotID },
             },
         },
         update: {
             checkedAt,
             snapshot: {
-                connect: {
-                    id: snapshotID,
-                },
+                connect: { id: snapshotID },
             },
         },
     } satisfies Prisma.FarmDatasetUpsertArgs;
-};
+}
 
-export const getUpdateFarmCheckedAtQuery = (mode: number, checkedAt: Date) => {
+export function getUpdateFarmCheckedAtQuery(mode: number, checkedAt: Date) {
     return {
-        where: {
-            mode,
-        },
-        data: {
-            checkedAt,
-        },
+        where: { mode },
+        data: { checkedAt },
     } satisfies Prisma.FarmDatasetUpdateArgs;
-};
+}
 
-export const getDeleteFarmSnapshotQuery = (snapshotID: number) => {
+export function getDeleteFarmSnapshotQuery(snapshotID: number) {
     return {
-        where: {
-            id: snapshotID,
-        },
+        where: { id: snapshotID },
     } satisfies Prisma.FarmSnapshotDeleteArgs;
-};
+}
 
-export const getDeleteInactiveFarmSnapshotsQuery = (mode: number, activeSnapshotID?: number) => {
+export function getDeleteInactiveFarmSnapshotsQuery(mode: number, activeSnapshotID?: number) {
     return {
         where: {
             mode,
-            ...(activeSnapshotID !== undefined && {
-                id: {
-                    not: activeSnapshotID,
-                },
-            }),
+            ...(activeSnapshotID !== undefined
+                ? {
+                      id: { not: activeSnapshotID },
+                  }
+                : {}),
         },
     } satisfies Prisma.FarmSnapshotDeleteManyArgs;
-};
+}
 
-export const getCreateFarmMapsetsQuery = (snapshotID: number, mapsets: ReadonlyArray<FarmMapsetCsvDto>) => {
+export function getCreateFarmMapsetsQuery(snapshotID: number, mapsets: ReadonlyArray<FarmMapsetCsvDto>) {
     return {
         data: mapsets.map((mapset) => ({
             snapshotID,
@@ -270,24 +251,22 @@ export const getCreateFarmMapsetsQuery = (snapshotID: number, mapsets: ReadonlyA
             bpm: mapset.bpm,
         })),
     } satisfies Prisma.FarmMapsetCreateManyArgs;
-};
+}
 
-export const getFarmMapsetsForImportQuery = (snapshotID: number, mapsetIDs: ReadonlyArray<number>) => {
+export function getFarmMapsetsForImportQuery(snapshotID: number, mapsetIDs: ReadonlyArray<number>) {
     return {
         where: {
             snapshotID,
-            mapsetID: {
-                in: [...mapsetIDs],
-            },
+            mapsetID: { in: [...mapsetIDs] },
         },
         select: {
             mapsetID: true,
             bpm: true,
         },
     } satisfies Prisma.FarmMapsetFindManyArgs;
-};
+}
 
-export const getCreateFarmMapsQuery = (snapshotID: number, maps: ReadonlyArray<IFarmMapImport>) => {
+export function getCreateFarmMapsQuery(snapshotID: number, maps: ReadonlyArray<IFarmMapImport>) {
     return {
         data: maps.map((map) => ({
             snapshotID,
@@ -295,4 +274,4 @@ export const getCreateFarmMapsQuery = (snapshotID: number, maps: ReadonlyArray<I
             pp: map.pp ?? null,
         })),
     } satisfies Prisma.FarmMapCreateManyArgs;
-};
+}

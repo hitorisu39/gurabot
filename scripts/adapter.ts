@@ -820,6 +820,20 @@ async function generateMods(): Promise<void> {
 
 `;
 
+    modsFile += `
+/**
+ * Reverse lookup for MOD_BITMASK
+ */
+const MOD_ACRONYM_BITMASK: Readonly<Record<string, number>> =
+    Object.fromEntries(
+        Object.entries(MOD_BITMASK).map(([bit, acronym]) => [
+            acronym,
+            Number(bit),
+        ]),
+    );
+
+`;
+
     modsFile += `export class ModUtils {
     static toInstance(data: unknown): Array<ParsedMod> {
         if (typeof data === "number" && Number.isFinite(data)) {
@@ -1044,6 +1058,33 @@ async function generateMods(): Promise<void> {
         }
 
         return mods.map((mod) => mod.acronym);
+    }
+
+    static toBits(mods: ReadonlyArray<ParsedMod> | undefined): number {
+        if (!mods?.length) {
+            return 0;
+        }
+
+        let bits = 0;
+
+        for (const mod of mods) {
+            const bit = MOD_ACRONYM_BITMASK[mod.acronym];
+
+            if (bit !== undefined) {
+                bits |= bit;
+            }
+
+            switch (mod.acronym) {
+                case "NC":
+                    bits |= 64; // DT
+                    break;
+                case "PF":
+                    bits |= 32; // SD
+                    break;
+            }
+        }
+
+        return bits;
     }
 }
 `;
