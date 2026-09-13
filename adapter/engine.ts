@@ -2,7 +2,7 @@ import http from "http";
 import https from "https";
 
 import axios, { AxiosRequestConfig, AxiosResponse, isAxiosError } from "axios";
-import { ProviderConfig, SchemaModel, EndpointConfig } from "./builder";
+import { ProviderConfig, SchemaModel, EndpointConfig, InstanceTransform } from "./builder";
 
 import {
     AdapterConfigurationError,
@@ -459,7 +459,7 @@ export class AdapterEngine {
                 }
 
                 if (value !== undefined) {
-                    let toInstanceFn: ((input: any) => any) | undefined;
+                    let toInstanceFn: InstanceTransform | undefined;
 
                     if (typeof mapConfig === "object" && mapConfig.transform) {
                         toInstanceFn =
@@ -471,7 +471,7 @@ export class AdapterEngine {
                     }
 
                     if (toInstanceFn) {
-                        value = toInstanceFn(value);
+                        value = toInstanceFn(value, raw);
                     }
                 }
             } else {
@@ -487,7 +487,7 @@ export class AdapterEngine {
                     const toInstanceFn = this.config.transforms[fieldDef.$enumDef.$name]?.toInstance;
 
                     if (toInstanceFn) {
-                        value = toInstanceFn(value);
+                        value = toInstanceFn(value, raw);
                     }
                 }
             }

@@ -1,3 +1,4 @@
+import { Grade } from "../models/common";
 import { clamp, numberOrUndefined } from "../utils";
 
 export interface AccuracyStatistics {
@@ -33,36 +34,56 @@ export function calculateAccuracy(mode: number, statistics: AccuracyStatistics):
     switch (mode) {
         case 1: {
             const total = great + ok + miss;
-
             accuracy = total > 0 ? (great + ok * 0.5) / total : 0;
             break;
         }
-
         case 2: {
             const caught = great + ok + meh;
             const total = caught + good + miss;
-
             accuracy = total > 0 ? caught / total : 0;
             break;
         }
-
         case 3: {
             const total = perfect + great + good + ok + meh + miss;
-
             accuracy = total > 0 ? (perfect * 300 + great * 300 + good * 200 + ok * 100 + meh * 50) / (total * 300) : 0;
-
             break;
         }
-
         default: {
             const total = great + ok + meh + miss;
-
             accuracy = total > 0 ? (great * 300 + ok * 100 + meh * 50) / (total * 300) : 0;
             break;
         }
     }
 
     return clamp(accuracy, 0, 1);
+}
+
+export function calculateManiaGrade(accuracy: number, passed: boolean, silver: boolean = false): string {
+    if (!passed) {
+        return Grade.F;
+    }
+
+    if (accuracy >= 1) {
+        return silver ? Grade.SSH : Grade.SS;
+    }
+
+    if (accuracy > 0.95) {
+        return silver ? Grade.SH : Grade.S;
+    }
+
+    if (accuracy > 0.9) {
+        return Grade.A;
+    }
+
+    if (accuracy > 0.8) {
+        return Grade.B;
+    }
+
+    if (accuracy > 0.7) {
+        return Grade.C;
+    }
+
+    return Grade.D;
 }
 
 export function calculateScoreWeight(pp: number, index: number): CalculatedScoreWeight {
