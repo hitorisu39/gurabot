@@ -18,7 +18,6 @@ abstract class AbstractFarmRecommendComponent extends AbstractSessionComponent<
 
     protected sessionID(ctx: ComponentContext): string {
         const { sessionID } = ctx.params;
-
         if (!sessionID) {
             throw new Exception(EApplicationError.SESSION_EXPIRED);
         }
@@ -34,10 +33,7 @@ abstract class AbstractFarmRecommendComponent extends AbstractSessionComponent<
         await this.session.update(
             this.sessionKey,
             sessionID,
-            {
-                timestamp: data.timestamp,
-                recommendations: data.recommendations,
-            },
+            { recommendations: data.recommendations },
             this.farmRecommendViewService.getTtl(),
         );
 
@@ -59,8 +55,6 @@ export class FarmRecommendReplaceComponent extends AbstractFarmRecommendComponen
         await ctx.deferUpdate();
 
         data.recommendations = await this.farmRecommendService.replace(data.query, data.recommendations, indices);
-        data.timestamp = Date.now();
-
         await this.persistAndUpdate(ctx, sessionID, data);
     }
 }
@@ -74,7 +68,6 @@ export class FarmRecommendRerollComponent extends AbstractFarmRecommendComponent
         await ctx.deferUpdate();
 
         data.recommendations = await this.farmRecommendService.reroll(data.query, 10);
-        data.timestamp = Date.now();
         await this.persistAndUpdate(ctx, sessionID, data);
     }
 }

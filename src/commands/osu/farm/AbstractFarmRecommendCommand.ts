@@ -12,11 +12,14 @@ import {
 } from "@/core/decorators";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { AbstractOsuCommand } from "@/commands/osu/AbstractOsuCommand";
-import { EFarmRecommendSort, IFarmRecommendOverrides } from "@domain/farm/Farm.types";
+import { EFarmRecommendSort, EFarmSort, IFarmRecommendOverrides } from "@domain/farm/Farm.types";
 import { CommandOption, ECommandCategory, ICommandDateRange, ICommandMods, ICommandRange } from "@domain/core/Command";
 import { FarmRecommendViewDto } from "@domain/farm/views/FarmRecommend.view";
 import { FarmRecommendService } from "@/modules/farm/FarmRecommend.service";
 import { FarmRecommendViewService } from "@/modules/farm/FarmRecommendView.service";
+import { FarmMapsService } from "@/modules/farm/FarmMaps.service";
+import { FarmMapsViewService } from "@/modules/farm/FarmMapsView.service";
+import { FarmMapsViewDto } from "@domain/farm/views/FarmMaps.view";
 
 @Help(`
     Recommends farm maps based on the player's top plays.
@@ -26,7 +29,7 @@ import { FarmRecommendViewService } from "@/modules/farm/FarmRecommendView.servi
     \\- __\`pp\`__: average top-play PP range, e.g. \`pp>=400\`, \`pp=350-500\`
     \\- __\`length\`__: effective map length in seconds, e.g. \`length<180\`, \`length=120-300\`
     \\- __\`bpm\`__: effective BPM, e.g. \`bpm>=200\`, \`bpm=180-240\`
-    \\- __\`stars\`__: star rating, e.g. \`stars>=6\`, \`stars=6.5-7.5\`
+    \\- __\`stars\`__: base (nomod) star rating, e.g. \`stars>=6\`, \`stars=6.5-7.5\`
     \\- __\`ar\`__: effective approach rate, e.g. \`ar>=9.5\`, \`ar=9-10.5\`
     \\- __\`cs\`__: circle size, e.g. \`cs=4\`, \`cs=3.5-5\`
     \\- __\`od\`__: overall difficulty, e.g. \`od>=9\`, \`od=8.5-10\`
@@ -47,6 +50,8 @@ import { FarmRecommendViewService } from "@/modules/farm/FarmRecommendView.servi
 export abstract class AbstractFarmRecommendCommand extends AbstractOsuCommand {
     @Import() declare private readonly farmRecommendService: FarmRecommendService;
     @Import() declare private readonly farmRecommendViewService: FarmRecommendViewService;
+    @Import() declare private readonly farmMapsService: FarmMapsService;
+    @Import() declare private readonly farmMapsViewService: FarmMapsViewService;
 
     @Option("pp", "Override the inferred PP range")
     @IsRange()
@@ -95,19 +100,35 @@ export abstract class AbstractFarmRecommendCommand extends AbstractOsuCommand {
 
     public async execute(ctx: CommandContext): Promise<void> {
         const target = await this.resolveTarget(ctx);
-        const result = await this.farmRecommendService.create({
+        const result = await this.farmRecommendService.profile({
             nameOrID: target.query,
             mode: target.mode,
             provider: target.server,
             overrides: this.overrides(),
         });
 
+        if (result.query.sort === EFarmSort.Farmability) {
+            const data: FarmMapsViewDto = {
+                authorID: ctx.author.id,
+                mode: target.mode,
+                query: result.query,
+                maps: [],
+                page: 1,
+                lastPage: undefined,
+            };
+
+            await this.farmMapsService.populatePage(data);
+            await this.respondWithSession(ctx, "osu_farm_maps_view", data, this.farmMapsViewService);
+            return;
+        }
+
+        const recommendations = await this.farmRecommendService.recommendations(result.query);
         const data: FarmRecommendViewDto = {
             timestamp: Date.now(),
             authorID: ctx.author.id,
             profile: result.profile,
             query: result.query,
-            recommendations: result.recommendations,
+            recommendations,
         };
 
         await this.respondWithSession(ctx, "osu_farm_recommend_view", data, this.farmRecommendViewService);

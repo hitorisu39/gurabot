@@ -1,7 +1,6 @@
 import { TMessagePayload } from "@/core/discord/context/MessagePayload";
 import { Embed } from "@/core/discord/ui/Embed";
 import { AbstractViewService } from "@/modules/AbstractViewService";
-
 import { EModMatchType, ICommandDateRange, ICommandRange } from "@domain/core/Command";
 import { discordMaxVisualLineLength } from "@domain/discord/configs/Discord.config";
 import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";
