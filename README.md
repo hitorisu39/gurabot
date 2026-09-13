@@ -170,6 +170,7 @@ Special thanks to:
 - [osu!stats](https://osustats.ppy.sh/) for global scores data.
 - [huismetbenen](https://snipe.huismetbenen.nl/) for national rankings data.
 - [o!TR](https://otr.stagec.net/) for (unofficial) tournament rating and other related data.
+- [osu-pps](https://osu-pps.com/#/osu/maps) for farm maps data.
 - everyone who has contributed code, testing, bug reports, suggestions, or provided other support.
 
 # License
