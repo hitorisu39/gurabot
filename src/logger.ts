@@ -21,8 +21,8 @@ export class Logger {
         options?: LoggerOptions,
     ) {
         const isCluster = config.app.is_cluster;
-        const clusterId = config.discord.cluster.id;
-        const prefix = isCluster ? `(${clusterId})` : ``;
+        const clusterID = config.discord.cluster.id;
+        const prefix = isCluster ? `(${clusterID})` : ``;
 
         const targets: Array<pino.TransportTargetOptions> = [];
 
@@ -49,7 +49,7 @@ export class Logger {
                     host: config.loki.host,
                     labels: {
                         app: config.app.name,
-                        cluster: clusterId,
+                        cluster: clusterID,
                     },
                 },
             });
@@ -60,7 +60,7 @@ export class Logger {
             level: config.app.loglevel,
             redact: ["token", "authorization", "secret"],
             base: {
-                ...(isCluster && { cluster: clusterId }),
+                ...(isCluster && { cluster: clusterID }),
             },
             transport: { targets },
             ...options,

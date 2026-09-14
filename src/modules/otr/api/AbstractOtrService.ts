@@ -22,6 +22,10 @@ export abstract class AbstractOtrService extends AbstractService {
             headers: {
                 Authorization: `Bearer ${this.config.otr.api_key}`,
             },
+            monitoring: {
+                service: this.name,
+                metrics: this.metrics,
+            },
         });
     }
 

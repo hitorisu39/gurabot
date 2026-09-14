@@ -5,6 +5,7 @@ import {
     ClientEvents,
     ClientOptions,
     Client as DiscordClient,
+    GatewayDispatchEvents,
     GatewayIntentBits,
     Options,
     Partials,
@@ -104,18 +105,41 @@ export class Client {
      */
     public clientReady(): void {
         if (this.cluster) this.cluster.triggerReady();
+        this.setupGatewayMetrics();
         this.startMetricsInterval();
         this.startPresenceInterval();
     }
 
-    private startMetricsInterval(): void {
-        if (!this.metrics) return;
+    private setupGatewayMetrics(): void {
+        const clusterID = this.cluster?.id.toString() ?? "0";
 
-        this.pingInterval = setInterval(() => {
-            const clusterId = this.cluster?.id.toString() || "0";
-            this.metrics!.discordPing.set({ cluster_id: clusterId }, this.client.ws.ping);
-            this.metrics!.guildCount.set({ cluster_id: clusterId }, this.client.guilds.cache.size);
-        }, 15000);
+        for (const event of Object.values(GatewayDispatchEvents)) {
+            this.client.ws.on(event, (_data, _shardId) => {
+                this.metrics.discordGatewayEvents.inc({
+                    cluster_id: clusterID,
+                    event,
+                });
+            });
+        }
+    }
+
+    private startMetricsInterval(): void {
+        const updateMetrics = () => {
+            const clusterId = this.cluster?.id.toString() ?? "0";
+            const pingMs = this.client.ws.ping;
+
+            if (pingMs >= 0) {
+                this.metrics.discordGatewayPing.set({ cluster_id: clusterId }, pingMs / 1000);
+            }
+
+            this.metrics.discordGuilds.set({ cluster_id: clusterId }, this.client.guilds.cache.size);
+            this.metrics.discordShards.set({ cluster_id: clusterId }, this.client.ws.shards.size);
+        };
+
+        updateMetrics();
+
+        this.pingInterval = setInterval(updateMetrics, 15_000);
+        this.pingInterval.unref();
     }
 
     private startPresenceInterval(): void {

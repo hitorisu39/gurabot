@@ -5,6 +5,7 @@ import { HttpClient } from "@/http";
 import { AdapterProvider, GameMode } from "@generated/adapter/types";
 import { plainToInstance } from "class-transformer";
 import { OsuTrackPeakDto, OsuTrackStatsHistoryDto } from "@domain/osutrack/OsuTrack.dto";
+import { isValidNumber } from "@domain/utils/utils";
 
 export class OsuTrackService extends AbstractService {
     declare private http: HttpClient;
@@ -32,6 +33,10 @@ export class OsuTrackService extends AbstractService {
         this.http = new HttpClient(this.logger, {
             name: this.name,
             baseURL: this.base,
+            monitoring: {
+                service: this.name,
+                metrics: this.metrics,
+            },
         });
     }
 
@@ -48,7 +53,6 @@ export class OsuTrackService extends AbstractService {
         });
 
         const peak = data?.at(0);
-
         if (!peak) {
             throw new Exception(EApplicationError.INTERNAL_ERROR, `${this.name} returned no data`);
         }
@@ -78,7 +82,6 @@ export class OsuTrackService extends AbstractService {
         }
 
         const request = this.fetchHistory(userID, modeID, cacheID);
-
         this.pendingHistoryRequests.set(cacheID, request);
 
         try {
@@ -119,8 +122,7 @@ export class OsuTrackService extends AbstractService {
 
         for (const entry of history) {
             const timestamp = entry.timestamp.getTime();
-
-            if (!Number.isFinite(timestamp)) {
+            if (!isValidNumber(timestamp)) {
                 continue;
             }
 

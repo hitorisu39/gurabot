@@ -1,5 +1,4 @@
 import { Logger } from "@/logger";
-
 import { IApplicationContext } from "../types";
 
 export abstract class AbstractController {

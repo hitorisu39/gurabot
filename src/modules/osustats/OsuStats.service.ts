@@ -54,6 +54,10 @@ export class OsuStatsService extends AbstractService {
         this.http = new HttpClient(this.logger, {
             name: this.name,
             baseURL: this.base,
+            monitoring: {
+                service: this.name,
+                metrics: this.metrics,
+            },
         });
     }
 
