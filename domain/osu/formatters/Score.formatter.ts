@@ -1,4 +1,4 @@
-import { discordEmoteGrades, discordEmoteMiss } from "@domain/discord/configs/Emotes.config";
+import { discordEmoteGrades, discordEmoteMiss, discordEmoteProcessing } from "@domain/discord/configs/Emotes.config";
 import { ParsedMod } from "@generated/adapter/mods";
 import { Beatmap, GameMode, Grade, Score, ScoreStatistics } from "@generated/adapter/types";
 import { osuBaseDomain } from "../configs/Osu.config";
@@ -122,7 +122,7 @@ export class ScoreFormatter {
             case EPersonalBestCase.ScorePresentPresumably: {
                 const hasBeenProcessingForMinute = Date.now() - score.endedAt.getTime() >= 60 * 1000;
 
-                return hasBeenProcessingForMinute ? `${placement} (processing)` : placement;
+                return hasBeenProcessingForMinute ? `${placement} ${discordEmoteProcessing}` : placement;
             }
             case EPersonalBestCase.NotRanked:
                 return `${placement} (if ranked)`;
