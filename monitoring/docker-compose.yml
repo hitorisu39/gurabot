@@ -13,8 +13,11 @@ services:
         restart: unless-stopped
         logging: *default-logging
 
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+
         volumes:
-            - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+            - ./${PROMETHEUS_CONFIG:-prometheus.yml}:/etc/prometheus/prometheus.yml:ro
             - prometheus_data:/prometheus
 
         command:
@@ -28,8 +31,8 @@ services:
 
         healthcheck:
             test:
-                - CMD-SHELL
-                - wget -q --spider http://localhost:9090/-/ready || exit 1
+            - CMD-SHELL
+            - wget -q --spider http://localhost:9090/-/ready || exit 1
             interval: 10s
             timeout: 5s
             retries: 5
@@ -64,8 +67,8 @@ services:
             - ./loki-config.yml:/etc/loki/loki-config.yml:ro
             - loki_data:/tmp/loki
 
-        expose:
-            - "3100"
+        ports:
+            - "127.0.0.1:3100:3100"
 
         healthcheck:
             test:

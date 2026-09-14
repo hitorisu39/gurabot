@@ -59,6 +59,10 @@ export class OrdrService extends AbstractService {
             name: this.name,
             baseURL: this.base,
             timeout: this.timeout,
+            monitoring: {
+                service: this.name,
+                metrics: this.metrics,
+            },
         });
 
         this.replayHttp = new HttpClient(this.logger, {

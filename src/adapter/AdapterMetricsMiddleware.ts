@@ -1,4 +1,5 @@
-import { Metrics } from "@/metrics";
+import { TMetrics } from "@/core";
+import { TExternalRequestOutcome } from "@/metrics";
 import {
     AdapterErrorContext,
     AdapterHook,
@@ -7,22 +8,67 @@ import {
 } from "@generated/adapter/types";
 
 export class AdapterMetricsMiddleware implements AdapterHook {
-    constructor(private readonly metrics: Metrics) {}
+    constructor(private readonly metrics: TMetrics) {}
 
     public onResponse(context: AdapterResponseContext): void {
-        if (!context.response) return;
-        this.observe(context.endpointName, context.response.status.toString(), context.durationMs);
+        const status = context.response.status;
+
+        this.observe(
+            context.providerName,
+            context.endpointName,
+            this.metrics.classifyHttpStatus(status),
+            status,
+            context.durationMs,
+        );
     }
 
     public onError(context: AdapterErrorContext): void {
         const error = context.error;
-        const status =
-            error instanceof AdapterRequestError ? (error.status?.toString() ?? error.code ?? error.kind) : error.kind;
 
-        this.observe(context.endpointName, status, context.durationMs);
+        if (error instanceof AdapterRequestError) {
+            const status = error.status;
+            const outcome =
+                status !== undefined ? this.metrics.classifyHttpStatus(status) : this.classifyRequestError(error);
+            this.observe(context.providerName, context.endpointName, outcome, status, context.durationMs);
+            return;
+        }
+
+        this.observe(context.providerName, context.endpointName, "unknown_error", error.status, context.durationMs);
     }
 
-    private observe(endpointName: string, status: string, durationMs: number): void {
-        this.metrics.httpRequestHistogram.labels(endpointName, status).observe(durationMs / 1000);
+    private observe(
+        provider: string,
+        endpoint: string,
+        outcome: TExternalRequestOutcome,
+        statusCode: number | undefined,
+        durationMs: number,
+    ): void {
+        this.metrics.adapterApiRequests.inc({
+            provider,
+            endpoint,
+            outcome,
+            status_code: statusCode?.toString() ?? "none",
+        });
+
+        this.metrics.adapterApiRequestDuration.observe(
+            {
+                provider,
+                endpoint,
+            },
+            durationMs / 1000,
+        );
+    }
+
+    private classifyRequestError(error: AdapterRequestError): TExternalRequestOutcome {
+        switch (error.kind) {
+            case "timeout":
+                return "timeout";
+            case "cancelled":
+                return "cancelled";
+            case "network":
+                return "network_error";
+            default:
+                return "unknown_error";
+        }
     }
 }

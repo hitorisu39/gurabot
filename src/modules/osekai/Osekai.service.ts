@@ -33,7 +33,11 @@ export class OsekaiService extends AbstractService {
     private readonly pendingRankingRequests = new Map<string, Promise<OsekaiRankingPageDto>>();
 
     public init(): void {
-        this.http = new HttpClient(this.logger, { name: this.name, baseURL: this.base });
+        this.http = new HttpClient(this.logger, {
+            name: this.name,
+            baseURL: this.base,
+            monitoring: { service: this.name, metrics: this.metrics },
+        });
     }
 
     @Trace()

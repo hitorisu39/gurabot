@@ -10,6 +10,7 @@ export abstract class AbstractService {
     declare protected readonly cache: IApplicationContext["cache"];
     declare protected readonly adapter: IApplicationContext["adapter"];
     declare protected readonly calculator: IApplicationContext["calculator"];
+    declare protected readonly metrics: IApplicationContext["metrics"];
 
     constructor(protected readonly ctx: IApplicationContext) {
         this.logger = ctx.logger.child({ name: this.constructor.name });
@@ -20,6 +21,7 @@ export abstract class AbstractService {
         this.cache = ctx.cache;
         this.adapter = ctx.adapter;
         this.calculator = ctx.calculator;
+        this.metrics = ctx.metrics;
     }
 
     protected dispatch<D extends keyof ICoreEvents, E extends keyof ICoreEvents[D]>(
