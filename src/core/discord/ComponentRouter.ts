@@ -138,7 +138,7 @@ export class ComponentRouter {
                     { performance: stats },
                     `Component [${incomingType}] "${ctx.customID}" processed in ${stats.total.toFixed(2)}ms`,
                 );
-            } catch (error: any) {
+            } catch (error) {
                 if (error instanceof Exception && error.code === EApplicationError.ACCESS_ERROR) {
                     return;
                 }
@@ -147,7 +147,7 @@ export class ComponentRouter {
                 this.metrics.componentHistogram.labels(componentName, "error").observe(stats.total / 1000);
 
                 this.logger.error(
-                    { error, performance: stats, message: error?.message, stack: error?.stack },
+                    { error, performance: stats },
                     `Component [${incomingType}] "${ctx.customID}" failed after ${stats.total.toFixed(2)}ms`,
                 );
             }

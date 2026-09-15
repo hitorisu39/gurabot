@@ -62,6 +62,10 @@ export class Logger {
             base: {
                 ...(isCluster && { cluster: clusterID }),
             },
+            serializers: {
+                err: pino.stdSerializers.err,
+                error: pino.stdSerializers.err,
+            },
             transport: { targets },
             ...options,
         };
