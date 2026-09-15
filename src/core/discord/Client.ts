@@ -1,6 +1,5 @@
 import {
     ActivityType,
-    ApplicationCommandDataResolvable,
     Awaitable,
     ClientEvents,
     ClientOptions,

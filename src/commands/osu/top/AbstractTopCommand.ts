@@ -80,7 +80,7 @@ export abstract class AbstractTopCommand extends AbstractOsuCommand {
     @IsEnum(EScoreListSize)
     declare private readonly size: CommandOption<EScoreListSize>;
 
-    @Option("index", `Jump to a specific score index (1-${scoreBestQueryLimit}})`)
+    @Option("index", `Jump to a specific score index (1-${scoreBestQueryLimit})`)
     @IsInlineIndex()
     @IsRange(1, scoreBestQueryLimit)
     @Aliases("i")
