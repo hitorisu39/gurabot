@@ -101,6 +101,7 @@ export class Session {
 
     public async destroy<K extends keyof ICacheSchema>(baseKey: K, sessionID: string): Promise<void> {
         await this.cache.delete(baseKey, sessionID);
+        this.clearTimeout(sessionID);
     }
 
     public async bump<K extends keyof ICacheSchema>(baseKey: K, sessionID: string, ttl?: number): Promise<void> {
