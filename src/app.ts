@@ -12,19 +12,21 @@ import { Metrics } from "./metrics";
 import { Session } from "./session";
 
 export class Application {
-    private readonly config: TConfig;
-    private readonly applicationContext: IApplicationContext;
-    private readonly core: Core;
+    public readonly config: TConfig;
+    public readonly applicationContext: IApplicationContext;
+    public readonly core: Core;
 
-    private readonly discord: Client;
-    private readonly logger: Logger;
-    private readonly database: Database;
-    private readonly dispatcher: Dispatcher;
-    private readonly cache: Cache;
-    private readonly session: Session;
-    private readonly adapter: ExtendedAdapterClient;
-    private readonly calculator: Calculator;
-    private readonly metrics: Metrics;
+    public readonly discord: Client;
+    public readonly logger: Logger;
+    public readonly database: Database;
+    public readonly dispatcher: Dispatcher;
+    public readonly cache: Cache;
+    public readonly session: Session;
+    public readonly adapter: ExtendedAdapterClient;
+    public readonly calculator: Calculator;
+    public readonly metrics: Metrics;
+
+    private destroyPromise?: Promise<void>;
 
     constructor(config: TConfig) {
         this.config = config;
@@ -54,7 +56,6 @@ export class Application {
         };
 
         this.core = new Core(this.applicationContext);
-        this.setupProcessEvents();
     }
 
     public async run(): Promise<void> {
@@ -73,29 +74,22 @@ export class Application {
         this.logger.info(`The application has started up in ${this.config.app.mode} mode.`);
     }
 
-    public async destroy(): Promise<void> {
-        await this.discord.destroy();
-        await this.database.disconnect();
-        await this.cache.disconnect();
-        this.calculator.destroy();
+    public destroy(): Promise<void> {
+        return (this.destroyPromise ??= this.destroyInternal());
     }
 
-    private setupProcessEvents(): void {
-        process.on("unhandledRejection", (reason) => {
-            this.logger.error(reason, "Unhandled Promise Rejection");
-        });
+    private async destroyInternal(): Promise<void> {
+        const results = await Promise.allSettled([
+            this.discord.destroy(),
+            this.database.disconnect(),
+            this.cache.disconnect(),
+            Promise.resolve(this.calculator.destroy()),
+        ]);
 
-        process.on("uncaughtException", (error: Error) => {
-            this.logger.error(error, "Uncaught Exception");
-        });
-
-        const shutdown = async (signal: string) => {
-            this.logger.info(`Received ${signal}, shutting down...`);
-            await this.destroy();
-            process.exit(0);
-        };
-
-        process.on("SIGINT", () => shutdown("SIGINT"));
-        process.on("SIGTERM", () => shutdown("SIGTERM"));
+        for (const result of results) {
+            if (result.status === "rejected") {
+                this.logger.error(result.reason, "Shutdown task failed");
+            }
+        }
     }
 }
