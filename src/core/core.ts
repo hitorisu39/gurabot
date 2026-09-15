@@ -78,12 +78,25 @@ export class Core {
     }
 
     private registerDiscordEvent<K extends keyof ClientEvents>(instance: AbstractDiscordEvent<K>): void {
-        const handler = instance.execute.bind(instance);
+        const handler = (...args: ClientEvents[K]): void => {
+            void this.executeDiscordEvent(instance, args);
+        };
 
         if (instance.once) {
             this.ctx.discord.once(instance.event, handler);
         } else {
             this.ctx.discord.on(instance.event, handler);
+        }
+    }
+
+    private async executeDiscordEvent<K extends keyof ClientEvents>(
+        instance: AbstractDiscordEvent<K>,
+        args: ClientEvents[K],
+    ): Promise<void> {
+        try {
+            await instance.execute(...args);
+        } catch (error) {
+            this.ctx.logger.error({ err: error, event: instance.event }, "Discord event execution failed");
         }
     }
 
