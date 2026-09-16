@@ -63,19 +63,19 @@ export class Cache {
         const key = this.buildKey(baseKey as string, id);
         const data = await this.redis.get(key);
 
-        if (this.metrics) {
-            this.metrics.cacheOperations.inc({
-                operation: "get",
-                status: data ? "hit" : "miss",
-            });
-        }
+        this.metrics?.cacheOperations.inc({
+            operation: "get",
+            status: data === null ? "miss" : "hit",
+        });
 
-        if (!data) return null;
+        if (data === null) return null;
 
         try {
-            return JSON.parse(data) as ICacheSchema[K];
-        } catch {
-            return data as unknown as ICacheSchema[K];
+            return this.deserialize<ICacheSchema[K]>(data);
+        } catch (error) {
+            this.logger.warn({ error, key }, "Invalid cache entry, deleting it.");
+            await this.redis.del(key);
+            return null;
         }
     }
 
@@ -106,18 +106,23 @@ export class Cache {
         ttlSeconds?: number,
         id?: string | number,
     ): Promise<void> {
-        if (!this.redis) throw new Exception(EApplicationError.INTERNAL_ERROR, "Redis is not connected.");
+        if (!this.redis) {
+            throw new Exception(EApplicationError.INTERNAL_ERROR, "Redis is not connected.");
+        }
 
         const key = this.buildKey(baseKey as string, id);
-        const payload = JSON.stringify(value);
-
-        if (this.metrics) this.metrics.cacheOperations.inc({ operation: "set", status: "success" });
+        const payload = this.serialize(value);
 
         if (ttlSeconds) {
             await this.redis.set(key, payload, "EX", ttlSeconds);
         } else {
             await this.redis.set(key, payload);
         }
+
+        this.metrics?.cacheOperations.inc({
+            operation: "set",
+            status: "success",
+        });
     }
 
     /**
@@ -136,20 +141,26 @@ export class Cache {
      * Gets a single value from a Redis Hash.
      */
     public async hGet<K extends keyof ICacheSchema>(baseKey: K, field: string): Promise<ICacheSchema[K] | null> {
-        if (!this.redis) throw new Exception(EApplicationError.INTERNAL_ERROR, "Redis is not connected.");
-
-        const data = await this.redis.hget(baseKey as string, field);
-
-        if (this.metrics) {
-            this.metrics.cacheOperations.inc({ operation: "hGet", status: data ? "hit" : "miss" });
+        if (!this.redis) {
+            throw new Exception(EApplicationError.INTERNAL_ERROR, "Redis is not connected.");
         }
 
-        if (!data) return null;
+        const key = baseKey as string;
+        const data = await this.redis.hget(key, field);
+
+        this.metrics?.cacheOperations.inc({
+            operation: "hGet",
+            status: data === null ? "miss" : "hit",
+        });
+
+        if (data === null) return null;
 
         try {
-            return JSON.parse(data) as ICacheSchema[K];
-        } catch {
-            return data as ICacheSchema[K];
+            return this.deserialize<ICacheSchema[K]>(data);
+        } catch (error) {
+            this.logger.warn({ error, key, field }, "Invalid cache entry, deleting it.");
+            await this.redis.hdel(key, field);
+            return null;
         }
     }
 
@@ -159,10 +170,10 @@ export class Cache {
     public async hSet<K extends keyof ICacheSchema>(baseKey: K, field: string, value: ICacheSchema[K]): Promise<void> {
         if (!this.redis) throw new Exception(EApplicationError.INTERNAL_ERROR, "Redis is not connected.");
 
-        const payload = typeof value === "string" ? value : JSON.stringify(value);
+        const payload = this.serialize(value);
         await this.redis.hset(baseKey as string, field, payload);
 
-        if (this.metrics) this.metrics.cacheOperations.inc({ operation: "hSet", status: "success" });
+        this.metrics?.cacheOperations.inc({ operation: "hSet", status: "success" });
     }
 
     /**
@@ -182,16 +193,19 @@ export class Cache {
         baseKey: K,
         data: Record<string, ICacheSchema[K]>,
     ): Promise<void> {
-        if (!this.redis) throw new Exception(EApplicationError.INTERNAL_ERROR, "Redis is not connected.");
-        if (Object.keys(data).length === 0) return;
-
-        const payload: Record<string, string> = {};
-        for (const [key, value] of Object.entries(data)) {
-            payload[key] = typeof value === "string" ? value : JSON.stringify(value);
+        if (!this.redis) {
+            throw new Exception(EApplicationError.INTERNAL_ERROR, "Redis is not connected.");
         }
 
+        if (Object.keys(data).length === 0) return;
+
+        const payload = Object.fromEntries(
+            Object.entries(data).map(([field, value]) => [field, this.serialize(value)]),
+        );
+
         await this.redis.hset(baseKey as string, payload);
-        if (this.metrics) this.metrics.cacheOperations.inc({ operation: "hSetMulti", status: "success" });
+
+        this.metrics?.cacheOperations.inc({ operation: "hSetMulti", status: "success" });
     }
 
     /**
@@ -265,5 +279,19 @@ export class Cache {
 
         const result = await this.redis.set(key, uuidv7(), "PX", ttlMs, "NX");
         return result === "OK";
+    }
+
+    private serialize(value: unknown): string {
+        const serialized = JSON.stringify(value);
+
+        if (serialized === undefined) {
+            throw new Exception(EApplicationError.INTERNAL_ERROR, "Cannot serialize cache value.");
+        }
+
+        return serialized;
+    }
+
+    private deserialize<T>(value: string): T {
+        return JSON.parse(value) as T;
     }
 }
