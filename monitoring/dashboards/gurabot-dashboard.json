@@ -4,20 +4,22 @@
   "metadata": {
     "name": "c29bef93-d3f7-4d6b-86e9-ca82d834faaf",
     "namespace": "default",
-    "uid": "5a30c8b2-006e-4252-99cc-44a3454013a1",
-    "resourceVersion": "1789395172151005",
-    "generation": 1,
-    "creationTimestamp": "2026-09-14T14:12:52Z",
+    "uid": "925c24b0-3f21-4e89-8ef5-accec9cede0a",
+    "resourceVersion": "1789416317956003",
+    "generation": 2,
+    "creationTimestamp": "2026-08-08T13:57:35Z",
     "labels": {
-      "grafana.app/deprecatedInternalID": "824212090122240"
+      "grafana.app/deprecatedInternalID": "922815655460864"
     },
     "annotations": {
       "grafana.app/createdBy": "access-policy:service",
       "grafana.app/managedBy": "classic-file-provisioning",
       "grafana.app/managerId": "gurabot dashboards",
-      "grafana.app/sourceChecksum": "a1025b2f57c72ceb03098e45c34bfbe5",
+      "grafana.app/sourceChecksum": "49eb1e6e164133bc5b9b4642daac3ede",
       "grafana.app/sourcePath": "/etc/grafana/dashboards/gurabot-dashboard.json",
-      "grafana.app/sourceTimestamp": "1785949898000",
+      "grafana.app/sourceTimestamp": "1789416249000",
+      "grafana.app/updatedBy": "access-policy:service",
+      "grafana.app/updatedTimestamp": "2026-09-14T20:05:17Z",
       "grafana.app/folder": ""
     }
   },
@@ -3413,7 +3415,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "100 *\r\nsum(\r\n  rate(\r\n    gurabot_external_requests_total{\r\n      service=~\"$service\",\r\n      outcome=~\"server_error|timeout|network_error|unknown_error\"\r\n    }[$__rate_interval]\r\n  )\r\n)\r\n/\r\nclamp_min(\r\n  sum(\r\n    rate(\r\n      gurabot_external_requests_total{\r\n        service=~\"$service\"\r\n      }[$__rate_interval]\r\n    )\r\n  ),\r\n  0.000001\r\n)",
-                        "legendFormat": "__auto",
+                        "legendFormat": "Rate",
                         "range": true
                       },
                       "version": "v0"
@@ -3534,7 +3536,7 @@
                       "spec": {
                         "editorMode": "code",
                         "expr": "100 *\r\ngurabot_nodejs_heap_size_used_bytes\r\n/\r\ngurabot_nodejs_heap_size_limit_bytes",
-                        "legendFormat": "__auto",
+                        "legendFormat": "Cluster {{cluster_id}}",
                         "range": true
                       },
                       "version": "v0"
