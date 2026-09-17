@@ -92,7 +92,6 @@ export class HttpClient {
 
                 return response;
             },
-
             (error: AxiosError) => {
                 const status = error.response?.status;
                 const durationMs = this.completeRequest(error.config, this.classifyError(error), status);

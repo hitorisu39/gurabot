@@ -1,5 +1,5 @@
 import { TRepository } from "@/core";
-import { Trace } from "@/core/decorators";
+import { Import, Trace } from "@/core/decorators";
 import { AbstractService } from "@/core/framework/AbstractService";
 import { HttpClient } from "@/http";
 import { EApplicationError, Exception } from "@domain/core/Exception";
@@ -13,8 +13,11 @@ import {
     TwitchVideosResponseDto,
 } from "@domain/twitch/Twitch.dto";
 import { plainToInstance } from "class-transformer";
+import { HttpService } from "../http/Http.service";
 
 export class TwitchService extends AbstractService {
+    @Import() declare private readonly httpService: HttpService;
+
     declare private apiHttp: HttpClient;
     declare private authHttp: HttpClient;
 
@@ -44,12 +47,12 @@ export class TwitchService extends AbstractService {
     private pendingAccessToken: Promise<string> | null = null;
 
     public init(): void {
-        this.apiHttp = new HttpClient(this.logger, {
+        this.apiHttp = this.httpService.create(this.logger, {
             name: `${this.name}:API`,
             baseURL: this.apiBase,
         });
 
-        this.authHttp = new HttpClient(this.logger, {
+        this.authHttp = this.httpService.create(this.logger, {
             name: `${this.name}:Auth`,
             baseURL: this.authBase,
         });

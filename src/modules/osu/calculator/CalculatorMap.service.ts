@@ -6,8 +6,12 @@ import { HttpClient } from "@/http";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { wait } from "@domain/utils/utils";
 import { osuBaseUrl } from "@domain/osu/configs/Osu.config";
+import { Import } from "@/core/decorators";
+import { HttpService } from "@/modules/http/Http.service";
 
 export class CalculatorMapService extends AbstractService {
+    @Import() declare private readonly httpService: HttpService;
+
     declare private http: HttpClient;
     declare private mapPath: string;
 
@@ -18,7 +22,7 @@ export class CalculatorMapService extends AbstractService {
     private readonly activeDownloads: Map<number, Promise<void>> = new Map();
 
     public async init(): Promise<void> {
-        this.http = new HttpClient(this.logger, { baseURL: osuBaseUrl });
+        this.http = this.httpService.create(this.logger, { baseURL: osuBaseUrl });
         this.mapPath = path.join(process.cwd(), this.config.app.cache, "beatmaps");
 
         if (!fs.existsSync(this.mapPath)) {

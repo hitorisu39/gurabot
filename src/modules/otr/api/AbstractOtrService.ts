@@ -1,5 +1,7 @@
+import { Import } from "@/core/decorators";
 import { AbstractService } from "@/core/framework/AbstractService";
 import { HttpClient } from "@/http";
+import { HttpService } from "@/modules/http/Http.service";
 
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { EOtrRuleset } from "@domain/otr/enums/Otr.enum";
@@ -7,6 +9,8 @@ import { isValidDate } from "@domain/utils/dateTimeUtils";
 import { GameMode } from "@generated/adapter/types";
 
 export abstract class AbstractOtrService extends AbstractService {
+    @Import() declare private readonly httpService: HttpService;
+
     declare protected http: HttpClient;
 
     protected readonly name = "o!TR";
@@ -16,7 +20,7 @@ export abstract class AbstractOtrService extends AbstractService {
     protected readonly heavyTimeout = 15_000;
 
     public init(): void {
-        this.http = new HttpClient(this.logger, {
+        this.http = this.httpService.create(this.logger, {
             name: this.name,
             baseURL: this.base,
             headers: {

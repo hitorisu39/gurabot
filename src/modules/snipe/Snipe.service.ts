@@ -1,4 +1,4 @@
-import { Trace } from "@/core/decorators";
+import { Import, Trace } from "@/core/decorators";
 import { AbstractService } from "@/core/framework/AbstractService";
 import { HttpClient } from "@/http";
 import { EApplicationError, Exception } from "@domain/core/Exception";
@@ -17,6 +17,7 @@ import { SnipeRecentChangesDto } from "@domain/snipe/SnipeRecent.dto";
 import { SnipeScoresDto } from "@domain/snipe/SnipeScore.dto";
 import { isValidNumber } from "@domain/utils/utils";
 import { plainToInstance } from "class-transformer";
+import { HttpService } from "../http/Http.service";
 
 export interface ISnipePlayerScoresInput {
     userID: number;
@@ -28,6 +29,8 @@ export interface ISnipePlayerScoresInput {
 }
 
 export class SnipeService extends AbstractService {
+    @Import() declare private readonly httpService: HttpService;
+
     declare private http: HttpClient;
 
     private readonly name = "osu!snipe";
@@ -49,7 +52,7 @@ export class SnipeService extends AbstractService {
     private readonly pendingPlayerScores = new Map<string, Promise<SnipeScoresDto>>();
 
     public init(): void {
-        this.http = new HttpClient(this.logger, {
+        this.http = this.httpService.create(this.logger, {
             name: this.name,
             baseURL: this.base,
             monitoring: {

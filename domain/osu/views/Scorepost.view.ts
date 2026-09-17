@@ -2,6 +2,7 @@ import { PopulatedScore } from "@domain/osu/Score.dto";
 import { EScorepostClient } from "@domain/osu/enums/Scorepost.enum";
 import { User } from "@generated/adapter/types";
 import { Exclude, Expose, Type } from "class-transformer";
+import type { ScorepostResolution } from "../configs/Scorepost.config";
 
 @Exclude()
 export class ScorepostViewDto {
@@ -24,4 +25,7 @@ export class ScorepostViewDto {
 
     @Expose()
     declare timezoneOffset: number;
+
+    @Expose()
+    declare resolution: ScorepostResolution;
 }

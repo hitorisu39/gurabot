@@ -11,8 +11,10 @@ import { osuBaseUrl } from "@domain/osu/configs/Osu.config";
 import { User } from "@generated/adapter/types";
 import { UserService } from "../user/User.service";
 import { TwitchService } from "../twitch/Twitch.service";
+import { HttpService } from "../http/Http.service";
 
 export class AuthService extends AbstractService {
+    @Import() declare private readonly httpService: HttpService;
     @Import() declare private readonly userService: UserService;
     @Import() declare private readonly twitchService: TwitchService;
 
@@ -25,7 +27,7 @@ export class AuthService extends AbstractService {
     public async init(): Promise<void> {
         const port = this.config.web.auth_port;
 
-        this.http = new HttpClient(this.logger, { name: "WebAuth" });
+        this.http = this.httpService.create(this.logger, { name: "WebAuth" });
 
         try {
             const templatePath = path.join(this.webDirectory, this.templateFile);

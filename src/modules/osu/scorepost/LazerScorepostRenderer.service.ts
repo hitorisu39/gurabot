@@ -10,7 +10,6 @@ import {
     lazerScorepostConfig,
     lazerScorepostLayout,
     lazerScorepostModStyles,
-    scorepostDimensions,
 } from "@domain/osu/configs/Scorepost.config";
 import { ScorepostViewDto } from "@domain/osu/views/Scorepost.view";
 import { ParsedMod } from "@generated/adapter/mods";
@@ -19,6 +18,7 @@ import { isValidNumber } from "@domain/utils/utils";
 import { GameMode, Grade } from "@generated/adapter/types";
 import { ScorepostFormatter } from "@domain/osu/formatters/Scorepost.formatter";
 import { MapFormatter } from "@domain/osu/formatters/Map.formatter";
+import { ScorepostScaler } from "@domain/osu/utils/ScorepostScaler";
 
 interface ICachedAsset {
     buffer: Buffer;
@@ -124,6 +124,7 @@ export class LazerScorepostRendererService extends AbstractService {
             throw new Exception(EApplicationError.INTERNAL_ERROR, "Lazer scorepost is missing maximum statistics.");
         }
 
+        const scaler = new ScorepostScaler(data.resolution);
         const modLayout = this.createModLayout(data.score.mods);
         const scoreMode = data.score.mode ?? GameMode.Standard;
 
@@ -140,46 +141,54 @@ export class LazerScorepostRendererService extends AbstractService {
             perfect,
             modComposites,
         ] = await Promise.all([
-            this.createBackground(data),
-            this.createSkeletonComposites(data.score.globalTop),
-            this.getAsset(path.join(this.assets, "base.png")),
-            this.getAsset(path.join(this.assets, "stats-base.png")),
-            this.createStatisticsCover(data.user.cover?.url),
-            this.createAvatar(data.user.avatarUrl),
-            this.createWheel(data),
-            this.createStarRatingBadge(data.score.fullDifficulty.starRating),
+            this.createBackground(data, scaler),
+            this.createSkeletonComposites(data.score.globalTop, scaler),
+            this.getScaledAsset(path.join(this.assets, "base.png"), scaler),
+            this.getScaledAsset(path.join(this.assets, "stats-base.png"), scaler),
+            this.createStatisticsCover(data.user.cover?.url, scaler),
+            this.createAvatar(data.user.avatarUrl, scaler),
+            this.createWheel(data, scaler),
+            this.createStarRatingBadge(data.score.fullDifficulty.starRating, scaler),
             this.getResizedAsset(
                 path.join(this.resources, "mode", scoreMode.toLowerCase() + ".png"),
-                lazerScorepostLayout.modeSize,
-                lazerScorepostLayout.modeSize,
+                scaler.pixel(lazerScorepostLayout.modeSize),
+                scaler.pixel(lazerScorepostLayout.modeSize),
             ),
-            data.score.perfect ? this.getAsset(path.join(this.assets, "perfect.png")) : Promise.resolve(null),
-            this.createModComposites(modLayout),
+            data.score.perfect
+                ? this.getScaledAsset(path.join(this.assets, "perfect.png"), scaler)
+                : Promise.resolve(null),
+            this.createModComposites(modLayout, scaler),
         ]);
 
-        const foreground = this.createForeground(data, modLayout);
+        const foreground = this.createForeground(data, modLayout, scaler);
 
         const composites: Array<OverlayOptions> = [
             ...skeletonComposites,
             {
                 input: base.buffer,
-                left: Math.round(lazerScorepostLayout.baseCenterX - base.width / 2),
-                top: lazerScorepostConfig.baseCropTop,
+                left: scaler.centered(lazerScorepostLayout.baseCenterX, base.width),
+                top: scaler.pixel(lazerScorepostConfig.baseCropTop),
             },
             {
                 input: cover,
-                left: Math.round(lazerScorepostLayout.statisticsCoverX - lazerScorepostLayout.statisticsCoverWidth / 2),
-                top: Math.round(lazerScorepostLayout.statisticsCoverY - lazerScorepostLayout.statisticsCoverHeight / 2),
+                left: scaler.centered(
+                    lazerScorepostLayout.statisticsCoverX,
+                    scaler.pixel(lazerScorepostLayout.statisticsCoverWidth),
+                ),
+                top: scaler.centered(
+                    lazerScorepostLayout.statisticsCoverY,
+                    scaler.pixel(lazerScorepostLayout.statisticsCoverHeight),
+                ),
             },
             {
                 input: statsBase.buffer,
-                left: Math.round(lazerScorepostLayout.statsBaseX - statsBase.width / 2),
-                top: Math.round(lazerScorepostLayout.statsBaseY - statsBase.height / 2),
+                left: scaler.centered(lazerScorepostLayout.statsBaseX, statsBase.width),
+                top: scaler.centered(lazerScorepostLayout.statsBaseY, statsBase.height),
             },
             {
                 input: wheel,
-                left: Math.round(lazerScorepostLayout.wheelX - lazerScorepostLayout.wheelWidth / 2),
-                top: Math.round(lazerScorepostLayout.wheelY - lazerScorepostLayout.wheelHeight / 2),
+                left: scaler.centered(lazerScorepostLayout.wheelX, scaler.pixel(lazerScorepostLayout.wheelWidth)),
+                top: scaler.centered(lazerScorepostLayout.wheelY, scaler.pixel(lazerScorepostLayout.wheelHeight)),
             },
             ...modComposites,
             {
@@ -189,22 +198,29 @@ export class LazerScorepostRendererService extends AbstractService {
             },
             {
                 input: starRatingBadge,
-                left: Math.round(lazerScorepostLayout.starRatingX - lazerScorepostLayout.starRatingWidth / 2),
-                top: Math.round(lazerScorepostLayout.starRatingY - lazerScorepostLayout.starRatingHeight / 2),
+                left: scaler.centered(
+                    lazerScorepostLayout.starRatingX,
+                    scaler.pixel(lazerScorepostLayout.starRatingWidth),
+                ),
+                top: scaler.centered(
+                    lazerScorepostLayout.starRatingY,
+                    scaler.pixel(lazerScorepostLayout.starRatingHeight),
+                ),
             },
             {
                 input: mode,
-                left: Math.round(lazerScorepostLayout.modeX - lazerScorepostLayout.modeSize / 2),
-                top: Math.round(lazerScorepostLayout.modeY - lazerScorepostLayout.modeSize / 2),
+                left: scaler.centered(lazerScorepostLayout.modeX, scaler.pixel(lazerScorepostLayout.modeSize)),
+                top: scaler.centered(lazerScorepostLayout.modeY, scaler.pixel(lazerScorepostLayout.modeSize)),
             },
         ];
 
         if (perfect) {
             composites.push({
                 input: perfect.buffer,
-                left: Math.round(lazerScorepostLayout.perfectX - perfect.width / 2),
-                top: Math.round(
-                    lazerScorepostLayout.perfectY + lazerScorepostConfig.statisticsValueOffsetY - perfect.height / 2,
+                left: scaler.centered(lazerScorepostLayout.perfectX, perfect.width),
+                top: scaler.centered(
+                    lazerScorepostLayout.perfectY + lazerScorepostConfig.statisticsValueOffsetY,
+                    perfect.height,
                 ),
             });
         }
@@ -212,8 +228,8 @@ export class LazerScorepostRendererService extends AbstractService {
         if (avatar) {
             composites.push({
                 input: avatar,
-                left: Math.round(lazerScorepostLayout.avatarX - lazerScorepostLayout.avatarWidth / 2),
-                top: Math.round(lazerScorepostLayout.avatarY - lazerScorepostLayout.avatarHeight / 2),
+                left: scaler.centered(lazerScorepostLayout.avatarX, scaler.pixel(lazerScorepostLayout.avatarWidth)),
+                top: scaler.centered(lazerScorepostLayout.avatarY, scaler.pixel(lazerScorepostLayout.avatarHeight)),
             });
         }
 
@@ -228,10 +244,23 @@ export class LazerScorepostRendererService extends AbstractService {
 
     //#region Skeleton cards
 
-    private async createSkeletonComposites(globalTop?: number | null): Promise<Array<OverlayOptions>> {
+    private async createSkeletonComposites(
+        globalTop: number | null | undefined,
+        scaler: ScorepostScaler,
+    ): Promise<Array<OverlayOptions>> {
         if (!isValidNumber(globalTop)) globalTop = 50;
 
-        const skeleton = await this.getAsset(path.join(this.assets, "skeleton-card.png"));
+        const skeletonWidth = scaler.pixel(lazerScorepostConfig.skeleton.width);
+        const skeletonHeight = scaler.pixel(lazerScorepostConfig.skeleton.height);
+        const skeleton = {
+            buffer: await this.getResizedAsset(
+                path.join(this.assets, "skeleton-card.png"),
+                skeletonWidth,
+                skeletonHeight,
+            ),
+            width: skeletonWidth,
+            height: skeletonHeight,
+        } satisfies ICachedAsset;
 
         const stepX = lazerScorepostConfig.skeleton.width + lazerScorepostConfig.skeleton.gap;
         const nearestOffsetX =
@@ -249,8 +278,8 @@ export class LazerScorepostRendererService extends AbstractService {
 
             composites.push({
                 input: skeleton.buffer,
-                left: Math.round(centerX - skeleton.width / 2),
-                top: lazerScorepostConfig.skeleton.top,
+                left: scaler.centered(centerX, skeleton.width),
+                top: scaler.pixel(lazerScorepostConfig.skeleton.top),
             });
         }
 
@@ -259,8 +288,8 @@ export class LazerScorepostRendererService extends AbstractService {
 
             composites.push({
                 input: skeleton.buffer,
-                left: Math.round(centerX - skeleton.width / 2),
-                top: lazerScorepostConfig.skeleton.top,
+                left: scaler.centered(centerX, skeleton.width),
+                top: scaler.pixel(lazerScorepostConfig.skeleton.top),
             });
         }
 
@@ -271,13 +300,13 @@ export class LazerScorepostRendererService extends AbstractService {
 
     //#region Background
 
-    private async createBackground(data: ScorepostViewDto): Promise<Buffer> {
-        const source = await this.backgroundService.load(data.score);
+    private async createBackground(data: ScorepostViewDto, scaler: ScorepostScaler): Promise<Buffer> {
+        const source = await this.backgroundService.load(data.score, scaler);
 
         const darkLayer = Buffer.from(`
                 <svg
-                    width="${scorepostDimensions.width}"
-                    height="${scorepostDimensions.height}"
+                    width="${scaler.width}"
+                    height="${scaler.height}"
                     xmlns="http://www.w3.org/2000/svg"
                 >
                     <rect
@@ -290,7 +319,7 @@ export class LazerScorepostRendererService extends AbstractService {
             `);
 
         return await sharp(source)
-            .blur(3)
+            .blur(scaler.value(lazerScorepostConfig.backgroundBlur))
             .composite([
                 {
                     input: darkLayer,
@@ -306,12 +335,10 @@ export class LazerScorepostRendererService extends AbstractService {
 
     //#region Profile imagery
 
-    private async createStatisticsCover(url?: string): Promise<Buffer> {
-        const {
-            statisticsCoverWidth: width,
-            statisticsCoverHeight: height,
-            statisticsCoverRadius: radius,
-        } = lazerScorepostLayout;
+    private async createStatisticsCover(url: string | undefined, scaler: ScorepostScaler): Promise<Buffer> {
+        const width = scaler.pixel(lazerScorepostLayout.statisticsCoverWidth);
+        const height = scaler.pixel(lazerScorepostLayout.statisticsCoverHeight);
+        const radius = scaler.pixel(lazerScorepostLayout.statisticsCoverRadius);
 
         const remote = url ? await this.fetchRemoteImage(url) : null;
 
@@ -401,7 +428,7 @@ export class LazerScorepostRendererService extends AbstractService {
             .toBuffer();
     }
 
-    private async createAvatar(url?: string): Promise<Buffer | null> {
+    private async createAvatar(url: string | undefined, scaler: ScorepostScaler): Promise<Buffer | null> {
         if (!url) {
             return null;
         }
@@ -411,7 +438,9 @@ export class LazerScorepostRendererService extends AbstractService {
             return null;
         }
 
-        const { avatarWidth: width, avatarHeight: height, avatarRadius: radius } = lazerScorepostLayout;
+        const width = scaler.pixel(lazerScorepostLayout.avatarWidth);
+        const height = scaler.pixel(lazerScorepostLayout.avatarHeight);
+        const radius = scaler.pixel(lazerScorepostLayout.avatarRadius);
         const mask = this.createRoundedMask(width, height, radius);
 
         try {
@@ -476,7 +505,7 @@ export class LazerScorepostRendererService extends AbstractService {
 
     //#region Wheel
 
-    private async createWheel(data: ScorepostViewDto): Promise<Buffer> {
+    private async createWheel(data: ScorepostViewDto, scaler: ScorepostScaler): Promise<Buffer> {
         const gradeName = data.score.grade.toLowerCase();
 
         const [base, badges, grade] = await Promise.all([
@@ -504,7 +533,7 @@ export class LazerScorepostRendererService extends AbstractService {
 
         return await sharp(composed)
             .trim()
-            .resize(lazerScorepostLayout.wheelWidth, lazerScorepostLayout.wheelHeight, {
+            .resize(scaler.pixel(lazerScorepostLayout.wheelWidth), scaler.pixel(lazerScorepostLayout.wheelHeight), {
                 fit: "contain",
                 position: "centre",
                 background: {
@@ -546,17 +575,7 @@ export class LazerScorepostRendererService extends AbstractService {
 
         ctx.beginPath();
 
-        ctx.arc(
-            center,
-            center,
-
-            strokeRadius * outputScale,
-
-            start,
-            end,
-
-            false,
-        );
+        ctx.arc(center, center, strokeRadius * outputScale, start, end, false);
 
         ctx.strokeStyle = gradient;
         ctx.lineWidth = thickness * outputScale;
@@ -603,15 +622,16 @@ export class LazerScorepostRendererService extends AbstractService {
 
     //#region Star rating
 
-    private async createStarRatingBadge(starRating: number): Promise<Buffer> {
+    private async createStarRatingBadge(starRating: number, scaler: ScorepostScaler): Promise<Buffer> {
         const width = lazerScorepostLayout.starRatingWidth;
         const height = lazerScorepostLayout.starRatingHeight;
         const starSize = lazerScorepostLayout.starIconSize;
         const value = MapFormatter.stars(starRating, false, false);
         const style = this.getStarRatingStyle(starRating);
-        const canvas = createCanvas(width, height);
+        const canvas = createCanvas(scaler.pixel(width), scaler.pixel(height));
 
         const ctx = canvas.getContext("2d");
+        ctx.scale(scaler.factor, scaler.factor);
 
         this.roundedRect(ctx, 0, 0, width, height, height / 2);
 
@@ -637,13 +657,13 @@ export class LazerScorepostRendererService extends AbstractService {
         ctx.fillStyle = style.text;
         ctx.fillText(value, textX, baselineY);
 
-        const star = await this.createColouredStar(starSize, style.text);
+        const star = await this.createColouredStar(scaler.pixel(starSize), style.text);
         return await sharp(canvas.toBuffer("image/png"))
             .composite([
                 {
                     input: star,
-                    left: starLeft,
-                    top: starTop,
+                    left: scaler.pixel(starLeft),
+                    top: scaler.pixel(starTop),
                 },
             ])
             .png()
@@ -786,17 +806,19 @@ export class LazerScorepostRendererService extends AbstractService {
         };
     }
 
-    private async createModComposites(layout: IModLayout): Promise<Array<OverlayOptions>> {
+    private async createModComposites(layout: IModLayout, scaler: ScorepostScaler): Promise<Array<OverlayOptions>> {
         return await Promise.all(
             layout.items.map(async (item): Promise<OverlayOptions> => {
-                const width = Math.max(1, Math.round(item.width));
+                const logicalWidth = Math.max(1, item.width);
+                const width = Math.max(1, scaler.pixel(logicalWidth));
+                const height = Math.max(1, scaler.pixel(item.height));
 
-                const input = await this.getResizedAsset(path.join(this.assets, item.style.asset), width, item.height);
+                const input = await this.getResizedAsset(path.join(this.assets, item.style.asset), width, height);
 
                 return {
                     input,
-                    left: Math.round(item.x - width / 2),
-                    top: Math.round(item.y - item.height / 2),
+                    left: scaler.centered(item.x, width),
+                    top: scaler.centered(item.y, height),
                 };
             }),
         );
@@ -806,9 +828,10 @@ export class LazerScorepostRendererService extends AbstractService {
 
     //#region Foreground
 
-    private createForeground(data: ScorepostViewDto, mods: IModLayout): Buffer {
-        const canvas = createCanvas(scorepostDimensions.width, scorepostDimensions.height);
+    private createForeground(data: ScorepostViewDto, mods: IModLayout, scaler: ScorepostScaler): Buffer {
+        const canvas = createCanvas(scaler.width, scaler.height);
         const ctx = canvas.getContext("2d");
+        ctx.scale(scaler.factor, scaler.factor);
 
         this.drawHeader(ctx, data);
         this.drawScore(ctx, data);
@@ -1155,14 +1178,11 @@ export class LazerScorepostRendererService extends AbstractService {
         const characters = [...value];
 
         let width = 0;
-
         ctx.save();
-
         ctx.font = this.getFont(size, family);
 
         for (let index = 0; index < characters.length; index++) {
             width += ctx.measureText(characters[index]!).width;
-
             if (index < characters.length - 1) {
                 width += spacing;
             }
@@ -1214,11 +1234,9 @@ export class LazerScorepostRendererService extends AbstractService {
 
             for (const character of [...run.value]) {
                 ctx.fillText(character, x, baseline);
-
                 x += ctx.measureText(character).width;
 
                 drawnCharacters++;
-
                 if (drawnCharacters < totalCharacters) {
                     x += spacing;
                 }
@@ -1316,6 +1334,24 @@ export class LazerScorepostRendererService extends AbstractService {
         };
     }
 
+    private async getScaledAsset(filePath: string, scaler: ScorepostScaler): Promise<ICachedAsset> {
+        const asset = await this.getAsset(filePath);
+
+        if (scaler.isIdentity) {
+            return asset;
+        }
+
+        const width = Math.max(1, scaler.pixel(asset.width));
+        const height = Math.max(1, scaler.pixel(asset.height));
+        const buffer = await this.getResizedAsset(filePath, width, height);
+
+        return {
+            buffer,
+            width,
+            height,
+        };
+    }
+
     private getResizedAsset(filePath: string, width: number, height: number): Promise<Buffer> {
         const key = `${filePath}:${width}x${height}`;
         let cached = this.resizedAssetCache.get(key);
@@ -1354,13 +1390,7 @@ export class LazerScorepostRendererService extends AbstractService {
         height: number,
         radius: number,
     ): void {
-        const r = Math.min(
-            radius,
-
-            width / 2,
-
-            height / 2,
-        );
+        const r = Math.min(radius, width / 2, height / 2);
 
         ctx.beginPath();
         ctx.moveTo(x + r, y);

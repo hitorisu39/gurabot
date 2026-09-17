@@ -1,12 +1,15 @@
-import { Trace } from "@/core/decorators";
+import { Import, Trace } from "@/core/decorators";
 import { AbstractService } from "@/core/framework/AbstractService";
 import { HttpClient } from "@/http";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { AdapterProvider, GameMode } from "@generated/adapter/types";
+import { HttpService } from "../http/Http.service";
 
 type TOsuDailyLookupType = "pp" | "rank";
 
 export class OsuDailyService extends AbstractService {
+    @Import() declare private readonly httpService: HttpService;
+
     declare private http: HttpClient;
 
     private readonly name = "osu!daily";
@@ -14,7 +17,7 @@ export class OsuDailyService extends AbstractService {
     private readonly timeout = 2000;
 
     public init(): void {
-        this.http = new HttpClient(this.logger, {
+        this.http = this.httpService.create(this.logger, {
             name: this.name,
             baseURL: this.base,
         });

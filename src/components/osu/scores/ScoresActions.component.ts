@@ -12,6 +12,8 @@ import { ScorepostService } from "@/modules/osu/scorepost/Scorepost.service";
 import { ScorepostViewService } from "@/modules/osu/scorepost/ScorepostView.service";
 import { isTimezoneOffset, normalizeTimezone, parseTimezoneOffset } from "@domain/utils/dateTimeUtils";
 import { isValidNumber } from "@domain/utils/utils";
+import { parseResolution } from "@domain/utils/resolutionUtils";
+import { defaultScorepostResolution, scorepostResolutions } from "@domain/osu/configs/Scorepost.config";
 
 abstract class AbstractScoresActionComponent extends AbstractSessionComponent<"osu_scores_view", ScoresViewDto> {
     protected readonly sessionKey = "osu_scores_view";
@@ -80,6 +82,13 @@ export class ScoresActionsComponent extends AbstractScoresActionComponent {
             .setMaxLength(32)
             .setPlaceholder("e.g. 82.4");
 
+        const resolutionInput = new TextInputBuilder()
+            .setCustomId("resolution")
+            .setStyle(TextInputStyle.Short)
+            .setRequired(false)
+            .setMaxLength(5)
+            .setPlaceholder("1080p or 1440p");
+
         const timezoneInput = new TextInputBuilder()
             .setCustomId("timezone")
             .setStyle(TextInputStyle.Short)
@@ -90,6 +99,9 @@ export class ScoresActionsComponent extends AbstractScoresActionComponent {
         modal
             .addLabelComponents(new LabelBuilder().setLabel("Text (Optional)").setTextInputComponent(textInput))
             .addLabelComponents(new LabelBuilder().setLabel("Unstable rate (Optional)").setTextInputComponent(urInput))
+            .addLabelComponents(
+                new LabelBuilder().setLabel("Resolution (Optional)").setTextInputComponent(resolutionInput),
+            )
             .addLabelComponents(
                 new LabelBuilder().setLabel("Timezone (Optional)").setTextInputComponent(timezoneInput),
             );
@@ -115,10 +127,15 @@ export class ScoresScorepostModal extends AbstractScoresActionComponent {
         const text = ctx.getTextInput("text");
         const ur = this.parseUr(ctx.getTextInput("ur"));
         const timezoneOffset = this.parseTimezone(ctx.getTextInput("timezone"));
+        const resolution = parseResolution(
+            ctx.getTextInput("resolution"),
+            scorepostResolutions,
+            defaultScorepostResolution,
+        );
 
         await ctx.deferReply();
 
-        const data = await this.scorepostService.resolve(score.id.toString(), ur, text, timezoneOffset);
+        const data = await this.scorepostService.resolve(score.id.toString(), ur, text, timezoneOffset, resolution);
         await ctx.respond(await this.scorepostViewService.build(data));
     }
 

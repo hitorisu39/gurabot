@@ -4,16 +4,13 @@ import { CanvasRenderingContext2D, createCanvas, registerFont } from "canvas";
 import sharp, { type OverlayOptions } from "sharp";
 import { Import } from "@/core/decorators";
 import { AbstractService } from "@/core/framework/AbstractService";
-import {
-    scorepostDimensions,
-    stableScorepostLayout,
-    stableScorepostModAssets,
-} from "@domain/osu/configs/Scorepost.config";
+import { stableScorepostLayout, stableScorepostModAssets } from "@domain/osu/configs/Scorepost.config";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { ScorepostViewDto } from "@domain/osu/views/Scorepost.view";
 import { ParsedMod } from "@generated/adapter/mods";
 import { ScorepostBackgroundService } from "./ScorepostBackground.service";
 import { ScorepostFormatter } from "@domain/osu/formatters/Scorepost.formatter";
+import { ScorepostScaler } from "@domain/osu/utils/ScorepostScaler";
 
 interface ICachedScorepostAsset {
     buffer: Buffer;
@@ -29,7 +26,7 @@ export class StableScorepostRendererService extends AbstractService {
     private readonly assetCache = new Map<string, Promise<ICachedScorepostAsset>>();
     private readonly resizedAssetCache = new Map<string, Promise<Buffer>>();
 
-    private staticOverlay?: Promise<Buffer>;
+    private readonly staticOverlayCache = new Map<number, Promise<Buffer>>();
 
     public async init(): Promise<void> {
         const resources = path.join(process.cwd(), this.config.app.resources);
@@ -59,17 +56,19 @@ export class StableScorepostRendererService extends AbstractService {
             );
         }
 
+        const scaler = new ScorepostScaler(data.resolution);
+
         const [background, staticOverlay, grade, modComposites, perfect, cursor, urPanel] = await Promise.all([
-            this.backgroundService.load(data.score),
-            this.getStaticOverlay(),
-            this.getGrade(data),
-            this.getModComposites(data.score.mods),
-            data.score.perfect ? this.getPerfectAsset() : Promise.resolve(null),
-            data.ur ? this.getCursorAsset() : Promise.resolve(null),
-            data.ur ? this.createUrPanel(data.ur) : Promise.resolve(null),
+            this.createBackground(data, scaler),
+            this.getStaticOverlay(scaler),
+            this.getGrade(data, scaler),
+            this.getModComposites(data.score.mods, scaler),
+            data.score.perfect ? this.getPerfectAsset(scaler) : Promise.resolve(null),
+            data.ur ? this.getCursorAsset(scaler) : Promise.resolve(null),
+            data.ur ? this.createUrPanel(data.ur, scaler) : Promise.resolve(null),
         ]);
 
-        const foreground = this.createForeground(data);
+        const foreground = this.createForeground(data, scaler);
         const composites: Array<OverlayOptions> = [
             {
                 input: staticOverlay,
@@ -78,8 +77,8 @@ export class StableScorepostRendererService extends AbstractService {
             },
             {
                 input: grade,
-                left: stableScorepostLayout.gradeX,
-                top: stableScorepostLayout.gradeY,
+                left: scaler.pixel(stableScorepostLayout.gradeX),
+                top: scaler.pixel(stableScorepostLayout.gradeY),
             },
             ...modComposites,
         ];
@@ -87,24 +86,24 @@ export class StableScorepostRendererService extends AbstractService {
         if (perfect) {
             composites.push({
                 input: perfect,
-                left: stableScorepostLayout.perfectX,
-                top: stableScorepostLayout.perfectY,
+                left: scaler.pixel(stableScorepostLayout.perfectX),
+                top: scaler.pixel(stableScorepostLayout.perfectY),
             });
         }
 
         if (cursor) {
             composites.push({
                 input: cursor,
-                left: stableScorepostLayout.cursorX,
-                top: stableScorepostLayout.cursorY,
+                left: scaler.pixel(stableScorepostLayout.cursorX),
+                top: scaler.pixel(stableScorepostLayout.cursorY),
             });
         }
 
         if (urPanel) {
             composites.push({
                 input: urPanel,
-                left: stableScorepostLayout.hitMeterX,
-                top: stableScorepostLayout.hitMeterY,
+                left: scaler.pixel(stableScorepostLayout.hitMeterX),
+                top: scaler.pixel(stableScorepostLayout.hitMeterY),
             });
         }
 
@@ -122,31 +121,43 @@ export class StableScorepostRendererService extends AbstractService {
             .toBuffer();
     }
 
+    //#region Background
+
+    private async createBackground(data: ScorepostViewDto, scaler: ScorepostScaler): Promise<Buffer> {
+        return await this.backgroundService.load(data.score, scaler);
+    }
+
+    //#endregion
+
     //#region Static layers
 
-    private getStaticOverlay(): Promise<Buffer> {
-        if (!this.staticOverlay) {
-            this.staticOverlay = this.createStaticOverlay();
+    private getStaticOverlay(scaler: ScorepostScaler): Promise<Buffer> {
+        const key = scaler.resolution;
+        let cached = this.staticOverlayCache.get(key);
 
-            this.staticOverlay.catch(() => {
-                this.staticOverlay = undefined;
+        if (!cached) {
+            cached = this.createStaticOverlay(scaler);
+            this.staticOverlayCache.set(key, cached);
+
+            cached.catch(() => {
+                this.staticOverlayCache.delete(key);
             });
         }
 
-        return this.staticOverlay;
+        return cached;
     }
 
-    private async createStaticOverlay(): Promise<Buffer> {
+    private async createStaticOverlay(scaler: ScorepostScaler): Promise<Buffer> {
         const [darkLayer, top, overlay] = await Promise.all([
-            this.getAsset(path.join(this.assets, "darklayer.png")),
-            this.getAsset(path.join(this.assets, "top.png")),
-            this.getAsset(path.join(this.assets, "overlay.png")),
+            this.getScaledAsset(path.join(this.assets, "darklayer.png"), scaler),
+            this.getScaledAsset(path.join(this.assets, "top.png"), scaler),
+            this.getScaledAsset(path.join(this.assets, "overlay.png"), scaler),
         ]);
 
         return await sharp({
             create: {
-                width: scorepostDimensions.width,
-                height: scorepostDimensions.height,
+                width: scaler.width,
+                height: scaler.height,
                 channels: 4,
                 background: {
                     r: 0,
@@ -159,18 +170,18 @@ export class StableScorepostRendererService extends AbstractService {
             .composite([
                 {
                     input: darkLayer.buffer,
-                    left: stableScorepostLayout.darkLayerX,
-                    top: stableScorepostLayout.darkLayerY,
+                    left: scaler.pixel(stableScorepostLayout.darkLayerX),
+                    top: scaler.pixel(stableScorepostLayout.darkLayerY),
                 },
                 {
                     input: top.buffer,
-                    left: stableScorepostLayout.topX,
-                    top: stableScorepostLayout.topY,
+                    left: scaler.pixel(stableScorepostLayout.topX),
+                    top: scaler.pixel(stableScorepostLayout.topY),
                 },
                 {
                     input: overlay.buffer,
-                    left: stableScorepostLayout.overlayX,
-                    top: stableScorepostLayout.overlayY,
+                    left: scaler.pixel(stableScorepostLayout.overlayX),
+                    top: scaler.pixel(stableScorepostLayout.overlayY),
                 },
             ])
             .png({
@@ -184,21 +195,21 @@ export class StableScorepostRendererService extends AbstractService {
 
     //#region Grade / perfect
 
-    private async getGrade(data: ScorepostViewDto): Promise<Buffer> {
+    private async getGrade(data: ScorepostViewDto, scaler: ScorepostScaler): Promise<Buffer> {
         const grade = String(data.score.grade).toLowerCase();
 
         return await this.getResizedAsset(
             path.join(this.assets, `ranking-${grade}.png`),
-            stableScorepostLayout.gradeWidth,
-            stableScorepostLayout.gradeHeight,
+            scaler.pixel(stableScorepostLayout.gradeWidth),
+            scaler.pixel(stableScorepostLayout.gradeHeight),
         );
     }
 
-    private async getPerfectAsset(): Promise<Buffer> {
+    private async getPerfectAsset(scaler: ScorepostScaler): Promise<Buffer> {
         return await this.getResizedAsset(
             path.join(this.assets, "ranking-perfect.png"),
-            stableScorepostLayout.perfectWidth,
-            stableScorepostLayout.perfectHeight,
+            scaler.pixel(stableScorepostLayout.perfectWidth),
+            scaler.pixel(stableScorepostLayout.perfectHeight),
         );
     }
 
@@ -206,8 +217,8 @@ export class StableScorepostRendererService extends AbstractService {
 
     //#region Cursor
 
-    private async getCursorAsset(): Promise<Buffer> {
-        const asset = await this.getAsset(path.join(this.assets, "cursor.png"));
+    private async getCursorAsset(scaler: ScorepostScaler): Promise<Buffer> {
+        const asset = await this.getScaledAsset(path.join(this.assets, "cursor.png"), scaler);
 
         return asset.buffer;
     }
@@ -216,7 +227,10 @@ export class StableScorepostRendererService extends AbstractService {
 
     //#region Mods
 
-    private async getModComposites(mods: ReadonlyArray<ParsedMod>): Promise<Array<OverlayOptions>> {
+    private async getModComposites(
+        mods: ReadonlyArray<ParsedMod>,
+        scaler: ScorepostScaler,
+    ): Promise<Array<OverlayOptions>> {
         const supportedMods = mods
             .map((mod) => {
                 const filename = stableScorepostModAssets[mod.acronym];
@@ -243,16 +257,16 @@ export class StableScorepostRendererService extends AbstractService {
             supportedMods.map((mod) =>
                 this.getResizedAsset(
                     path.join(this.assets, `${mod.filename}.png`),
-                    stableScorepostLayout.modSize,
-                    stableScorepostLayout.modSize,
+                    scaler.pixel(stableScorepostLayout.modSize),
+                    scaler.pixel(stableScorepostLayout.modSize),
                 ),
             ),
         );
 
         return images.map((input, index) => ({
             input,
-            left: stableScorepostLayout.modStartX - index * stableScorepostLayout.modOverlap,
-            top: stableScorepostLayout.modY,
+            left: scaler.pixel(stableScorepostLayout.modStartX - index * stableScorepostLayout.modOverlap),
+            top: scaler.pixel(stableScorepostLayout.modY),
         }));
     }
 
@@ -260,9 +274,11 @@ export class StableScorepostRendererService extends AbstractService {
 
     //#region Foreground
 
-    private createForeground(data: ScorepostViewDto): Buffer {
-        const canvas = createCanvas(scorepostDimensions.width, scorepostDimensions.height);
+    private createForeground(data: ScorepostViewDto, scaler: ScorepostScaler): Buffer {
+        const canvas = createCanvas(scaler.width, scaler.height);
         const ctx = canvas.getContext("2d");
+
+        ctx.scale(scaler.factor, scaler.factor);
 
         this.drawHeader(ctx, data);
         this.drawRankingPanel(ctx, data);
@@ -485,6 +501,24 @@ export class StableScorepostRendererService extends AbstractService {
         };
     }
 
+    private async getScaledAsset(filePath: string, scaler: ScorepostScaler): Promise<ICachedScorepostAsset> {
+        const asset = await this.getAsset(filePath);
+
+        if (scaler.isIdentity) {
+            return asset;
+        }
+
+        const width = Math.max(1, scaler.pixel(asset.width));
+        const height = Math.max(1, scaler.pixel(asset.height));
+        const buffer = await this.getResizedAsset(filePath, width, height);
+
+        return {
+            buffer,
+            width,
+            height,
+        };
+    }
+
     private getResizedAsset(filePath: string, width: number, height: number): Promise<Buffer> {
         const cacheKey = `${filePath}:${width}x${height}`;
         let cached = this.resizedAssetCache.get(cacheKey);
@@ -513,7 +547,7 @@ export class StableScorepostRendererService extends AbstractService {
 
     //#region Hit statistics
 
-    private async createUrPanel(ur: number): Promise<Buffer> {
+    private async createUrPanel(ur: number, scaler: ScorepostScaler): Promise<Buffer> {
         const hitMeter = await this.getAsset(path.join(this.assets, "hitmeter.png"));
 
         const fontSize = 14;
@@ -535,9 +569,13 @@ export class StableScorepostRendererService extends AbstractService {
 
         const panelWidth = textWidth + textOffsetX + 5;
         const panelHeight = stableScorepostLayout.hitMeterHeight;
+        const outputWidth = scaler.pixel(panelWidth);
+        const outputHeight = scaler.pixel(panelHeight);
 
-        const textCanvas = createCanvas(panelWidth, panelHeight);
+        const textCanvas = createCanvas(outputWidth, outputHeight);
         const ctx = textCanvas.getContext("2d");
+
+        ctx.scale(scaler.factor, scaler.factor);
 
         let y = textOffsetY;
 
@@ -547,7 +585,7 @@ export class StableScorepostRendererService extends AbstractService {
         }
 
         const resizedHitMeter = await sharp(hitMeter.buffer)
-            .resize(panelWidth, panelHeight, {
+            .resize(outputWidth, outputHeight, {
                 fit: "fill",
             })
             .png()

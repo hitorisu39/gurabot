@@ -1,4 +1,4 @@
-import { Trace } from "@/core/decorators";
+import { Import, Trace } from "@/core/decorators";
 import { AbstractService } from "@/core/framework/AbstractService";
 import { HttpClient } from "@/http";
 import { EModMatchType } from "@domain/core/Command";
@@ -16,6 +16,7 @@ import { OsuStatsScoresPageDto, OsuStatsScoresRequestDto } from "@domain/osustat
 import { ModUtils } from "@generated/adapter/mods";
 import { GameMode } from "@generated/adapter/types";
 import { plainToInstance } from "class-transformer";
+import { HttpService } from "../http/Http.service";
 
 export interface IOsuStatsPlayersInput {
     mode: GameMode;
@@ -34,6 +35,8 @@ interface IOsuStatsRawPlayer {
 }
 
 export class OsuStatsService extends AbstractService {
+    @Import() declare private readonly httpService: HttpService;
+
     declare private http: HttpClient;
 
     private readonly name = "osu!stats";
@@ -51,7 +54,7 @@ export class OsuStatsService extends AbstractService {
     private readonly pendingBest = new Map<string, Promise<OsuStatsBestScoresDto>>();
 
     public init(): void {
-        this.http = new HttpClient(this.logger, {
+        this.http = this.httpService.create(this.logger, {
             name: this.name,
             baseURL: this.base,
             monitoring: {

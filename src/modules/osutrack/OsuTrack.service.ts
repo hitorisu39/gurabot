@@ -1,13 +1,16 @@
 import { EApplicationError, Exception } from "@domain/core/Exception";
-import { Trace } from "@/core/decorators";
+import { Import, Trace } from "@/core/decorators";
 import { AbstractService } from "@/core/framework/AbstractService";
 import { HttpClient } from "@/http";
 import { AdapterProvider, GameMode } from "@generated/adapter/types";
 import { plainToInstance } from "class-transformer";
 import { OsuTrackPeakDto, OsuTrackStatsHistoryDto } from "@domain/osutrack/OsuTrack.dto";
 import { isValidNumber } from "@domain/utils/utils";
+import { HttpService } from "../http/Http.service";
 
 export class OsuTrackService extends AbstractService {
+    @Import() declare private readonly httpService: HttpService;
+
     declare private http: HttpClient;
 
     private readonly name = "osu!track";
@@ -30,7 +33,7 @@ export class OsuTrackService extends AbstractService {
     private readonly pendingHistoryRequests = new Map<string, Promise<Array<OsuTrackStatsHistoryDto>>>();
 
     public init(): void {
-        this.http = new HttpClient(this.logger, {
+        this.http = this.httpService.create(this.logger, {
             name: this.name,
             baseURL: this.base,
             monitoring: {
