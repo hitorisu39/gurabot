@@ -1,4 +1,4 @@
-import { Trace } from "@/core/decorators";
+import { Import, Trace } from "@/core/decorators";
 import { AbstractService } from "@/core/framework/AbstractService";
 import { HttpClient } from "@/http";
 import { SocketClient } from "@/socket";
@@ -23,6 +23,7 @@ import { EOrdrConfigSource, OrdrConfigDto, OrdrSettingsDto } from "@domain/ordr/
 import { basename } from "node:path";
 import { plainToInstance } from "class-transformer";
 import { discordRegexAnyNumber } from "@domain/discord/configs/Discord.config";
+import { HttpService } from "../http/Http.service";
 
 type TOrdrServerEvents = {
     render_added_json(data: unknown): void;
@@ -37,6 +38,8 @@ interface IBufferedRenderEvent {
 }
 
 export class OrdrService extends AbstractService {
+    @Import() declare private readonly httpService: HttpService;
+
     declare private http: HttpClient;
     declare private replayHttp: HttpClient;
     declare private socket: SocketClient<TOrdrServerEvents>;
@@ -55,7 +58,7 @@ export class OrdrService extends AbstractService {
     private readonly bufferedEvents = new Map<number, Array<IBufferedRenderEvent>>();
 
     public async init(): Promise<void> {
-        this.http = new HttpClient(this.logger, {
+        this.http = this.httpService.create(this.logger, {
             name: this.name,
             baseURL: this.base,
             timeout: this.timeout,
@@ -65,7 +68,7 @@ export class OrdrService extends AbstractService {
             },
         });
 
-        this.replayHttp = new HttpClient(this.logger, {
+        this.replayHttp = this.httpService.create(this.logger, {
             name: `${this.name}:Replay`,
             timeout: this.replayTimeout,
         });

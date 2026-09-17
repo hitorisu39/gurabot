@@ -2,6 +2,7 @@ import { Import, Trace } from "@/core/decorators";
 import { AbstractService } from "@/core/framework/AbstractService";
 import { OsuService } from "@/modules/osu/Osu.service";
 import { EApplicationError, Exception } from "@domain/core/Exception";
+import { defaultScorepostResolution, type ScorepostResolution } from "@domain/osu/configs/Scorepost.config";
 import { EScorepostClient } from "@domain/osu/enums/Scorepost.enum";
 import { ScorepostViewDto } from "@domain/osu/views/Scorepost.view";
 import { GameMode, User } from "@generated/adapter/types";
@@ -15,6 +16,7 @@ export class ScorepostService extends AbstractService {
         ur?: number | null,
         text?: string | null,
         timezoneOffset = 0,
+        resolution: ScorepostResolution = defaultScorepostResolution,
     ): Promise<ScorepostViewDto> {
         const rawScore = await this.osuService.score(scoreID);
 
@@ -54,6 +56,7 @@ export class ScorepostService extends AbstractService {
             ur,
             text,
             timezoneOffset,
+            resolution,
         };
     }
 }

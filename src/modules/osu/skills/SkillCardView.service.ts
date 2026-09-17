@@ -25,6 +25,7 @@ import { EApplicationError, Exception } from "@domain/core/Exception";
 import { createCanvas } from "canvas";
 import { PopulatedUser } from "@domain/osu/Profile.dto";
 import { TextFormatter } from "@domain/discord/formatters/Text.formatter";
+import { HttpService } from "@/modules/http/Http.service";
 
 interface ICachedImageAsset {
     buffer: Buffer;
@@ -39,6 +40,7 @@ interface ISkillCardThemeAssets {
 }
 
 export class SkillCardViewService extends AbstractService {
+    @Import() declare private readonly httpService: HttpService;
     @Import() declare private readonly profileViewService: ProfileViewService;
     @Import() declare private readonly skillRankService: SkillRankService;
 
@@ -54,7 +56,7 @@ export class SkillCardViewService extends AbstractService {
     public async init(): Promise<void> {
         this.assets = path.join(process.cwd(), this.config.app.resources, "cards");
         this.assetsMode = path.join(process.cwd(), this.config.app.resources, "mode");
-        this.http = new HttpClient(this.logger, { name: "OsuSkillCard" });
+        this.http = this.httpService.create(this.logger, { name: "OsuSkillCard" });
     }
 
     @Trace()

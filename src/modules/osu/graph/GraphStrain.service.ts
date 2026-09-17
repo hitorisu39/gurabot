@@ -9,6 +9,7 @@ import { Image, loadImage } from "canvas";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { GraphRendererService } from "./GraphRenderer.service";
 import { EGraphSize } from "@domain/osu/enums/Graph.enum";
+import { HttpService } from "@/modules/http/Http.service";
 
 interface IGraphPoint {
     x: number;
@@ -21,12 +22,13 @@ interface ILineSeries {
 }
 
 export class GraphStrainService extends AbstractService {
+    @Import() declare private readonly httpService: HttpService;
     @Import() declare private readonly graphRendererService: GraphRendererService;
 
     declare private http: HttpClient;
 
     public async init(): Promise<void> {
-        this.http = new HttpClient(this.logger, { name: "OsuGraphStrain" });
+        this.http = this.httpService.create(this.logger, { name: "OsuGraphStrain" });
     }
 
     @Trace()

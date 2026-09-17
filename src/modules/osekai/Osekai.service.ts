@@ -1,4 +1,4 @@
-import { Trace } from "@/core/decorators";
+import { Import, Trace } from "@/core/decorators";
 import { AbstractService } from "@/core/framework/AbstractService";
 import { HttpClient } from "@/http";
 import { EApplicationError, Exception } from "@domain/core/Exception";
@@ -10,8 +10,11 @@ import { OsekaiMedalBeatmapDto, OsekaiMedalCommentDto, OsekaiMedalDto } from "@d
 import { IOsekaiRankingResponse, OsekaiRankingEntryDto, OsekaiRankingPageDto } from "@domain/osekai/OsekaiRanking.dto";
 import { levenshtein } from "@domain/utils/utils";
 import { plainToInstance } from "class-transformer";
+import { HttpService } from "../http/Http.service";
 
 export class OsekaiService extends AbstractService {
+    @Import() declare private readonly httpService: HttpService;
+
     declare private http: HttpClient;
 
     private readonly name = "Osekai";
@@ -33,7 +36,7 @@ export class OsekaiService extends AbstractService {
     private readonly pendingRankingRequests = new Map<string, Promise<OsekaiRankingPageDto>>();
 
     public init(): void {
-        this.http = new HttpClient(this.logger, {
+        this.http = this.httpService.create(this.logger, {
             name: this.name,
             baseURL: this.base,
             monitoring: { service: this.name, metrics: this.metrics },

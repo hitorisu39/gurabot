@@ -10,6 +10,8 @@ import { EApplicationError, Exception } from "@domain/core/Exception";
 import { osuMapsetDownloads } from "@domain/osu/configs/Osu.config";
 import { isValidNumber, wait } from "@domain/utils/utils";
 import { uuidv7 } from "uuidv7";
+import { Import } from "@/core/decorators";
+import { HttpService } from "../http/Http.service";
 
 interface IBeatmapBackgroundReference {
     beatmapID: number;
@@ -17,6 +19,8 @@ interface IBeatmapBackgroundReference {
 }
 
 export class OsuMapsetDownloadService extends AbstractService {
+    @Import() declare private readonly httpService: HttpService;
+
     declare private http: HttpClient;
 
     declare private mapsetsDirectory: string;
@@ -56,7 +60,7 @@ export class OsuMapsetDownloadService extends AbstractService {
             mkdir(this.backgroundsDirectory, { recursive: true }),
         ]);
 
-        this.http = new HttpClient(this.logger, { name: "OsuMapsetDownload" });
+        this.http = this.httpService.create(this.logger, { name: "OsuMapsetDownload" });
 
         await this.clearMapsetDirectory();
         await this.cleanupExpiredBackgrounds();

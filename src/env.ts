@@ -1,3 +1,4 @@
+import manifest from "../package.json";
 import convict from "convict";
 import dotenv from "dotenv";
 
@@ -10,6 +11,11 @@ export const config = convict({
             format: String,
             default: "gurabot",
             env: "APP_NAME",
+        },
+        version: {
+            doc: "Version of the application.",
+            format: String,
+            default: manifest.version,
         },
         mode: {
             doc: "The application environment.",

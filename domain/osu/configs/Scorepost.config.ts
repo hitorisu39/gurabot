@@ -1,9 +1,17 @@
 import { ModType } from "@generated/adapter/mods";
 
-export const scorepostDimensions = {
+/**
+ * Coordinate system all existing scorepost layouts/assets were authored for.
+ */
+export const scorepostLogicalDimensions = {
     width: 1920,
     height: 1080,
 } as const;
+
+export const scorepostResolutions = [1080, 1440] as const;
+
+export type ScorepostResolution = (typeof scorepostResolutions)[number];
+export const defaultScorepostResolution: ScorepostResolution = 1080;
 
 export const stableScorepostLayout = {
     darkLayerX: 0,

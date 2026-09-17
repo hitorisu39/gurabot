@@ -1,12 +1,15 @@
 import { AbstractService } from "@/core/framework/AbstractService";
-import { Trace } from "@/core/decorators";
+import { Import, Trace } from "@/core/decorators";
 import { HttpClient } from "@/http";
 import { EApplicationError, Exception } from "@domain/core/Exception";
 import { TOsuTrackLadderPoint, OsuTrackLadderSimulationConfigDto } from "@domain/osutrack/OsuTrack.dto";
 import { AdapterProvider, GameMode } from "@generated/adapter/types";
 import { plainToInstance } from "class-transformer";
+import { HttpService } from "../http/Http.service";
 
 export class OsuTrackLadderService extends AbstractService {
+    @Import() declare private readonly httpService: HttpService;
+
     declare private http: HttpClient;
 
     private readonly name = "osu!track ladder";
@@ -21,7 +24,7 @@ export class OsuTrackLadderService extends AbstractService {
     private readonly pendingSimulationConfigRequests = new Map<number, Promise<OsuTrackLadderSimulationConfigDto>>();
 
     public init(): void {
-        this.http = new HttpClient(this.logger, {
+        this.http = this.httpService.create(this.logger, {
             name: this.name,
             baseURL: this.base,
             monitoring: {
