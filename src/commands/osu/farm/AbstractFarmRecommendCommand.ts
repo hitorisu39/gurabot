@@ -53,48 +53,48 @@ export abstract class AbstractFarmRecommendCommand extends AbstractOsuCommand {
     @Import() declare private readonly farmMapsService: FarmMapsService;
     @Import() declare private readonly farmMapsViewService: FarmMapsViewService;
 
-    @Option("pp", "Override the inferred PP range")
+    @Option("pp", "Override the inferred PP range, e.g. pp>=400, pp=100-300")
     @IsRange()
     declare private readonly pp: CommandOption<ICommandRange>;
 
-    @Option("length", "Override the inferred map length range, in seconds")
+    @Option("length", "Override the inferred map length range in seconds, e.g. length<180")
     @IsRange()
     declare private readonly length: CommandOption<ICommandRange>;
 
-    @Option("bpm", "Override the inferred effective BPM range")
+    @Option("bpm", "Override the inferred effective BPM range, e.g. bpm>=200")
     @IsRange()
     declare private readonly bpm: CommandOption<ICommandRange>;
 
-    @Option("stars", "Filter by base star rating")
+    @Option("stars", "Filter by base (nomod) star rating, e.g. stars=6.5-7.5")
     @IsRange()
     declare private readonly stars: CommandOption<ICommandRange>;
 
-    @Option("ranked", "Filter by ranked date")
+    @Option("ranked", "Filter by ranked date, e.g. ranked>=2020")
     @IsDateRange()
     @Aliases("rankdate")
     declare private readonly ranked: CommandOption<ICommandDateRange>;
 
-    @Option("ar", "Override the inferred effective AR range")
+    @Option("ar", "Override the inferred effective AR range, e.g. ar>=9.5")
     @IsRange()
     declare private readonly ar: CommandOption<ICommandRange>;
 
-    @Option("cs", "Override the inferred CS range")
+    @Option("cs", "Override the inferred CS range, e.g. cs=3.5-5")
     @IsRange()
     declare private readonly cs: CommandOption<ICommandRange>;
 
-    @Option("od", "Override the inferred OD range")
+    @Option("od", "Override the inferred OD range, e.g. od>=9")
     @IsRange()
     declare private readonly od: CommandOption<ICommandRange>;
 
-    @Option("hp", "Override the inferred HP range")
+    @Option("hp", "Override the inferred HP range, e.g. hp=4-7")
     @IsRange()
     declare private readonly hp: CommandOption<ICommandRange>;
 
-    @Option("mods", "Filter recommendations by mods")
+    @Option("mods", "Filter recommendations by mods, e.g. +HD, +HD!, -HD")
     @IsMods()
     declare private readonly mods: CommandOption<ICommandMods>;
 
-    @Option("sort", "Recommendation sort")
+    @Option("sort", "Recommendation sort, e.g. random, farmability")
     @IsEnum(EFarmRecommendSort)
     declare private readonly sort: CommandOption<EFarmRecommendSort>;
 
