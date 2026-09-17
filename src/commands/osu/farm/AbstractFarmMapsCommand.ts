@@ -58,52 +58,52 @@ export abstract class AbstractFarmMapsCommand extends AbstractCommand {
     @IsEnum(GameMode)
     declare protected readonly mode: CommandOption<GameMode>;
 
-    @Option("pp", "Filter by average top-play PP")
+    @Option("pp", "Filter by average top-play PP, e.g. pp>=400")
     @IsRange()
     declare private readonly pp: CommandOption<ICommandRange>;
 
-    @Option("length", "Filter by effective map length in seconds")
+    @Option("length", "Filter by effective map length in seconds, e.g. length<180")
     @IsRange()
     declare private readonly length: CommandOption<ICommandRange>;
 
-    @Option("bpm", "Filter by effective BPM")
+    @Option("bpm", "Filter by effective BPM, e.g. bpm>=200")
     @IsRange()
     declare private readonly bpm: CommandOption<ICommandRange>;
 
-    @Option("stars", "Filter by osu!pps star rating")
+    @Option("stars", "Filter by base (nomod) star rating, e.g. stars=6.5-7.5")
     @IsRange()
     declare private readonly stars: CommandOption<ICommandRange>;
 
-    @Option("ranked", "Filter by ranked date")
+    @Option("ranked", "Filter by ranked date, e.g. ranked>=2020")
     @IsDateRange()
     @Aliases("rankdate")
     declare private readonly ranked: CommandOption<ICommandDateRange>;
 
-    @Option("ar", "Filter by effective AR")
+    @Option("ar", "Filter by effective AR, e.g. ar>=9.5")
     @IsRange()
     declare private readonly ar: CommandOption<ICommandRange>;
 
-    @Option("cs", "Filter by CS")
+    @Option("cs", "Filter by CS, e.g. cs=3.5-5")
     @IsRange()
     declare private readonly cs: CommandOption<ICommandRange>;
 
-    @Option("od", "Filter by OD")
+    @Option("od", "Filter by OD, e.g. od>=9")
     @IsRange()
     declare private readonly od: CommandOption<ICommandRange>;
 
-    @Option("hp", "Filter by HP")
+    @Option("hp", "Filter by HP, e.g. hp=4-7")
     @IsRange()
     declare private readonly hp: CommandOption<ICommandRange>;
 
-    @Option("mods", "Filter by mods")
+    @Option("mods", "Filter by mods, e.g. +HD, +HD!, -HD")
     @IsMods()
     declare private readonly mods: CommandOption<ICommandMods>;
 
-    @Option("sort", "Sort farm maps")
+    @Option("sort", "Sort farm maps, e.g. farmability, pp, ranked")
     @IsEnum(EFarmSort)
     declare private readonly sort: CommandOption<EFarmSort>;
 
-    @Option("order", "Sort direction")
+    @Option("order", "Sort direction, e.g. asc, desc")
     @IsEnum(EFarmSortOrder)
     declare private readonly order: CommandOption<EFarmSortOrder>;
 
