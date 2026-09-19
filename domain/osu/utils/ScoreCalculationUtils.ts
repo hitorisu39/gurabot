@@ -65,6 +65,21 @@ export class ScoreCalculationUtils {
         };
     }
 
+    public static sliderTailMisses(score: Score, mode: GameMode): number | undefined {
+        if (mode !== GameMode.Standard) {
+            return undefined;
+        }
+
+        const maximum = this.optionalCount(score.maximumStatistics?.sliderTailHit);
+        const hits = this.optionalCount(score.statistics.sliderTailHit);
+
+        if (maximum === undefined || hits === undefined) {
+            return undefined;
+        }
+
+        return Math.max(0, maximum - hits);
+    }
+
     private static sum(...values: Array<number | undefined>): number | undefined {
         if (values.some((value) => typeof value !== "number" || !Number.isSafeInteger(value) || value < 0)) {
             return undefined;

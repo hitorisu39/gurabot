@@ -229,6 +229,7 @@ export class CalculatorService extends AbstractService {
         }
 
         const scoreState = ScoreCalculationUtils.scoreState(score, mode);
+        const sliderTailMisses = ScoreCalculationUtils.sliderTailMisses(score, mode);
 
         requests.push({
             mode,
@@ -236,11 +237,16 @@ export class CalculatorService extends AbstractService {
             precalculatedDifficulty: difficulty.attributes,
             referenceId: fcReferenceID,
             mods: toCalculatorMods(score.mods),
-            score: this.createFCScoreState(scoreState, mode, difficulty.attributes.maxCombo),
+            score: this.createFCScoreState(scoreState, mode, difficulty.attributes.maxCombo, sliderTailMisses),
         });
     }
 
-    private createFCScoreState(scoreState: ScoreState, mode: GameMode, maxCombo: number): ScoreState {
+    private createFCScoreState(
+        scoreState: ScoreState,
+        mode: GameMode,
+        maxCombo: number,
+        sliderTailMisses?: number,
+    ): ScoreState {
         if (mode === GameMode.Catch) {
             return {
                 ...scoreState,
@@ -264,6 +270,8 @@ export class CalculatorService extends AbstractService {
             kind: ScoreStateKind.SIMULATION,
             count300: (scoreState.count300 ?? 0) + misses,
             countMiss: 0,
+            countSliderTailHits: undefined,
+            countSliderTailMisses: mode === GameMode.Standard ? sliderTailMisses : undefined,
             maxCombo,
         };
     }
