@@ -56,9 +56,9 @@ export class ScoreCalculationUtils {
             countLargeTickHits: this.optionalCount(statistics.largeTickHit),
             countLargeTickMisses: this.optionalCount(statistics.largeTickMiss),
 
-            countSliderTailHits: isStandard ? this.optionalCount(statistics.ignoreHit) : undefined,
-
-            countSliderTailMisses: isStandard ? this.optionalCount(statistics.ignoreMiss) : undefined,
+            countSliderTailHits: isStandard ? this.optionalCount(statistics.sliderTailHit) : undefined,
+            countIgnoreHit: isStandard ? this.optionalCount(statistics.ignoreHit) : undefined,
+            countIgnoreMiss: isStandard ? this.optionalCount(statistics.ignoreMiss) : undefined,
 
             countSmallBonus: this.optionalCount(statistics.smallBonus),
             countLargeBonus: this.optionalCount(statistics.largeBonus),
