@@ -46,6 +46,7 @@ export function osuStatsStatistics(value: unknown, obj: Record<string, unknown>)
     }
 
     return plainToInstance(ScoreStatistics, {
+        sliderTailHit: 0,
         ignoreMiss: 0,
         ignoreHit: 0,
         miss: Number(obj.countMiss ?? 0),
