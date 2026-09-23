@@ -35,7 +35,7 @@ export abstract class AbstractRecentCommand extends AbstractOsuCommand {
     @Import() declare private readonly osuService: OsuService;
     @Import() declare private readonly scoreViewService: ScoreViewService;
 
-    @Option("index", "Jump to a specific score index (1-100)")
+    @Option("index", `Jump to a specific score index (1-${scoreRecentQueryLimit})`)
     @IsInlineIndex()
     @IsRange()
     @Aliases("i")
