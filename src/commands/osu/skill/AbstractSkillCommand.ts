@@ -1,7 +1,7 @@
 import { Category, Import } from "@/core/decorators";
 import { CommandContext } from "@/core/discord/context/CommandContext";
 import { EApplicationError, Exception } from "@domain/core/Exception";
-import { SkillStatsViewDto } from "@domain/osu/views/SkillStats.view";
+import { ESkillStatsView, SkillStatsViewDto } from "@domain/osu/views/SkillStats.view";
 import { ProviderMeta } from "@generated/adapter";
 import { OsuService } from "@/modules/osu/Osu.service";
 import { SkillEvaluatorService } from "@/modules/osu/skills/SkillEvaluator.service";
@@ -52,9 +52,13 @@ export abstract class AbstractSkillCommand extends AbstractOsuCommand {
         }
 
         return {
+            authorID: ctx.author.id,
             timestamp: Date.now(),
             profile: user,
             categories: result.categories,
+            scores: populated,
+            view: ESkillStatsView.Overview,
+            page: 1,
         };
     }
 }

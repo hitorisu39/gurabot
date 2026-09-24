@@ -443,6 +443,10 @@ export class SkillEvaluatorService extends AbstractService {
             label: definition.label,
             average: weighted ? this.calculateWeightedAverage(results) : this.calculateArithmeticAverage(results),
             topScores: results.slice(0, this.topScoreCount),
+            scoreValues: evaluated.map((item) => {
+                const value = item.values[definition.type];
+                return this.isValidSkillValue(value) ? value : null;
+            }),
         };
     }
 

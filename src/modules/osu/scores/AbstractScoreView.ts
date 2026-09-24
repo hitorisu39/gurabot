@@ -16,6 +16,10 @@ import { ScoreUtils } from "@domain/osu/utils/ScoreUtils";
 import { BeatmapUtils } from "@domain/osu/utils/BeatmapUtils";
 import { discordEmoteTwitch } from "@domain/discord/configs/Emotes.config";
 
+export interface IScoreViewMeta extends Record<string, unknown> {
+    extraAttrs?: Array<Array<string>>;
+}
+
 export abstract class AbstractScoreView extends AbstractService {
     @Import() declare protected readonly profileViewService: ProfileViewService;
 
@@ -27,7 +31,7 @@ export abstract class AbstractScoreView extends AbstractService {
     /**
      * Renders the specific layout.
      */
-    public abstract render(data: ScoresViewDto, pageScores: Array<Score>, meta?: Record<string, unknown>): Embed;
+    public abstract render(data: ScoresViewDto, pageScores: Array<Score>, meta?: IScoreViewMeta): Embed;
 
     /**
      * Universal fallback for when exactly 1 score is returned, bypassing the list layout.

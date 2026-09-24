@@ -14,6 +14,6 @@ export abstract class AbstractSkillStatsCommand extends AbstractSkillCommand {
 
     public async execute(ctx: CommandContext): Promise<void> {
         const data = await this.createSkillData(ctx);
-        await ctx.respond(this.skillStatsViewService.build(data));
+        await this.respondWithSession(ctx, "osu_skill_stats_view", data, this.skillStatsViewService);
     }
 }
