@@ -133,11 +133,14 @@ export abstract class AbstractRecentCommand extends AbstractOsuCommand {
             const score = scores[index];
 
             if (!score) {
+                tries = 0;
                 continue;
             }
 
             if (score.beatmapID === targetMapID && this.modsKey(score) === targetMods) {
                 tries++;
+            } else {
+                tries = 0;
             }
 
             if (score === targetScore) {
