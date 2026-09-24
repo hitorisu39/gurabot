@@ -26,6 +26,13 @@ export class SkillCategoryResultDto {
     @Expose()
     @Type(() => SkillScoreResultDto)
     declare topScores: Array<SkillScoreResultDto>;
+
+    /**
+     * Skill values in the same order as the source scores.
+     * Invalid calculations are represented by null.
+     */
+    @Expose()
+    declare scoreValues: Array<number | null>;
 }
 
 @Exclude()

@@ -1,4 +1,4 @@
-import { AbstractScoreView } from "./AbstractScoreView";
+import { AbstractScoreView, IScoreViewMeta } from "./AbstractScoreView";
 import { Embed } from "@/core/discord/ui/Embed";
 import { DateFormatter } from "@domain/discord/formatters/Date.formatter";
 import { ProfileFormatter } from "@domain/osu/formatters/Profile.formatter";
@@ -31,7 +31,7 @@ export class ListScoreView extends AbstractScoreView {
         return hasActiveAttributes ? Math.ceil(basePageSize / 2) : basePageSize;
     }
 
-    public render(data: ScoresViewDto, pageScores: Array<Score>): Embed {
+    public render(data: ScoresViewDto, pageScores: Array<Score>, meta?: IScoreViewMeta): Embed {
         const detailed = data.pageSize === EScoreListSize.Detailed;
         const embed = this.profileViewService.createBaseEmbed(data.profile, data.timestamp, false);
 
@@ -40,7 +40,7 @@ export class ListScoreView extends AbstractScoreView {
         const description = new DescriptionBuilder();
         const isMania = data.profile.mode === GameMode.Mania;
 
-        for (const score of pageScores.values()) {
+        for (const [pageIndex, score] of pageScores.entries()) {
             if (!score || !ScoreUtils.isFullyPopulated(score)) continue;
 
             const index = score.index;
@@ -110,13 +110,15 @@ export class ListScoreView extends AbstractScoreView {
                 description.add(stats);
             }
 
-            // Append filtered map attributes
+            const extraAttrs = meta?.extraAttrs?.[pageIndex] ?? [];
+
+            // Append filtered map attributes and view-specific statistics.
+            const attrStrings: string[] = [];
             if (data.activeAttributes && data.activeAttributes.length > 0) {
                 const attrs = score.calculated.difficulty.beatmap;
                 const bpm = BeatmapUtils.bpm(score.beatmap.bpm, attrs.clockRate);
                 const length = BeatmapUtils.length(score.beatmap.totalLength, attrs.clockRate);
 
-                const attrStrings: string[] = [];
                 for (const attr of data.activeAttributes) {
                     switch (attr) {
                         case "CS":
@@ -149,10 +151,12 @@ export class ListScoreView extends AbstractScoreView {
                         }
                     }
                 }
+            }
 
-                if (attrStrings.length > 0) {
-                    description.add(`\`${attrStrings.join("` ~ `")}\``);
-                }
+            attrStrings.push(...extraAttrs);
+
+            if (attrStrings.length > 0) {
+                description.add(`\`${attrStrings.join("` ~ `")}\``);
             }
         }
 

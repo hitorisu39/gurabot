@@ -53,6 +53,7 @@ import { OtrBeatmapStatsDto } from "@domain/otr/OtrBeatmap.dto";
 import { OtrMapViewDto } from "@domain/otr/views/OtrMap.view";
 import { FarmRecommendViewDto } from "@domain/farm/views/FarmRecommend.view";
 import { FarmMapsViewDto } from "@domain/farm/views/FarmMaps.view";
+import { SkillStatsViewDto } from "@domain/osu/views/SkillStats.view";
 
 export interface ICacheSchema {
     // discord
@@ -75,6 +76,7 @@ export interface ICacheSchema {
     osu_compare_top_view: CompareTopViewDto;
     osu_most_played_view: MostPlayedViewDto;
     osu_search_view: SearchViewDto;
+    osu_skill_stats_view: SkillStatsViewDto;
 
     osu_farm_recommend_view: FarmRecommendViewDto;
     osu_farm_maps_view: FarmMapsViewDto;

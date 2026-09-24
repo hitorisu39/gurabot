@@ -47,7 +47,7 @@ export class SkillsCommand extends AbstractSkillStatsCommand {}
 @Command({
     name: "taikoskills",
     description: "Calculates skill statistics from an osu!taiko player's top plays.",
-    aliases: ["skillstaiko", "tskills", "skillst"],
+    aliases: ["skillstaiko", "tskills", "skillst", "taikoskill", "skillt"],
     prefixOnly: true,
 })
 export class TaikoSkillsCommand extends AbstractSkillStatsCommand {
@@ -58,7 +58,7 @@ export class TaikoSkillsCommand extends AbstractSkillStatsCommand {
 @Command({
     name: "catchskills",
     description: "Calculates skill statistics from an osu!catch player's top plays.",
-    aliases: ["skillsctb", "ctbskills", "skillscatch", "cskills", "skillsc"],
+    aliases: ["skillsctb", "ctbskills", "skillscatch", "cskills", "skillsc", "catchskill", "skillc"],
     prefixOnly: true,
 })
 export class CatchSkillsCommand extends AbstractSkillStatsCommand {
@@ -69,7 +69,7 @@ export class CatchSkillsCommand extends AbstractSkillStatsCommand {
 @Command({
     name: "maniaskills",
     description: "Calculates skill statistics from an osu!mania player's top plays.",
-    aliases: ["skillsmania", "mskills", "skillsm"],
+    aliases: ["skillsmania", "mskills", "skillsm", "maniaskill", "skillm"],
     prefixOnly: true,
 })
 export class ManiaSkillsCommand extends AbstractSkillStatsCommand {
