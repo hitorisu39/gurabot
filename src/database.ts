@@ -35,6 +35,7 @@ export class Database {
         const totalClusters = this.getTotalClusters();
         const concurrentGenerations = this.getConcurrentGenerations();
         const poolSizePerCluster = this.calculatePoolSize(totalClusters, concurrentGenerations);
+        const clusterID = this.config.discord.cluster.id;
 
         this.pool = new Pool({
             connectionString: dbUrl.toString(),
@@ -55,7 +56,7 @@ export class Database {
             lock_timeout: this.lockTimeoutMs,
         });
 
-        this.metrics.databasePoolMax.set({ cluster_id: this.config.discord.cluster.id }, poolSizePerCluster);
+        this.metrics.databasePoolMax.set({ cluster_id: clusterID }, poolSizePerCluster);
 
         this.pool.on("error", (error) => {
             this.logger.error(error, "Unexpected error from an idle PostgreSQL pool client");
@@ -78,6 +79,7 @@ export class Database {
                         const durationSeconds = (performance.now() - start) / 1000;
                         metrics.databaseQueryHistogram.observe(
                             {
+                                cluster_id: clusterID,
                                 model: model || "Raw",
                                 operation,
                                 status,
