@@ -11,11 +11,37 @@ export class ChannelService extends AbstractService {
             update: {
                 beatmapID: data.beatmapID ?? null,
                 beatmapsetID: data.beatmapsetID ?? null,
+                scoreID: null,
             },
             create: {
                 id: channelID,
                 beatmapID: data.beatmapID ?? null,
                 beatmapsetID: data.beatmapsetID ?? null,
+                scoreID: null,
+            },
+        });
+    }
+
+    public async storeScore(
+        channelID: string,
+        scoreID: string,
+        data?: MatchedMapDto | null,
+        repository?: TRepository,
+    ): Promise<void> {
+        const repo = repository ?? this.repository;
+
+        await repo.channel.upsert({
+            where: { id: channelID },
+            update: {
+                scoreID,
+                beatmapID: data?.beatmapID ?? null,
+                beatmapsetID: data?.beatmapsetID ?? null,
+            },
+            create: {
+                id: channelID,
+                scoreID,
+                beatmapID: data?.beatmapID ?? null,
+                beatmapsetID: data?.beatmapsetID ?? null,
             },
         });
     }
@@ -35,5 +61,11 @@ export class ChannelService extends AbstractService {
         };
 
         return cb(repository ?? this.repository);
+    }
+
+    public async getScore(channelID: string, repository?: TRepository): Promise<string | null> {
+        const repo = repository ?? this.repository;
+        const channel = await repo.channel.findUnique({ where: { id: channelID }, select: { scoreID: true } });
+        return channel?.scoreID ?? null;
     }
 }

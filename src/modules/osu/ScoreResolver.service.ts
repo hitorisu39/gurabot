@@ -6,8 +6,12 @@ import { EApplicationError, Exception } from "@domain/core/Exception";
 import { osuBaseAssetsDomain } from "@domain/osu/configs/Osu.config";
 import { scoreUrlRegex, scoreUrlSearchRegex } from "@domain/osu/configs/Score.config";
 import { Message, RESTJSONErrorCodes } from "discord.js";
+import { Import } from "@/core/decorators";
+import { ChannelService } from "@/modules/channel/Channel.service";
 
 export class ScoreResolverService extends AbstractService {
+    @Import() declare private readonly channelService: ChannelService;
+
     public fromText(text: string): string | null {
         if (!text) {
             return null;
@@ -87,9 +91,18 @@ export class ScoreResolverService extends AbstractService {
             }
         }
 
+        if (ctx.channel) {
+            const storedScoreID = await this.channelService.getScore(ctx.channel.id);
+
+            if (storedScoreID) {
+                return this.normalize(storedScoreID);
+            }
+        }
+
         throw new Exception(
             EApplicationError.INPUT_ERROR,
-            "No score URL or ID was specified.\n" + "Tip: reply to a message containing an osu! score URL.",
+            "No score URL or ID was specified and none is stored in this channel.\n" +
+                "Tip: use some score command or reply to a message containing an osu! score URL.",
         );
     }
 

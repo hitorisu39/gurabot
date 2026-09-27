@@ -54,6 +54,7 @@ import { OtrMapViewDto } from "@domain/otr/views/OtrMap.view";
 import { FarmRecommendViewDto } from "@domain/farm/views/FarmRecommend.view";
 import { FarmMapsViewDto } from "@domain/farm/views/FarmMaps.view";
 import { SkillStatsViewDto } from "@domain/osu/views/SkillStats.view";
+import { FixViewDto } from "@domain/osu/views/Fix.view";
 
 export interface ICacheSchema {
     // discord
@@ -66,6 +67,7 @@ export interface ICacheSchema {
     osu_scores_view: ScoresViewDto;
     osu_map_view: MapViewDto;
     osu_simulate_view: SimulateViewDto;
+    osu_fix_view: FixViewDto;
     osu_leaderboard_view: LeaderboardViewDto;
     osu_nochoke_view: NoChokeViewDto;
     osu_topif_view: TopIfViewDto;
