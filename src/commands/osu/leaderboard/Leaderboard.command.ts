@@ -22,6 +22,7 @@ import { EApplicationError, Exception } from "@domain/core/Exception";
 import { LeaderboardViewDto } from "@domain/osu/views/Leaderboard.view";
 import { AdapterProvider } from "@generated/adapter/types";
 import { ModUtils } from "@generated/adapter/mods";
+import { UserService } from "@/modules/user/User.service";
 
 @Help(`
     Shows the global leaderboard for a specific beatmap difficulty.
@@ -49,6 +50,7 @@ export class LeaderboardCommand extends AbstractSessionCommand {
     @Import() declare private readonly calculatorService: CalculatorService;
     @Import() declare private readonly beatmapResolverService: BeatmapResolverService;
     @Import() declare private readonly leaderboardViewService: LeaderboardViewService;
+    @Import() declare private readonly userService: UserService;
 
     @Option("map", "Specify a beatmap or beatmapset URL or ID")
     @Inject()
@@ -94,7 +96,7 @@ export class LeaderboardCommand extends AbstractSessionCommand {
 
         const legacyOnly = this.legacyOnly.some() ? this.legacyOnly.unwrap() : false;
 
-        const [scores, difficulty] = await Promise.all([
+        const [scores, difficulty, linkedUser] = await Promise.all([
             this.osuService.beatmapScores(
                 beatmap.id,
                 beatmap.mode,
@@ -103,11 +105,13 @@ export class LeaderboardCommand extends AbstractSessionCommand {
                 provider,
             ),
             this.calculatorService.difficulty(beatmap.id, beatmap.mode, parsedMods),
+            this.userService.getLinkedID(ctx.author.id, provider),
         ]);
 
         const data: LeaderboardViewDto = {
             timestamp: Date.now(),
             authorID: ctx.author.id,
+            authorOsuID: linkedUser?.osuID ?? null,
             provider,
             beatmap,
             scores,

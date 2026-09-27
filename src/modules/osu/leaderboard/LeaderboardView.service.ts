@@ -128,6 +128,7 @@ export class LeaderboardViewService extends AbstractViewService<LeaderboardViewD
 
     private formatScore(score: PopulatedScore, data: LeaderboardViewDto): string {
         const username = score.user?.username ?? `User ${score.userID}`;
+        const usernameDisplay = score.userID === data.authorOsuID ? `__${username}__` : username;
 
         const userLink = ProfileFormatter.link(data.provider, score.userID, data.beatmap.mode);
 
@@ -139,7 +140,7 @@ export class LeaderboardViewService extends AbstractViewService<LeaderboardViewD
 
         const age = `\`${DateFormatter.age(score.endedAt)}\``;
 
-        const firstRow = [`**${score.index}\\.** **[${username}](${userLink})**`, scoreDisplay, modsDisplay, age]
+        const firstRow = [`**${score.index}\\.** **[${usernameDisplay}](${userLink})**`, scoreDisplay, modsDisplay, age]
             .filter(Boolean)
             .join(DiscordFormatter.space(2));
 
