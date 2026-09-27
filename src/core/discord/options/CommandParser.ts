@@ -44,6 +44,11 @@ interface ICommandToken {
     hadQuotes: boolean;
 }
 
+interface IInjectedContentDistribution {
+    values: Map<string, string>;
+    remainingContent: string;
+}
+
 /**
  * The class responsible for parsing command options.
  */
@@ -76,9 +81,12 @@ export class CommandParser {
             extractedMods = parsed.mods;
         }
 
-        const injectedValues = ctx.isSlash
-            ? new Map<string, string>()
+        const distribution = ctx.isSlash
+            ? { values: new Map<string, string>(), remainingContent: injectedContent }
             : CommandParser.distributeInjectedContent(optionsMeta, injectedContent, prefixMap);
+
+        const injectedValues = distribution.values;
+        injectedContent = distribution.remainingContent;
 
         for (const meta of optionsMeta) {
             let rawValue: any = null;
@@ -181,10 +189,10 @@ export class CommandParser {
         optionsMeta: ReadonlyArray<IOptionMetadata>,
         content: string,
         prefixMap: Map<string, string>,
-    ): Map<string, string> {
+    ): IInjectedContentDistribution {
         const result = new Map<string, string>();
         if (!content) {
-            return result;
+            return { values: result, remainingContent: "" };
         }
 
         const injected = optionsMeta.filter(
@@ -195,10 +203,10 @@ export class CommandParser {
         );
 
         if (!injected.length) {
-            return result;
+            return { values: result, remainingContent: content };
         }
 
-        const tokens = CommandParser.tokenizeInjectedContent(content);
+        const tokens = CommandParser.tokenizeContent(content);
         const matchOptions = injected.filter((meta) => meta.inject === EInjectMode.Match);
 
         for (const meta of matchOptions) {
@@ -209,13 +217,13 @@ export class CommandParser {
                 );
             }
 
-            const tokenIndex = tokens.findIndex((token) => meta.injectMatcher!(token));
+            const tokenIndex = tokens.findIndex((token) => meta.injectMatcher!(token.value));
             if (tokenIndex === -1) {
                 continue;
             }
 
             const [token] = tokens.splice(tokenIndex, 1);
-            result.set(meta.propertyKey, token!);
+            result.set(meta.propertyKey, token!.value);
         }
 
         const tokenOptions = injected.filter((meta) => meta.inject === EInjectMode.Token);
@@ -226,7 +234,7 @@ export class CommandParser {
                 break;
             }
 
-            result.set(meta.propertyKey, token);
+            result.set(meta.propertyKey, token.value);
         }
 
         const greedyOptions = injected.filter((meta) => meta.inject === EInjectMode.Greedy);
@@ -239,10 +247,14 @@ export class CommandParser {
 
         const greedyOption = greedyOptions[0];
         if (greedyOption && tokens.length > 0) {
-            result.set(greedyOption.propertyKey, tokens.join(" "));
+            result.set(greedyOption.propertyKey, tokens.map((token) => token.value).join(" "));
+            tokens.length = 0;
         }
 
-        return result;
+        return {
+            values: result,
+            remainingContent: tokens.map((token) => token.raw).join(" "),
+        };
     }
 
     private static getOptionKeys(meta: IOptionMetadata): Array<string> {

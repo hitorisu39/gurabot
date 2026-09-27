@@ -2,7 +2,13 @@ import { describe, expect, test } from "vitest";
 import { EInjectMode, EOptionType, IOptionMetadata } from "@/core/decorators";
 import { CommandParser } from "@/core/discord/options/CommandParser";
 import { CommandContext } from "@/core/discord/context/CommandContext";
-import { EModMatchType, ICommandDateRange, ICommandQueryData, ICommandRange } from "@domain/core/Command";
+import {
+    CommandOption,
+    EModMatchType,
+    ICommandDateRange,
+    ICommandQueryData,
+    ICommandRange,
+} from "@domain/core/Command";
 import { EApplicationError } from "@domain/core/Exception";
 
 /**
@@ -43,6 +49,7 @@ function iso(date: Date | undefined): string | undefined {
 }
 
 class TestTopQueryDto {}
+class TestInjectedQueryDto {}
 
 const topQueryProperties: ReadonlyArray<IOptionMetadata> = [
     option({
@@ -228,6 +235,38 @@ describe("CommandParser", () => {
 
         test("rejects an unclosed normal quote", async () => {
             await expectInputError(parse('"unclosed username', [nameOption]), "Unclosed quote in command arguments.");
+        });
+
+        test("removes a matched option before passing remaining content to a greedy query", async () => {
+            const scoreOption = option({
+                propertyKey: "score",
+                name: "score",
+                type: EOptionType.String,
+                inject: EInjectMode.Match,
+                injectMatcher: (value) => /^https:\/\/osu\.ppy\.sh\/scores\/\d+$/.test(value),
+            });
+            const inputOption = option({
+                propertyKey: "input",
+                name: "input",
+                type: EOptionType.String,
+                inject: EInjectMode.Greedy,
+            });
+            const query = option({
+                propertyKey: "query",
+                name: "query",
+                type: EOptionType.Query,
+                inject: EInjectMode.Greedy,
+                queryDto: TestInjectedQueryDto,
+                queryProperties: [inputOption],
+            });
+
+            const result = await parse("https://osu.ppy.sh/scores/1292141769 98.5%", [scoreOption, query]);
+            const parsedQuery = result.query?.unwrap() as ICommandQueryData<
+                TestInjectedQueryDto & { input: CommandOption<string> }
+            >;
+
+            expect(result.score?.unwrap()).toBe("https://osu.ppy.sh/scores/1292141769");
+            expect(parsedQuery.data.input.unwrap()).toBe("98.5%");
         });
 
         test("rejects an unclosed smart quote", async () => {
