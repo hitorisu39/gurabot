@@ -11,6 +11,9 @@ export class LeaderboardViewDto {
     declare authorID: string;
 
     @Expose()
+    declare authorOsuID: number | null;
+
+    @Expose()
     declare provider: AdapterProvider;
 
     @Expose()
