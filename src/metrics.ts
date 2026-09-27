@@ -24,7 +24,8 @@ export class Metrics {
     public readonly guildCount: client.Gauge<"cluster_id">;
 
     public readonly databaseQueryHistogram: client.Histogram<"model" | "operation" | "status">;
-    public readonly databasePoolStats: client.Gauge<"state">;
+    public readonly databasePoolStats: client.Gauge<"cluster_id" | "state">;
+    public readonly databasePoolMax: client.Gauge<"cluster_id">;
 
     public readonly discordGatewayPing: client.Gauge<"cluster_id">;
     public readonly discordGuilds: client.Gauge<"cluster_id">;
@@ -124,7 +125,13 @@ export class Metrics {
         this.databasePoolStats = new client.Gauge({
             name: `${config.app.name}_database_pool_connections`,
             help: "PostgreSQL connection pool statistics",
-            labelNames: ["state"], // "active", "idle", "waiting"
+            labelNames: ["cluster_id", "state"], // "active", "idle", "waiting"
+        });
+
+        this.databasePoolMax = new client.Gauge({
+            name: `${config.app.name}_database_pool_max_connections`,
+            help: "Maximum PostgreSQL connections configured for the cluster pool",
+            labelNames: ["cluster_id"],
         });
 
         this.nodeHeapLimit = new client.Gauge({

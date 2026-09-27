@@ -65,22 +65,20 @@ export class UserService extends AbstractService {
     }
 
     public async unlink(userID: string, provider?: AdapterProvider | null, repository?: TRepository): Promise<void> {
-        const cb = async (repo: TRepository) => {
-            if (provider) {
-                await repo.userToOsu.delete({
-                    where: {
-                        userID_server: {
-                            userID: userID,
-                            server: provider,
-                        },
-                    },
-                });
-            } else {
-                await repo.user.delete({ where: { id: userID } });
-            }
-        };
+        const repo = repository ?? this.repository;
 
-        return repository ? cb(repository) : this.repository.$transaction(cb);
+        if (provider) {
+            await repo.userToOsu.delete({
+                where: {
+                    userID_server: {
+                        userID: userID,
+                        server: provider,
+                    },
+                },
+            });
+        } else {
+            await repo.user.delete({ where: { id: userID } });
+        }
     }
 
     public async unlinkMany(
@@ -88,20 +86,17 @@ export class UserService extends AbstractService {
         providers: ReadonlyArray<AdapterProvider>,
         repository?: TRepository,
     ): Promise<void> {
-        const cb = async (repo: TRepository): Promise<void> => {
-            const uniqueProviders = [...new Set(providers)];
+        const repo = repository ?? this.repository;
+        const uniqueProviders = [...new Set(providers)];
 
-            await repo.userToOsu.deleteMany({
-                where: {
-                    userID,
-                    server: {
-                        in: uniqueProviders,
-                    },
+        await repo.userToOsu.deleteMany({
+            where: {
+                userID,
+                server: {
+                    in: uniqueProviders,
                 },
-            });
-        };
-
-        return repository ? cb(repository) : this.repository.$transaction(cb);
+            },
+        });
     }
 
     public async get(userID: string, repository?: TRepository): Promise<UserDto | null> {
@@ -138,15 +133,12 @@ export class UserService extends AbstractService {
     }
 
     public async update(userID: string, updates: UserConfigUpdateDto, repository?: TRepository): Promise<UserDto> {
-        const cb = async (repo: TRepository) => {
-            const user = await repo.user.update({
-                where: { id: userID },
-                data: { ...updates },
-            });
+        const repo = repository ?? this.repository;
+        const user = await repo.user.update({
+            where: { id: userID },
+            data: { ...updates },
+        });
 
-            return plainToInstance(UserDto, user);
-        };
-
-        return repository ? cb(repository) : this.repository.$transaction(cb);
+        return plainToInstance(UserDto, user);
     }
 }
