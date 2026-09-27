@@ -23,7 +23,7 @@ export class Metrics {
     public readonly discordPing: client.Gauge<"cluster_id">;
     public readonly guildCount: client.Gauge<"cluster_id">;
 
-    public readonly databaseQueryHistogram: client.Histogram<"model" | "operation" | "status">;
+    public readonly databaseQueryHistogram: client.Histogram<"cluster_id" | "model" | "operation" | "status">;
     public readonly databasePoolStats: client.Gauge<"cluster_id" | "state">;
     public readonly databasePoolMax: client.Gauge<"cluster_id">;
 
@@ -118,7 +118,7 @@ export class Metrics {
         this.databaseQueryHistogram = new client.Histogram({
             name: `${config.app.name}_database_query_duration_seconds`,
             help: "Duration of database queries in seconds",
-            labelNames: ["model", "operation", "status"],
+            labelNames: ["cluster_id", "model", "operation", "status"],
             buckets: [0.005, 0.01, 0.05, 0.1, 0.5, 1, 2, 5],
         });
 

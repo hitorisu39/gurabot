@@ -727,8 +727,8 @@
                       "kind": "DataQuery",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum(rate(gurabot_database_query_duration_seconds_count[1m])) by (model) * 60",
-                        "legendFormat": "__auto",
+                        "expr": "sum by (cluster_id) (rate(gurabot_database_query_duration_seconds_count[1m])) * 60",
+                        "legendFormat": "Cluster {{cluster_id}}",
                         "range": true
                       },
                       "version": "v0"
@@ -744,7 +744,7 @@
           "description": "",
           "id": 17,
           "links": [],
-          "title": "Queries Per Minute",
+          "title": "Queries Per Minute by Cluster",
           "vizConfig": {
             "group": "timeseries",
             "kind": "VizConfig",
@@ -847,13 +847,34 @@
                       "kind": "DataQuery",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "histogram_quantile(0.95, sum(rate(gurabot_database_query_duration_seconds_bucket[5m])) by (le, operation))\r\n",
-                        "legendFormat": "__auto",
+                        "expr": "histogram_quantile(0.95, sum by (le, cluster_id) (rate(gurabot_database_query_duration_seconds_bucket[5m])))",
+                        "legendFormat": "p95 — Cluster {{cluster_id}}",
                         "range": true
                       },
                       "version": "v0"
                     },
                     "refId": "A"
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "PBFA97CFB590B2093"
+                      },
+                      "group": "prometheus",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "histogram_quantile(0.99, sum by (le, cluster_id) (rate(gurabot_database_query_duration_seconds_bucket[5m])))",
+                        "legendFormat": "p99 — Cluster {{cluster_id}}",
+                        "range": true
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "B"
                   }
                 }
               ],
@@ -968,8 +989,8 @@
                       "kind": "DataQuery",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum(gurabot_database_pool_connections{state=\"active\"})",
-                        "legendFormat": "Active",
+                        "expr": "sum by (cluster_id) (gurabot_database_pool_connections{state=\"active\"})",
+                        "legendFormat": "Cluster {{cluster_id}} active",
                         "range": true
                       },
                       "version": "v0"
@@ -989,9 +1010,9 @@
                       "kind": "DataQuery",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum(gurabot_database_pool_connections{state=\"idle\"})",
+                        "expr": "sum by (cluster_id) (gurabot_database_pool_connections{state=\"idle\"})",
                         "instant": false,
-                        "legendFormat": "Idle",
+                        "legendFormat": "Cluster {{cluster_id}} idle",
                         "range": true
                       },
                       "version": "v0"
@@ -1011,9 +1032,9 @@
                       "kind": "DataQuery",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum(gurabot_database_pool_connections{state=\"waiting\"})",
+                        "expr": "sum by (cluster_id) (gurabot_database_pool_connections{state=\"waiting\"})",
                         "instant": false,
-                        "legendFormat": "Waiting",
+                        "legendFormat": "Cluster {{cluster_id}} waiting",
                         "range": true
                       },
                       "version": "v0"
@@ -1033,9 +1054,9 @@
                       "kind": "DataQuery",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum(gurabot_database_pool_max_connections)",
+                        "expr": "sum by (cluster_id) (gurabot_database_pool_max_connections)",
                         "instant": false,
-                        "legendFormat": "Configured maximum",
+                        "legendFormat": "Cluster {{cluster_id}} maximum",
                         "range": true
                       },
                       "version": "v0"
@@ -1051,7 +1072,7 @@
           "description": "",
           "id": 19,
           "links": [],
-          "title": "Connection Pool",
+          "title": "Connection Pool by Cluster",
           "vizConfig": {
             "group": "timeseries",
             "kind": "VizConfig",
@@ -1112,8 +1133,8 @@
                 "overrides": [
                   {
                     "matcher": {
-                      "id": "byName",
-                      "options": "Waiting"
+                      "id": "byRegexp",
+                      "options": "/ waiting$/"
                     },
                     "properties": [
                       {
@@ -1387,8 +1408,8 @@
                       "kind": "DataQuery",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum(rate(gurabot_database_query_duration_seconds_count{status=\"error\"}[$__range])) / sum(rate(gurabot_database_query_duration_seconds_count[$__range])) * 100",
-                        "legendFormat": "__auto",
+                        "expr": "sum by (cluster_id) (rate(gurabot_database_query_duration_seconds_count{status=\"error\"}[$__range])) / sum by (cluster_id) (rate(gurabot_database_query_duration_seconds_count[$__range])) * 100",
+                        "legendFormat": "Cluster {{cluster_id}}",
                         "range": true
                       },
                       "version": "v0"
@@ -1404,7 +1425,7 @@
           "description": "",
           "id": 21,
           "links": [],
-          "title": "Error Rate",
+          "title": "Error Rate by Cluster",
           "vizConfig": {
             "group": "stat",
             "kind": "VizConfig",
@@ -5632,8 +5653,8 @@
                           "kind": "ElementReference",
                           "name": "panel-19"
                         },
-                        "height": 8,
-                        "width": 12,
+                        "height": 9,
+                        "width": 24,
                         "x": 0,
                         "y": 8
                       }
@@ -5647,8 +5668,8 @@
                         },
                         "height": 8,
                         "width": 6,
-                        "x": 12,
-                        "y": 8
+                        "x": 0,
+                        "y": 17
                       }
                     },
                     {
@@ -5660,8 +5681,8 @@
                         },
                         "height": 8,
                         "width": 6,
-                        "x": 18,
-                        "y": 8
+                        "x": 6,
+                        "y": 17
                       }
                     },
                     {
@@ -5671,10 +5692,10 @@
                           "kind": "ElementReference",
                           "name": "panel-23"
                         },
-                        "height": 9,
+                        "height": 8,
                         "width": 12,
-                        "x": 0,
-                        "y": 16
+                        "x": 12,
+                        "y": 17
                       }
                     },
                     {
@@ -5685,9 +5706,9 @@
                           "name": "panel-20"
                         },
                         "height": 9,
-                        "width": 12,
-                        "x": 12,
-                        "y": 16
+                        "width": 24,
+                        "x": 0,
+                        "y": 25
                       }
                     }
                   ]
