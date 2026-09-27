@@ -173,7 +173,7 @@ export class SimulateViewService extends AbstractViewService<SimulateViewDto> {
             .setFooter({
                 text:
                     `${data.scoringMode === ESimulateScoringMode.Lazer ? "Lazer" : "Stable"} scoring` +
-                    " • Edit the simulation using the buttons below",
+                    " • Edit using the buttons",
             })
             .setTimestamp(data.beatmapset.rankedDate ?? map.lastUpdated);
     }
