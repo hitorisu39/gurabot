@@ -69,18 +69,15 @@ export class GuildService extends AbstractService {
     }
 
     public async update(guildID: string, updates: GuildConfigUpdateDto, repository?: TRepository): Promise<GuildDto> {
-        const cb = async (repo: TRepository) => {
-            const guild = await repo.guild.upsert({
-                where: { id: guildID },
-                create: { id: guildID, ...updates },
-                update: { ...updates },
-            });
+        const repo = repository ?? this.repository;
+        const guild = await repo.guild.upsert({
+            where: { id: guildID },
+            create: { id: guildID, ...updates },
+            update: { ...updates },
+        });
 
-            const dto = plainToInstance(GuildDto, guild);
-            return this.refreshCache(guildID, dto);
-        };
-
-        return repository ? cb(repository) : this.repository.$transaction(cb);
+        const dto = plainToInstance(GuildDto, guild);
+        return repository ? dto : this.refreshCache(guildID, dto);
     }
 
     //#endregion

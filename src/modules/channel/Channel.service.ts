@@ -4,22 +4,20 @@ import { MatchedMapDto } from "@domain/osu/Beatmap.dto";
 
 export class ChannelService extends AbstractService {
     public async storeBeatmap(channelID: string, data: MatchedMapDto, repository?: TRepository): Promise<void> {
-        const cb = async (repo: TRepository) => {
-            await repo.channel.upsert({
-                where: { id: channelID },
-                update: {
-                    beatmapID: data.beatmapID ?? null,
-                    beatmapsetID: data.beatmapsetID ?? null,
-                },
-                create: {
-                    id: channelID,
-                    beatmapID: data.beatmapID ?? null,
-                    beatmapsetID: data.beatmapsetID ?? null,
-                },
-            });
-        };
+        const repo = repository ?? this.repository;
 
-        return repository ? cb(repository) : this.repository.$transaction(cb);
+        await repo.channel.upsert({
+            where: { id: channelID },
+            update: {
+                beatmapID: data.beatmapID ?? null,
+                beatmapsetID: data.beatmapsetID ?? null,
+            },
+            create: {
+                id: channelID,
+                beatmapID: data.beatmapID ?? null,
+                beatmapsetID: data.beatmapsetID ?? null,
+            },
+        });
     }
 
     public async getBeatmap(channelID: string, repository?: TRepository): Promise<MatchedMapDto | null> {

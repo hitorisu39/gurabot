@@ -41,27 +41,25 @@ export class OrdrScoreRenderService extends AbstractService {
     }
 
     public async record(scoreID: string, renderID: number, videoURL: string, repository?: TRepository): Promise<void> {
-        const cb = async (repo: TRepository) => {
-            const renderedAt = new Date();
-            await repo.ordrScoreRender.upsert({
-                where: {
-                    scoreID,
-                },
-                create: {
-                    scoreID,
-                    renderID,
-                    videoURL,
-                    createdAt: renderedAt,
-                },
-                update: {
-                    renderID,
-                    videoURL,
-                    createdAt: renderedAt,
-                },
-            });
-        };
+        const repo = repository ?? this.repository;
+        const renderedAt = new Date();
 
-        return repository ? cb(repository) : this.repository.$transaction(cb);
+        await repo.ordrScoreRender.upsert({
+            where: {
+                scoreID,
+            },
+            create: {
+                scoreID,
+                renderID,
+                videoURL,
+                createdAt: renderedAt,
+            },
+            update: {
+                renderID,
+                videoURL,
+                createdAt: renderedAt,
+            },
+        });
     }
 
     public async resolve(scoreID: string): Promise<OrdrRenderScoreDto> {

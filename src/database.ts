@@ -19,6 +19,7 @@ export class Database {
     private readonly connectionTimeoutMs = 5_000;
     private readonly statementTimeoutMs = 15_000;
     private readonly lockTimeoutMs = 3_000;
+    private readonly poolMetricsIntervalMs = 1_000;
 
     private poolInterval: NodeJS.Timeout | null = null;
     private disconnectPromise: Promise<void> | null = null;
@@ -53,6 +54,8 @@ export class Database {
             // Maximum time a statement may wait for a PostgreSQL lock.
             lock_timeout: this.lockTimeoutMs,
         });
+
+        this.metrics.databasePoolMax.set({ cluster_id: this.config.discord.cluster.id }, poolSizePerCluster);
 
         this.pool.on("error", (error) => {
             this.logger.error(error, "Unexpected error from an idle PostgreSQL pool client");
@@ -126,17 +129,18 @@ export class Database {
     }
 
     private startPoolMonitoring(): void {
-        if (!this.pool) return;
+        const updateMetrics = () => {
+            const total = this.pool.totalCount;
+            const idle = this.pool.idleCount;
+            const labels = { cluster_id: this.config.discord.cluster.id };
 
-        this.poolInterval = setInterval(() => {
-            const total = this.pool!.totalCount;
-            const idle = this.pool!.idleCount;
-            const waiting = this.pool!.waitingCount;
+            this.metrics.databasePoolStats.set({ ...labels, state: "active" }, total - idle);
+            this.metrics.databasePoolStats.set({ ...labels, state: "idle" }, idle);
+            this.metrics.databasePoolStats.set({ ...labels, state: "waiting" }, this.pool.waitingCount);
+        };
 
-            this.metrics.databasePoolStats.set({ state: "active" }, total - idle);
-            this.metrics.databasePoolStats.set({ state: "idle" }, idle);
-            this.metrics.databasePoolStats.set({ state: "waiting" }, waiting);
-        }, 15000);
+        updateMetrics();
+        this.poolInterval = setInterval(updateMetrics, this.poolMetricsIntervalMs);
 
         this.poolInterval.unref();
     }

@@ -21,7 +21,7 @@ export class OsuBeatmapService extends AbstractService {
     private readonly beatmapFetchConcurrency = 2;
 
     /**
-     * Maximum number of beatmaps persisted in one cache transaction.
+     * Maximum number of beatmaps persisted in one cache batch.
      */
     private readonly beatmapCacheWriteBatchSize = 100;
 
@@ -371,37 +371,34 @@ export class OsuBeatmapService extends AbstractService {
     @Trace()
     private async upsertBeatmapset(data: Beatmapset, repository?: TRepository): Promise<void> {
         const { covers, ...rest } = data;
+        const repo = repository ?? this.repository;
 
-        const cb = async (repo: TRepository) => {
-            await repo.beatmapset.upsert({
-                where: {
-                    id: rest.id,
-                },
-                create: {
-                    ...rest,
-                    beatmaps: undefined,
-                    covers: covers
-                        ? {
+        await repo.beatmapset.upsert({
+            where: {
+                id: rest.id,
+            },
+            create: {
+                ...rest,
+                beatmaps: undefined,
+                covers: covers
+                    ? {
+                          create: covers,
+                      }
+                    : undefined,
+            },
+            update: {
+                ...rest,
+                beatmaps: undefined,
+                covers: covers
+                    ? {
+                          upsert: {
                               create: covers,
-                          }
-                        : undefined,
-                },
-                update: {
-                    ...rest,
-                    beatmaps: undefined,
-                    covers: covers
-                        ? {
-                              upsert: {
-                                  create: covers,
-                                  update: covers,
-                              },
-                          }
-                        : undefined,
-                },
-            });
-        };
-
-        return repository ? cb(repository) : this.repository.$transaction(cb);
+                              update: covers,
+                          },
+                      }
+                    : undefined,
+            },
+        });
     }
 
     @Trace()
@@ -435,58 +432,59 @@ export class OsuBeatmapService extends AbstractService {
             }
         }
 
-        await this.repository.$transaction(async (tx) => {
-            for (const owner of uniqueOwners.values()) {
-                await tx.beatmapOwner.upsert({
-                    where: {
-                        id: owner.id,
-                    },
-                    create: owner,
-                    update: {
-                        username: owner.username,
-                    },
-                });
-            }
+        // These records are a disposable API cache. Persist them in dependency
+        // order without pinning a connection for the entire batch; a later cache
+        // fill safely repairs any partial batch after a failed statement.
+        for (const owner of uniqueOwners.values()) {
+            await this.repository.beatmapOwner.upsert({
+                where: {
+                    id: owner.id,
+                },
+                create: owner,
+                update: {
+                    username: owner.username,
+                },
+            });
+        }
 
-            for (const set of uniqueSets.values()) {
-                await this.upsertBeatmapset(set, tx);
-            }
+        for (const set of uniqueSets.values()) {
+            await this.upsertBeatmapset(set);
+        }
 
-            for (const map of maps) {
-                const { owners, ...rest } = map;
+        for (const map of maps) {
+            const { owners, ...rest } = map;
 
-                const ownerConnect =
-                    owners?.map((owner) => ({
-                        id: owner.id,
-                    })) ?? [];
+            const ownerConnect =
+                owners?.map((owner) => ({
+                    id: owner.id,
+                })) ?? [];
 
-                await tx.beatmap.upsert({
-                    where: {
-                        id: rest.id,
-                    },
-                    create: {
-                        ...rest,
-                        beatmapset: undefined,
-                        owners:
-                            ownerConnect.length > 0
-                                ? {
-                                      connect: ownerConnect,
-                                  }
-                                : undefined,
-                    },
-                    update: {
-                        ...rest,
-                        beatmapset: undefined,
-                        owners:
-                            ownerConnect.length > 0
-                                ? {
-                                      set: ownerConnect,
-                                  }
-                                : undefined,
-                    },
-                });
-            }
-        });
+            await this.repository.beatmap.upsert({
+                where: {
+                    id: rest.id,
+                },
+                create: {
+                    ...rest,
+                    beatmapset: undefined,
+                    owners:
+                        ownerConnect.length > 0
+                            ? {
+                                  connect: ownerConnect,
+                              }
+                            : undefined,
+                },
+                update: {
+                    ...rest,
+                    beatmapset: undefined,
+                    owners:
+                        ownerConnect.length > 0
+                            ? {
+                                  set: ownerConnect,
+                              }
+                            : undefined,
+                },
+            });
+        }
     }
 
     @Trace()
