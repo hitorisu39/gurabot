@@ -169,14 +169,12 @@ export class FixViewService extends AbstractViewService<FixViewDto> {
             `${ScoreFormatter.grade(source.grade, source.passed, source.id)} ${ScoreFormatter.accuracy(source.accuracy)}`,
             ScoreFormatter.pp(ScoreUtils.pp(source) ?? source.calculated.attributes.total),
             ScoreFormatter.combo(source.maxCombo, source.fullDifficulty.maxCombo, true),
-            ScoreFormatter.miss(source.statistics.miss, true),
         ].join(scoreStatsDelimiter);
 
         const fixed = [
             `${ScoreFormatter.grade(grade, true)} ${ScoreFormatter.accuracy(hitResults.accuracy)}`,
             ScoreFormatter.pp(calculated.attributes.total),
             ScoreFormatter.combo(hitResults.maxCombo, source.fullDifficulty.maxCombo, true),
-            ScoreFormatter.miss(hitResults.countMiss, true),
         ].join(scoreStatsDelimiter);
 
         const description =
@@ -198,7 +196,6 @@ export class FixViewService extends AbstractViewService<FixViewDto> {
             .setThumbnail(source.beatmapset.covers.listDouble)
             .setFooter({
                 text: "Edit using the buttons",
-                iconURL: ProfileFormatter.modeIcon(mode),
             })
             .setTimestamp(source.endedAt);
     }
