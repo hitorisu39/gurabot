@@ -92,12 +92,25 @@ export class MatchCostEvaluatorService extends AbstractService {
         }
 
         const players = this.evaluatePlayers(match, accumulators, evaluatedGames);
-        const teamScore = match.teamVs ? this.evaluateTeamScore(games, ezMultiplier) : undefined;
+        // Infer teams after evaluating match cost so a 1v1 can use the team scoreboard and layout.
+        const inferredTeams = this.resolveHeadToHeadTeams(match, players);
+        const teamVs = match.teamVs || inferredTeams !== undefined;
+        const scoreGames = inferredTeams
+            ? games
+                  .filter((game) => game.scores.length === 2)
+                  .map((game) => ({
+                      ...game,
+                      scores: game.scores.map((score) => ({ ...score, team: inferredTeams.get(score.userID) })),
+                  }))
+            : games;
+        const teamScore = teamVs ? this.evaluateTeamScore(scoreGames, ezMultiplier) : undefined;
 
         return {
-            teamVs: match.teamVs,
+            teamVs,
             gamesPlayed: evaluatedGames,
-            players,
+            players: inferredTeams
+                ? players.map((player) => ({ ...player, team: inferredTeams.get(player.userID) }))
+                : players,
             teamScore,
         };
     }
@@ -248,6 +261,28 @@ export class MatchCostEvaluatorService extends AbstractService {
             red,
             blue,
         };
+    }
+
+    private resolveHeadToHeadTeams(
+        match: MatchCostMatchDto,
+        players: Array<MatchCostPlayerResultDto>,
+    ): Map<number, EMultiplayerTeam> | undefined {
+        if (match.teamVs || players.length !== 2) {
+            return undefined;
+        }
+
+        const userIDs = [...new Set(match.games.flatMap((game) => game.scores.map((score) => score.userID)))].sort(
+            (a, b) => a - b,
+        );
+        const [firstID, secondID] = userIDs;
+        if (userIDs.length !== 2 || firstID === undefined || secondID === undefined) {
+            return undefined;
+        }
+
+        return new Map([
+            [firstID, EMultiplayerTeam.Red],
+            [secondID, EMultiplayerTeam.Blue],
+        ]);
     }
 
     /**
