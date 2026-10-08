@@ -13,6 +13,7 @@ import { rangeContains } from "@domain/utils/utils";
 import { ModUtils } from "@generated/adapter/mods";
 import { DiscordFormatter } from "@domain/discord/formatters/Discord.formatter";
 import { dateRangeContains } from "@domain/utils/dateTimeUtils";
+import { ScoreUtils } from "./ScoreUtils";
 
 export class BaseScoreEvaluator<Q extends BaseScoreQueryDto = BaseScoreQueryDto> {
     protected query: Q | null;
@@ -137,7 +138,7 @@ export class BaseScoreEvaluator<Q extends BaseScoreQueryDto = BaseScoreQueryDto>
             case EScoreQuerySort.Date:
                 return score.endedAt.getTime();
             case EScoreQuerySort.PP:
-                return score.pp ?? 0;
+                return ScoreUtils.pp(score) ?? 0;
             default:
                 return 0;
         }

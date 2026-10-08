@@ -36,6 +36,15 @@ export class PopulatedScoreEvaluator<
         return super.population;
     }
 
+    public getPopulation(scores: ReadonlyArray<Score>): EScorePopulation {
+        const requiresPP = this.sortType === EScoreQuerySort.PP || this.query?.pp.some();
+        if (requiresPP && scores.some((score) => ScoreUtils.pp(score) === undefined)) {
+            return EScorePopulation.Populated;
+        }
+
+        return this.population;
+    }
+
     public filter<T extends Score>(scores: Array<T>): Array<T> {
         const baseFiltered = super.filter(scores);
 
@@ -47,8 +56,7 @@ export class PopulatedScoreEvaluator<
 
         return baseFiltered.filter((score) => {
             if (q.pp.some()) {
-                const actualPp =
-                    score.pp ?? (ScoreUtils.isPopulated(score) ? score.calculated.attributes.total : undefined);
+                const actualPp = ScoreUtils.pp(score);
 
                 if (actualPp === undefined || !rangeContains(q.pp.unwrap(), actualPp)) {
                     return false;

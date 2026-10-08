@@ -119,7 +119,7 @@ export abstract class AbstractPinnedCommand extends AbstractOsuCommand {
 
         const populatedScores = await this.osuService.populateScores(
             scores,
-            evaluator.population,
+            evaluator.getPopulation(scores),
             target.mode,
             target.server,
         );
