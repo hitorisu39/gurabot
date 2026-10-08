@@ -527,7 +527,7 @@ export class CommandRouter {
             }
         };
 
-        const profiler = new InteractionProfiler();
+        const profiler = new InteractionProfiler(this.logger.isLevelEnabled("trace") ? 500 : 0);
         const commandType = ctx.isSlash ? "slash" : "prefix";
 
         await ProfilerStorage.run(profiler, async () => {

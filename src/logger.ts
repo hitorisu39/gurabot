@@ -73,6 +73,10 @@ export class Logger {
         this.logger = pino(defaultOptions);
     }
 
+    public isLevelEnabled(level: pino.Level): boolean {
+        return this.logger.isLevelEnabled(level);
+    }
+
     /**
      * Log with the "trace" log level
      *
