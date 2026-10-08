@@ -5,6 +5,7 @@ import { PrismaClient } from "@generated/prisma/client";
 import { TLogger, TMetrics } from "./core";
 import { TConfig } from "./env";
 import { EApplicationError, Exception } from "@domain/core/Exception";
+import { traceStep } from "./core/profiler";
 
 /**
  * A small wrapper over Prisma, generally to just build
@@ -68,25 +69,22 @@ export class Database {
         this.prisma = basePrisma.$extends({
             query: {
                 async $allOperations({ model, operation, args, query }) {
-                    const start = performance.now();
-                    let status = "success";
-                    try {
-                        return await query(args);
-                    } catch (error) {
-                        status = "error";
-                        throw error;
-                    } finally {
-                        const durationSeconds = (performance.now() - start) / 1000;
-                        metrics.databaseQueryHistogram.observe(
-                            {
-                                cluster_id: clusterID,
-                                model: model || "Raw",
-                                operation,
-                                status,
-                            },
-                            durationSeconds,
-                        );
-                    }
+                    return traceStep(`Prisma.${model || "Raw"}.${operation}`, async () => {
+                        const start = performance.now();
+                        let status = "success";
+                        try {
+                            return await query(args);
+                        } catch (error) {
+                            status = "error";
+                            throw error;
+                        } finally {
+                            const durationSeconds = (performance.now() - start) / 1000;
+                            metrics.databaseQueryHistogram.observe(
+                                { cluster_id: clusterID, model: model || "Raw", operation, status },
+                                durationSeconds,
+                            );
+                        }
+                    });
                 },
             },
         }) as PrismaClient;

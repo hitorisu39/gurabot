@@ -741,10 +741,10 @@
               "transformations": []
             }
           },
-          "description": "",
+          "description": "Counts Prisma client operations, which may execute multiple SQL statements. Includes successful and failed operations.",
           "id": 17,
           "links": [],
-          "title": "Queries Per Minute by Cluster",
+          "title": "Prisma Operations / min by Cluster",
           "vizConfig": {
             "group": "timeseries",
             "kind": "VizConfig",
@@ -882,10 +882,10 @@
               "transformations": []
             }
           },
-          "description": "",
+          "description": "End-to-end Prisma operation latency includes connection-pool waits, SQL execution, result processing, and event-loop delays. Percentiles are bucket estimates over five minutes, not individual query timings. This overview combines all models, operations, and outcomes within each cluster.",
           "id": 18,
           "links": [],
-          "title": "Query Latency p95 / p99",
+          "title": "Prisma Operation Latency p95 / p99",
           "vizConfig": {
             "group": "timeseries",
             "kind": "VizConfig",
@@ -1328,10 +1328,10 @@
               "transformations": []
             }
           },
-          "description": "",
+          "description": "Ranks total time spent in Prisma operations across the selected range. High volume can rank above slower, infrequent operations; this is not a ranking of individual SQL execution times.",
           "id": 20,
           "links": [],
-          "title": "Top Expensive Queries",
+          "title": "Top Prisma Operations by Total Time",
           "vizConfig": {
             "group": "bargauge",
             "kind": "VizConfig",
@@ -1425,7 +1425,7 @@
           "description": "",
           "id": 21,
           "links": [],
-          "title": "Error Rate by Cluster",
+          "title": "Prisma Error Rate by Cluster",
           "vizConfig": {
             "group": "stat",
             "kind": "VizConfig",
@@ -1604,7 +1604,7 @@
                       "kind": "DataQuery",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum(rate(gurabot_cache_operations_total{status=\"miss\"}[$__rate_interval])) * 6",
+                        "expr": "sum(rate(gurabot_cache_operations_total{status=\"miss\"}[$__rate_interval])) * 60",
                         "instant": false,
                         "legendFormat": "Misses",
                         "range": true
@@ -2462,7 +2462,7 @@
               "transformations": []
             }
           },
-          "description": "",
+          "description": "Event-loop delay p99 since the previous scrape. Timer sampling resolution is 10 ms, which contributes to the baseline. This is not a five-minute percentile.",
           "id": 30,
           "links": [],
           "title": "Event-loop lag",
@@ -2605,7 +2605,7 @@
               "transformations": []
             }
           },
-          "description": "",
+          "description": "Estimated GC duration percentiles over five minutes, combining all GC kinds per cluster. Bucket interpolation can overestimate durations; consult the per-kind panels and collection counts, especially when samples are sparse.",
           "id": 31,
           "links": [],
           "title": "GC duration",
@@ -5294,6 +5294,653 @@
             "version": "13.1.2"
           }
         }
+      },
+      "panel-52": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "PBFA97CFB590B2093"
+                      },
+                      "group": "prometheus",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "histogram_quantile(0.95, sum by (le, cluster_id, model, operation) (rate(gurabot_database_query_duration_seconds_bucket{model=~\"$database_model\", cluster_id=~\"$database_cluster\", status=\"success\"}[5m])))",
+                        "legendFormat": "p95 - {{model}}.{{operation}} - Cluster {{cluster_id}}",
+                        "range": true
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "PBFA97CFB590B2093"
+                      },
+                      "group": "prometheus",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "histogram_quantile(0.99, sum by (le, cluster_id, model, operation) (rate(gurabot_database_query_duration_seconds_bucket{model=~\"$database_model\", cluster_id=~\"$database_cluster\", status=\"success\"}[5m])))",
+                        "legendFormat": "p99 - {{model}}.{{operation}} - Cluster {{cluster_id}}",
+                        "range": true
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "B"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "End-to-end Prisma operation latency includes connection-pool waits, SQL execution, result processing, and event-loop delays. Percentiles are bucket estimates over five minutes, not individual query timings. Successful operations only; use the adjacent volume panel to assess sample size and failures.",
+          "id": 52,
+          "links": [],
+          "title": "Prisma Latency by Model / Operation / Cluster",
+          "vizConfig": {
+            "group": "timeseries",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 0,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  "unit": "s"
+                },
+                "overrides": []
+              },
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "enableFacetedFilter": false,
+                  "overflow": "ellipsis",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "single",
+                  "sort": "none"
+                }
+              }
+            },
+            "version": "13.1.2"
+          }
+        }
+      },
+      "panel-53": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "PBFA97CFB590B2093"
+                      },
+                      "group": "prometheus",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum by (cluster_id, model, operation, status) (rate(gurabot_database_query_duration_seconds_count{model=~\"$database_model\", cluster_id=~\"$database_cluster\"}[5m])) * 60",
+                        "legendFormat": "{{model}}.{{operation}} - {{status}} - Cluster {{cluster_id}}",
+                        "range": true
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "Prisma operation volume over five minutes, split by outcome. Sparse samples make tail percentiles unstable.",
+          "id": 53,
+          "links": [],
+          "title": "Prisma Operations / min by Model / Operation / Cluster",
+          "vizConfig": {
+            "group": "timeseries",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 0,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  "unit": "short"
+                },
+                "overrides": []
+              },
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "enableFacetedFilter": false,
+                  "overflow": "ellipsis",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "single",
+                  "sort": "none"
+                }
+              }
+            },
+            "version": "13.1.2"
+          }
+        }
+      },
+      "panel-56": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "PBFA97CFB590B2093"
+                      },
+                      "group": "prometheus",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "histogram_quantile(0.95, sum by (le, cluster_id, kind) (rate(gurabot_nodejs_gc_duration_seconds_bucket[5m])))",
+                        "legendFormat": "p95 - {{kind}} - Cluster {{cluster_id}}",
+                        "range": true
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "PBFA97CFB590B2093"
+                      },
+                      "group": "prometheus",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "histogram_quantile(0.99, sum by (le, cluster_id, kind) (rate(gurabot_nodejs_gc_duration_seconds_bucket[5m])))",
+                        "legendFormat": "p99 - {{kind}} - Cluster {{cluster_id}}",
+                        "range": true
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "B"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "Bucket-estimated duration percentiles per GC kind and cluster over five minutes. Read alongside collection counts: a percentile with only a handful of samples is unstable.",
+          "id": 56,
+          "links": [],
+          "title": "GC Duration by Kind",
+          "vizConfig": {
+            "group": "timeseries",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 0,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  "unit": "s"
+                },
+                "overrides": []
+              },
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "enableFacetedFilter": false,
+                  "overflow": "ellipsis",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "single",
+                  "sort": "none"
+                }
+              }
+            },
+            "version": "13.1.2"
+          }
+        }
+      },
+      "panel-57": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "PBFA97CFB590B2093"
+                      },
+                      "group": "prometheus",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum by (cluster_id, kind) (increase(gurabot_nodejs_gc_duration_seconds_count[5m]))",
+                        "legendFormat": "{{kind}} - Cluster {{cluster_id}}",
+                        "range": true
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "Recorded GC collection count over five minutes, split by kind and cluster. Prometheus increase() extrapolates to window boundaries, so counts can be fractional.",
+          "id": 57,
+          "links": [],
+          "title": "Recorded GC Collections by Kind (5m)",
+          "vizConfig": {
+            "group": "timeseries",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 0,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  "unit": "short"
+                },
+                "overrides": []
+              },
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "enableFacetedFilter": false,
+                  "overflow": "ellipsis",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "single",
+                  "sort": "none"
+                }
+              }
+            },
+            "version": "13.1.2"
+          }
+        }
+      },
+      "panel-58": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "PBFA97CFB590B2093"
+                      },
+                      "group": "prometheus",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum by (cluster_id, kind) (increase(gurabot_nodejs_gc_duration_seconds_count[5m])) - sum by (cluster_id, kind) (increase(gurabot_nodejs_gc_duration_seconds_bucket{le=\"1\"}[5m]))",
+                        "legendFormat": "{{kind}} - Cluster {{cluster_id}}",
+                        "range": true
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "Counts recorded durations strictly greater than one second using the existing 1-second bucket boundary; no percentile interpolation. Counts are extrapolated to the five-minute window.",
+          "id": 58,
+          "links": [],
+          "title": "Recorded GC Collections Over 1 Second (5m)",
+          "vizConfig": {
+            "group": "timeseries",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 0,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  "unit": "short"
+                },
+                "overrides": []
+              },
+              "options": {
+                "annotations": {
+                  "clustering": -1,
+                  "multiLane": false
+                },
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "enableFacetedFilter": false,
+                  "overflow": "ellipsis",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "single",
+                  "sort": "none"
+                }
+              }
+            },
+            "version": "13.1.2"
+          }
+        }
       }
     },
     "layout": {
@@ -5482,6 +6129,45 @@
                                   "width": 9,
                                   "x": 9,
                                   "y": 17
+                                }
+                              },
+                              {
+                                "kind": "GridLayoutItem",
+                                "spec": {
+                                  "element": {
+                                    "kind": "ElementReference",
+                                    "name": "panel-56"
+                                  },
+                                  "height": 9,
+                                  "width": 12,
+                                  "x": 0,
+                                  "y": 25
+                                }
+                              },
+                              {
+                                "kind": "GridLayoutItem",
+                                "spec": {
+                                  "element": {
+                                    "kind": "ElementReference",
+                                    "name": "panel-57"
+                                  },
+                                  "height": 9,
+                                  "width": 12,
+                                  "x": 12,
+                                  "y": 25
+                                }
+                              },
+                              {
+                                "kind": "GridLayoutItem",
+                                "spec": {
+                                  "element": {
+                                    "kind": "ElementReference",
+                                    "name": "panel-58"
+                                  },
+                                  "height": 9,
+                                  "width": 24,
+                                  "x": 0,
+                                  "y": 34
                                 }
                               }
                             ]
@@ -5709,6 +6395,32 @@
                         "width": 24,
                         "x": 0,
                         "y": 25
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-52"
+                        },
+                        "height": 9,
+                        "width": 12,
+                        "x": 0,
+                        "y": 34
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-53"
+                        },
+                        "height": 9,
+                        "width": 12,
+                        "x": 12,
+                        "y": 34
                       }
                     }
                   ]
@@ -6120,6 +6832,86 @@
             "spec": {
               "qryType": 1,
               "query": "label_values(gurabot_adapter_api_requests_total,provider)",
+              "refId": "PrometheusVariableQueryEditor-VariableQuery"
+            },
+            "version": "v0"
+          },
+          "refresh": "onDashboardLoad",
+          "regex": "",
+          "regexApplyTo": "value",
+          "skipUrlSync": false,
+          "sort": "disabled"
+        }
+      },
+      {
+        "kind": "QueryVariable",
+        "spec": {
+          "allValue": ".*",
+          "allowCustomValue": true,
+          "current": {
+            "text": [
+              "All"
+            ],
+            "value": [
+              "$__all"
+            ]
+          },
+          "definition": "label_values(gurabot_database_query_duration_seconds_count,model)",
+          "hide": "dontHide",
+          "includeAll": true,
+          "label": "Database model",
+          "multi": true,
+          "name": "database_model",
+          "options": [],
+          "query": {
+            "datasource": {
+              "name": "PBFA97CFB590B2093"
+            },
+            "group": "prometheus",
+            "kind": "DataQuery",
+            "spec": {
+              "qryType": 1,
+              "query": "label_values(gurabot_database_query_duration_seconds_count,model)",
+              "refId": "PrometheusVariableQueryEditor-VariableQuery"
+            },
+            "version": "v0"
+          },
+          "refresh": "onDashboardLoad",
+          "regex": "",
+          "regexApplyTo": "value",
+          "skipUrlSync": false,
+          "sort": "disabled"
+        }
+      },
+      {
+        "kind": "QueryVariable",
+        "spec": {
+          "allValue": ".*",
+          "allowCustomValue": true,
+          "current": {
+            "text": [
+              "All"
+            ],
+            "value": [
+              "$__all"
+            ]
+          },
+          "definition": "label_values(gurabot_database_query_duration_seconds_count,cluster_id)",
+          "hide": "dontHide",
+          "includeAll": true,
+          "label": "Database cluster",
+          "multi": true,
+          "name": "database_cluster",
+          "options": [],
+          "query": {
+            "datasource": {
+              "name": "PBFA97CFB590B2093"
+            },
+            "group": "prometheus",
+            "kind": "DataQuery",
+            "spec": {
+              "qryType": 1,
+              "query": "label_values(gurabot_database_query_duration_seconds_count,cluster_id)",
               "refId": "PrometheusVariableQueryEditor-VariableQuery"
             },
             "version": "v0"

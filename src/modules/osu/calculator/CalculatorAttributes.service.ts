@@ -4,6 +4,18 @@ import { IDifficultyCalculationResponse, TDifficultyAttributes, toCalculatorMods
 import { Import } from "@/core/decorators";
 import { CalculatorMapService } from "./CalculatorMap.service";
 import { ModUtils, ParsedMod } from "@generated/adapter/mods";
+import type {
+    StandardDifficultyAttributes,
+    TaikoDifficultyAttributes,
+    CatchDifficultyAttributes,
+    ManiaDifficultyAttributes,
+} from "@generated/prisma/client";
+
+type TCachedDifficultyAttributes =
+    | StandardDifficultyAttributes
+    | TaikoDifficultyAttributes
+    | CatchDifficultyAttributes
+    | ManiaDifficultyAttributes;
 
 export class CalculatorAttributesService extends AbstractService {
     @Import() declare private readonly calculatorMapService: CalculatorMapService;
@@ -26,22 +38,14 @@ export class CalculatorAttributesService extends AbstractService {
         mods: Array<ParsedMod>,
         clockRate?: number,
     ): Promise<IDifficultyCalculationResponse<M>> {
-        const { cacheString, custom } = this.getModCacheString(mods, clockRate);
+        const { cacheString } = this.getModCacheString(mods, clockRate);
 
         const cached = await this.getFromDatabase(beatmapID, mode, cacheString);
         if (cached) {
             return cached;
         }
 
-        const response = await this.calculator.difficulty({
-            mode,
-            beatmapPath: this.calculatorMapService.getPath(beatmapID),
-            mods: toCalculatorMods(mods),
-            clockRate,
-        });
-
-        await this.saveToDatabase(beatmapID, mode, cacheString, response, custom);
-        return response;
+        return this.calculateAndSave(beatmapID, mode, mods, clockRate);
     }
 
     public async getWithStrains<M extends GameMode>(
@@ -88,9 +92,22 @@ export class CalculatorAttributesService extends AbstractService {
             }
         }
 
+        const requestsByMode = new Map<M, Array<{ beatmapID: number; mods: string }>>();
+        for (const request of uniqueRequests.values()) {
+            const filters = requestsByMode.get(request.mode) ?? [];
+            filters.push({ beatmapID: request.beatmapID, mods: this.identity(request.mods).cacheString });
+            requestsByMode.set(request.mode, filters);
+        }
+
+        const cachedByMode = await Promise.all(
+            [...requestsByMode].map(([mode, filters]) => this.getManyFromDatabase(mode, filters)),
+        );
+        const cached = new Map(cachedByMode.flatMap((results) => [...results]));
+
         const entries = await Promise.all(
             [...uniqueRequests.entries()].map(async ([key, request]) => {
-                const response = await this.getFull(request.beatmapID, request.mode, request.mods);
+                const response =
+                    cached.get(key) ?? (await this.calculateAndSave(request.beatmapID, request.mode, request.mods));
                 return [key, response] as const;
             }),
         );
@@ -110,6 +127,24 @@ export class CalculatorAttributesService extends AbstractService {
     //#endregion
 
     //#region Internal
+
+    private async calculateAndSave<M extends GameMode>(
+        beatmapID: number,
+        mode: M,
+        mods: Array<ParsedMod>,
+        clockRate?: number,
+    ): Promise<IDifficultyCalculationResponse<M>> {
+        const { cacheString, custom } = this.getModCacheString(mods, clockRate);
+        const response = await this.calculator.difficulty({
+            mode,
+            beatmapPath: this.calculatorMapService.getPath(beatmapID),
+            mods: toCalculatorMods(mods),
+            clockRate,
+        });
+
+        await this.saveToDatabase(beatmapID, mode, cacheString, response, custom);
+        return response;
+    }
 
     private getModCacheString(mods: Array<ParsedMod>, clockRate?: number): { cacheString: string; custom: boolean } {
         const perfMods = ModUtils.difficultyAffecting(mods);
@@ -156,7 +191,7 @@ export class CalculatorAttributesService extends AbstractService {
             },
         };
 
-        let result: any;
+        let result: TCachedDifficultyAttributes | null;
 
         switch (mode) {
             case GameMode.Standard:
@@ -179,6 +214,39 @@ export class CalculatorAttributesService extends AbstractService {
             return null;
         }
 
+        return this.fromDatabase<M>(result);
+    }
+
+    private async getManyFromDatabase<M extends GameMode>(
+        mode: M,
+        requests: Array<{ beatmapID: number; mods: string }>,
+    ): Promise<Map<string, IDifficultyCalculationResponse<M>>> {
+        const where = { OR: requests };
+        let results: Array<TCachedDifficultyAttributes>;
+
+        switch (mode) {
+            case GameMode.Standard:
+                results = await this.repository.standardDifficultyAttributes.findMany({ where });
+                break;
+            case GameMode.Taiko:
+                results = await this.repository.taikoDifficultyAttributes.findMany({ where });
+                break;
+            case GameMode.Catch:
+                results = await this.repository.catchDifficultyAttributes.findMany({ where });
+                break;
+            case GameMode.Mania:
+                results = await this.repository.maniaDifficultyAttributes.findMany({ where });
+                break;
+            default:
+                return new Map();
+        }
+
+        return new Map(
+            results.map((result) => [`${result.beatmapID}:${mode}:${result.mods}`, this.fromDatabase<M>(result)]),
+        );
+    }
+
+    private fromDatabase<M extends GameMode>(result: TCachedDifficultyAttributes): IDifficultyCalculationResponse<M> {
         const {
             beatmapID: _beatmapID,
             mods: _mods,

@@ -68,13 +68,11 @@ export class OsuBeatmapService extends AbstractService {
         }
 
         const apiData = await this.adapter[provider].beatmap({ id });
-
         if (!apiData) {
             return null;
         }
 
         await this.upsertBeatmap(apiData);
-
         return apiData;
     }
 
@@ -91,7 +89,6 @@ export class OsuBeatmapService extends AbstractService {
         }
 
         const uniqueIDs = [...new Set(ids)];
-
         const cached = await this.repository.beatmap.findMany({
             where: {
                 id: {
@@ -173,7 +170,6 @@ export class OsuBeatmapService extends AbstractService {
         }
 
         const apiData = await this.adapter[provider].beatmapset({ id });
-
         if (!apiData) {
             return null;
         }
@@ -249,6 +245,7 @@ export class OsuBeatmapService extends AbstractService {
         });
     }
 
+    @Trace()
     private async fetchMissingBeatmaps(ids: Array<number>, provider: AdapterProvider): Promise<Array<Beatmap>> {
         if (ids.length === 0) {
             return [];

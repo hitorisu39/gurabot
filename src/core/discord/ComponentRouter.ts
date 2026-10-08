@@ -118,7 +118,7 @@ export class ComponentRouter {
         }
 
         const componentName = isStringMatch ? ctx.customID : targetComponent.constructor.name;
-        const profiler = new InteractionProfiler();
+        const profiler = new InteractionProfiler(this.logger.isLevelEnabled("trace") ? 500 : 0);
 
         await ProfilerStorage.run(profiler, async () => {
             const startTimer = this.metrics.componentHistogram.labels(componentName, "success").startTimer();

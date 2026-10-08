@@ -63,6 +63,7 @@ export class Metrics {
                 cluster_id: clusterID,
             },
             eventLoopMonitoringPrecision: 10,
+            gcDurationBuckets: [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.2, 0.3, 0.5, 0.75, 1, 2, 5],
         });
 
         this.commandHistogram = new client.Histogram({
@@ -117,7 +118,7 @@ export class Metrics {
 
         this.databaseQueryHistogram = new client.Histogram({
             name: `${config.app.name}_database_query_duration_seconds`,
-            help: "Duration of database queries in seconds",
+            help: "End-to-end Prisma operation duration in seconds, including pool waits and client processing",
             labelNames: ["cluster_id", "model", "operation", "status"],
             buckets: [0.005, 0.01, 0.05, 0.1, 0.5, 1, 2, 5],
         });

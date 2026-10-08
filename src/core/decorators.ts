@@ -3,7 +3,7 @@ import type { PermissionResolvable } from "discord.js";
 
 import { EComponentType } from "@domain/core/Component";
 import { ECommandCategory } from "@domain/core/Command";
-import { ProfilerStorage } from "./profiler";
+import { traceStep } from "./profiler";
 
 type Awaitable<T> = T | Promise<T>;
 type EventHandler<T> = T extends (...args: infer A) => infer R ? (...args: A) => Awaitable<R> : never;
@@ -282,20 +282,7 @@ export function Trace(stepName?: string) {
         const name = stepName ?? `${target.constructor.name}.${propertyKey}`;
 
         descriptor.value = function (...args: any[]) {
-            const profiler = ProfilerStorage.getStore();
-            if (!profiler) {
-                return originalMethod.apply(this, args);
-            }
-
-            const start = performance.now();
-            const result = originalMethod.apply(this, args);
-
-            if (result instanceof Promise) {
-                return result.finally(() => profiler.record(name, performance.now() - start));
-            }
-
-            profiler.record(name, performance.now() - start);
-            return result;
+            return traceStep(name, () => originalMethod.apply(this, args));
         };
 
         return descriptor;
