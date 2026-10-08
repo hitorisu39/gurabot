@@ -159,7 +159,6 @@ export class OrdrService extends AbstractService {
 
         if (response.status >= 400 || (data.errorCode && data.errorCode !== 0)) {
             const errorMessage = data.message ?? `${this.name} rejected the render request.`;
-
             const errorSuffix = !data.errorCode ? "" : ` (o!rdr error ${data.errorCode})`;
 
             this.logger.warn(
@@ -355,11 +354,14 @@ export class OrdrService extends AbstractService {
 
         form.append("replayFile", replayFile, filename);
         this.append(form, "verificationKey", this.config.ordr.verification_key);
+        this.append(form, "discordUserId", discordUserID);
 
-        if (config.source === EOrdrConfigSource.Preset) {
+        const usePreset = config.source === EOrdrConfigSource.Preset;
+        this.append(form, "usePreset", usePreset);
+
+        if (usePreset) {
             this.append(form, "skin", config.settings.skin || this.config.ordr.default_skin);
             this.append(form, "resolution", config.settings.resolution);
-            this.append(form, "discordUserId", discordUserID);
             return form;
         }
 
